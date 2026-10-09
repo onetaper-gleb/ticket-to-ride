@@ -13,7 +13,9 @@ Export `App` as default from `src/ui/App.tsx` with `AppProps`. Handle `observati
 
 Keep the player flow complete: configure solo → understand forecast → take action → issue train orders → end turn → see movement/wave → read result → restart. Show current phase, remaining action, train cargo, route ETA and the next closing stations. Distinguish a safe preview from a plan conditional on future repair. A risky order needs explicit confirmation.
 
-Use a low-poly tabletop style, a near-orthographic camera and procedural objects for the MVP. Keep station labels, route state and deadlines readable above decor. Pair colors with symbols. Preserve menus and cards if WebGL fails. Dispose scene resources on teardown and keep resize/DPR handling bounded.
+Use the desktop tabletop direction in `docs/redesign-research.md`: physical table, model city, seated dispatchers, foreground 3D hands and a real card fan. Prioritize desktop composition at 1280–1920 px. Use a seated perspective and an explicit high planning view. Keep station labels, route state and deadlines readable above decor. Pair colors with symbols. Preserve menus and cards if WebGL fails. Dispose scene resources, including textures, on teardown and keep resize/DPR handling bounded.
+
+For the current redesign, stop after the first visual checkpoint and show the user the actual game. Defer final character animation, dealing effects, sound and decorative polish until their feedback. Keep the checkpoint playable. Use local IBM Plex fonts and the restrained graphite/paper/amber palette; avoid large editorial serif headings and permanent dashboard columns.
 
 Add imported or generated assets only when they improve the current scene. Record source, license, transformations and hash. Raster generation supplies references or illustrations, not 3D meshes. Do not add paid asset dependencies to the MVP.
 

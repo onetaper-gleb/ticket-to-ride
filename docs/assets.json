@@ -1,16 +1,41 @@
 {
-  "version": 1,
+  "version": 2,
   "assets": [
     {
-      "name": "Tabletop city, trains, tracks, water and station markers",
-      "source": "src/scene — project procedural geometry",
+      "name": "Dispatcher table, seated brigades, hands, printed cards and miniature railway",
+      "source": "src/scene/Diorama.tsx + src/scene/tabletop.ts",
       "license": "project original",
-      "transformations": "runtime box, cylinder and plane geometries; original palette",
-      "hash": "cc2be52d1976f189ced0bbda202fafc40919e590aed866e830bd9194e30e5fe0",
-      "hashKind": "sha256 of procedural source"
+      "transformations": "Original procedural Three.js meshes, instanced rails and ties, canvas card printing, original palette",
+      "hash": "18180231c21f7b07406a7c1c428fd0cbbd3fba37a23ac1de9435e0ed56ed85e0",
+      "hashKind": "sha256 of ordered file name + LF + file bytes + LF for each source"
     }
   ],
-  "externalAssets": [],
+  "externalAssets": [
+    {
+      "name": "IBM Plex Sans Regular",
+      "file": "public/fonts/IBMPlexSans-Regular.woff2",
+      "source": "https://github.com/IBM/plex/blob/master/packages/plex-sans/fonts/complete/woff2/IBMPlexSans-Regular.woff2",
+      "license": "SIL Open Font License 1.1 — public/fonts/LICENSE.txt",
+      "transformations": "unmodified complete WOFF2, self-hosted",
+      "sha256": "ba711a3085ff9f27440b6b9c4550cfc47c97bf36591d5da958b975bb3add8c1a"
+    },
+    {
+      "name": "IBM Plex Sans Medium",
+      "file": "public/fonts/IBMPlexSans-Medium.woff2",
+      "source": "https://github.com/IBM/plex/blob/master/packages/plex-sans/fonts/complete/woff2/IBMPlexSans-Medium.woff2",
+      "license": "SIL Open Font License 1.1 — public/fonts/LICENSE.txt",
+      "transformations": "unmodified complete WOFF2, self-hosted",
+      "sha256": "5660f8a658f8bb50dbc005232f885eadffd2bc1c235c4f6fbb63469d1f9cde6d"
+    },
+    {
+      "name": "IBM Plex Mono Regular",
+      "file": "public/fonts/IBMPlexMono-Regular.woff2",
+      "source": "https://github.com/IBM/plex/blob/master/packages/plex-mono/fonts/complete/woff2/IBMPlexMono-Regular.woff2",
+      "license": "SIL Open Font License 1.1 — public/fonts/LICENSE.txt",
+      "transformations": "unmodified complete WOFF2, self-hosted",
+      "sha256": "ba204497f16b6d334cee9d1e963a831b73e3a56e1d6300a8489d18df7214b350"
+    }
+  ],
   "paidDependencies": [],
-  "fonts": "System UI and Georgia; no remote font dependency"
+  "fonts": "Self-hosted IBM Plex Sans and Mono; Arial/Consolas fallbacks; no runtime third-party font request"
 }

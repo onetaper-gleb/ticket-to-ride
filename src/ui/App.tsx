@@ -21,10 +21,10 @@ const districtNames: Record<District, string> = {
   garden: 'Сады',
 };
 const districtIcons: Record<District, string> = {
-  harbor: '⚓',
-  'old-town': '⌂',
-  industrial: '⚙',
-  garden: '✿',
+  harbor: '01',
+  'old-town': '02',
+  industrial: '03',
+  garden: '04',
 };
 const colorNames: Record<CardColor | 'gray', string> = {
   red: 'Красные',
@@ -70,7 +70,7 @@ function Rules({ onClose }: { onClose: () => void }) {
             ×
           </button>
         </div>
-        <h2 id="rules-title">Каждый рейс — выбор.</h2>
+        <h2 id="rules-title">Памятка диспетчера</h2>
         <p>
           Речной уходит под воду. Восстанавливайте железную дорогу и доставляйте группы жителей в
           два убежища. Линиями пользуются все бригады.
@@ -119,7 +119,7 @@ function Rules({ onClose }: { onClose: () => void }) {
           резервируется.
         </p>
         <button className="button primary full" onClick={onClose}>
-          Я готов к отправлению <span>→</span>
+          Вернуться к игре <span>→</span>
         </button>
       </section>
     </div>
@@ -133,68 +133,67 @@ function Menu(props: AppProps & { onRules: () => void }) {
   const [seed, setSeed] = useState('');
   return (
     <main className="menu">
-      <div className="menu-scenery" aria-hidden="true">
-        <div className="menu-island island-one" />
-        <div className="menu-island island-two" />
-        <div className="menu-island island-three" />
-        <div className="menu-track track-one" />
-        <div className="menu-track track-two" />
-        <div className="menu-track track-three" />
-        <div className="menu-town">
-          <i />
-          <i />
-          <i />
-          <i />
-        </div>
-        <div className="menu-train">
-          ▰<span>▰</span>
-        </div>
-        <div className="map-coordinate coord-one">55° 44′ N</div>
-        <div className="map-coordinate coord-two">РЕЧНОЙ / СЕВЕРНЫЙ ХОЛМ</div>
-        <div className="menu-wave wave-one" />
-        <div className="menu-wave wave-two" />
-      </div>
       <header className="menu-nav">
-        <a className="brand" href="#" onClick={(e) => e.preventDefault()}>
-          <span className="brand-mark">╱╱</span> ПОСЛЕДНИЙ РЕЙС
-        </a>
+        <span className="brand">
+          <span className="brand-mark" aria-hidden="true">
+            Ⅱ
+          </span>
+          Последний рейс
+        </span>
         <button className="quiet-button" onClick={props.onRules}>
-          Как играть <span>↗</span>
+          Правила
         </button>
       </header>
       <div className="menu-content">
-        <div className="menu-intro">
-          <span className="eyebrow">
-            <i className="status-dot" /> Эвакуационная операция · Речной
-          </span>
-          <h1>
-            Пока ещё
-            <br />
-            ходят <em>поезда.</em>
-          </h1>
-          <p>
-            Вода поднимается. Дороги закрываются.
-            <br />У вас два поезда и двенадцать раундов,
-            <br />
-            чтобы успеть за теми, кто ждёт.
-          </p>
-          <div className="menu-features">
-            <span>3D-стратегия</span>
-            <span>2–4 бригады</span>
-            <span>Соло с ботами</span>
+        <section className="menu-intro">
+          <span className="eyebrow">Речной / Операция 01</span>
+          <h1>Последний рейс</h1>
+          <p>Восстанавливайте пути. Отправляйте поезда. Вывозите жителей до следующей волны.</p>
+          <div className="menu-board" aria-hidden="true">
+            <div className="menu-board-paper">
+              <span className="board-stamp">
+                РЕЧНОЙ
+                <br />
+                <small>ЖЕЛЕЗНОДОРОЖНАЯ СХЕМА</small>
+              </span>
+              <div className="board-rail rail-one" />
+              <div className="board-rail rail-two" />
+              <div className="board-rail rail-three" />
+              <i className="board-stop stop-one" />
+              <i className="board-stop stop-two" />
+              <i className="board-stop stop-three" />
+              <i className="board-stop stop-four" />
+              <div className="board-train train-one">
+                <i />
+                <i />
+              </div>
+              <div className="board-train train-two">
+                <i />
+                <i />
+              </div>
+            </div>
+            <div className="menu-paper-card card-back-one">
+              Ⅱ<small>МАТЕРИАЛЫ</small>
+            </div>
+            <div className="menu-paper-card card-back-two">
+              ◆<small>РЕМОНТ</small>
+            </div>
+            <span className="board-caption">Два поезда. Общая железная дорога.</span>
           </div>
-        </div>
+          <div className="menu-features">
+            <span>2–4 бригады</span>
+            <span>12 раундов</span>
+            <span>4 волны</span>
+          </div>
+        </section>
         <section className="start-panel">
           <div className="section-heading">
-            <span className="eyebrow">Начать операцию</span>
-            <span className="tiny-badge">СОЛО MVP</span>
+            <span className="eyebrow">Новая партия</span>
+            <span className="muted">Соло с ботами</span>
           </div>
-          <h2>Вы — диспетчер.</h2>
-          <p className="muted">
-            Планируйте рейсы и состязайтесь с другими бригадами за лучший вклад в спасение города.
-          </p>
+          <h2>Ваша бригада</h2>
           <label className="field-label" htmlFor="brigade-name">
-            Название бригады
+            Название
           </label>
           <input
             id="brigade-name"
@@ -224,13 +223,13 @@ function Menu(props: AppProps & { onRules: () => void }) {
               className={difficulty === 'easy' ? 'active' : ''}
               onClick={() => setDifficulty('easy')}
             >
-              Лёгкие<small>Для первого рейса</small>
+              Лёгкие<small>Для первой партии</small>
             </button>
             <button
               className={difficulty === 'normal' ? 'active' : ''}
               onClick={() => setDifficulty('normal')}
             >
-              Обычные<small>Планируют маршруты</small>
+              Обычные<small>Планируют рейсы</small>
             </button>
           </div>
           <details className="seed-detail">
@@ -262,22 +261,25 @@ function Menu(props: AppProps & { onRules: () => void }) {
           </button>
           {props.canContinue && (
             <button className="button secondary full" onClick={props.onContinue}>
-              Продолжить сохранённую партию ↗
+              Продолжить сохранённую партию
             </button>
           )}
-          <div className="start-note">
-            <span className="status-dot" /> Партия сохраняется автоматически на этом устройстве
-          </div>
+          <p className="start-note">
+            <span className="status-dot" />
+            Сохраняется автоматически на этом устройстве
+          </p>
         </section>
       </div>
       <footer className="menu-footer">
-        <span>Общая дорога. Разные планы. Один город.</span>
-        <span>12 РАУНДОВ · 4 ВОЛНЫ · ПОСЛЕДНИЙ РЕЙС</span>
+        <span>Речной, железнодорожная эвакуационная служба</span>
+        <span>Настольная стратегия</span>
       </footer>
       {props.error && (
         <div className="toast" role="alert">
           {props.error}
-          <button onClick={props.onClearError}>×</button>
+          <button onClick={props.onClearError} aria-label="Закрыть сообщение">
+            ×
+          </button>
         </div>
       )}
     </main>
@@ -512,11 +514,7 @@ function ObjectiveSelection({
   return (
     <div className="objective-selection">
       <span className="eyebrow">Личные задания</span>
-      <h2>
-        Каким районам
-        <br />
-        вы поможете?
-      </h2>
+      <h2>Выберите два района</h2>
       <p className="muted">
         Выберите два из трёх. Доставьте по две группы из района, чтобы получить +3 очка.
       </p>
@@ -646,8 +644,8 @@ export default function App(props: AppProps) {
     }
   }, [observation?.revision]);
   useEffect(() => {
-    if (selection?.kind === 'edge') setTab('repair');
-  }, [selection]);
+    if (selection?.kind === 'edge' && observation?.phase === 'action') setTab('repair');
+  }, [selection, observation?.phase]);
   useEffect(() => {
     if (observation?.phase === 'draw') setTab('cards');
   }, [observation?.phase]);
@@ -670,522 +668,462 @@ export default function App(props: AppProps) {
     selection?.kind === 'station' ? observation.stations.find((s) => s.id === selection.id) : null;
   const result = props.result;
   return (
-    <main className="game-shell">
+    <main className={`game-shell phase-${phase}`}>
+      <div className="table-scene">
+        <Diorama
+          observation={observation}
+          selection={selection}
+          onSelect={setSelection}
+          topView={topView}
+          reset={reset}
+          onCardSelect={(cardId: string) => {
+            if (ownTurn && phase === 'discard') props.onCommand({ type: 'discard', cardId });
+          }}
+        />
+      </div>
       <header className="game-header">
-        <button
-          className="brand"
-          onClick={props.onMenu}
-          title="Вернуться в меню. Партия сохранена."
-        >
-          <span className="brand-mark">╱╱</span>
+        <button className="brand" onClick={props.onMenu} title="В меню. Партия сохранена.">
+          <span className="brand-mark" aria-hidden="true">
+            Ⅱ
+          </span>
           <span>
-            ПОСЛЕДНИЙ РЕЙС<small>РЕЧНОЙ · ЭВАКУАЦИЯ</small>
+            Последний рейс<small>Речной</small>
           </span>
         </button>
         <div className="round-display">
-          <span>РАУНД</span>
+          <span>Раунд</span>
           <b>
             {String(observation.round).padStart(2, '0')}
-            <small>/ 12</small>
+            <small>/12</small>
           </b>
         </div>
         <div className="wave-status">
-          <span className="wave-icon">≈</span>
+          <span className="wave-icon" aria-hidden="true">
+            ≈
+          </span>
           <span>
-            Следующая волна
-            <small>
-              После раунда {nextWave} · {nextWave - observation.round} до закрытия
-            </small>
+            Волна после {nextWave}
+            <small>{nextWave - observation.round} раундов до закрытия</small>
           </span>
         </div>
+        <div className="header-saved">
+          <b>
+            {saved}
+            <small>/{observation.totalGroups}</small>
+          </b>
+          <span>в убежищах</span>
+        </div>
+        <span className="auto-save" title="Партия сохраняется после каждого действия">
+          <i className="status-dot" />
+          Автосохранение
+        </span>
         <button className="quiet-button" onClick={() => setRules(true)}>
-          Правила <span>↗</span>
+          Правила
+        </button>
+        <button className="quiet-button" onClick={props.onMenu}>
+          Меню
         </button>
       </header>
-      <div className="game-grid">
-        <aside className="brigade-panel">
-          <div className="panel-title">
+      <div className="scene-tools">
+        <span className="scene-title">
+          Речной <small>14 станций</small>
+        </span>
+        <div className="camera-tools">
+          <button
+            aria-label={topView ? 'Объёмный вид' : 'Вид сверху'}
+            title={topView ? 'Объёмный вид' : 'Вид сверху'}
+            className={topView ? 'active' : ''}
+            onClick={() => setTopView(!topView)}
+          >
+            {topView ? '3D' : 'Сверху'}
+          </button>
+          <button
+            aria-label="Сбросить камеру"
+            title="Сбросить камеру"
+            onClick={() => setReset(reset + 1)}
+          >
+            ↺
+          </button>
+        </div>
+      </div>
+      <aside className="brigade-panel hud-sheet">
+        <div className="brigade-identity">
+          <span className="player-flag" style={{ background: observation.self.color }}>
+            {observation.self.id + 1}
+          </span>
+          <div>
             <span className="eyebrow">Ваша бригада</span>
-            <span className="auto-save">● Автосохранение</span>
+            <h2>{observation.self.name}</h2>
           </div>
-          <h2>{observation.self.name}</h2>
-          <div className="brigade-stats">
-            <span>
-              <b>{observation.self.score}</b>
-              <small>очков</small>
-            </span>
-            <span>
-              <b>{observation.self.delivered.length}</b>
-              <small>групп спасено</small>
-            </span>
-          </div>
-          <div className="objectives-block">
-            <div className="section-heading">
-              <span className="eyebrow">Личные задания</span>
-              <span className="muted">+3 каждое</span>
-            </div>
-            {observation.self.objectives.length ? (
-              observation.self.objectives.map((d) => {
-                const delivered = observation.self.delivered.filter((g) => g.district === d).length;
-                return (
-                  <div key={d} className={`objective-progress ${delivered >= 2 ? 'complete' : ''}`}>
-                    <span className="district-icon">{districtIcons[d]}</span>
-                    <span>
-                      {districtNames[d]}
-                      <span className="progress-track">
-                        <i style={{ width: `${(Math.min(delivered, 2) / 2) * 100}%` }} />
-                      </span>
+          <b className="brigade-score">
+            {observation.self.score}
+            <small>очков</small>
+          </b>
+        </div>
+        <div className="section-heading train-section">
+          <span className="eyebrow">Поезда</span>
+          <span className="muted">2 места</span>
+        </div>
+        {ownTrains.map((train) => (
+          <TrainEditor
+            key={train.id}
+            train={train}
+            observation={observation}
+            enabled={ownTurn && phase === 'orders'}
+            onCommand={props.onCommand}
+          />
+        ))}
+        <details className="hud-disclosure objectives-block">
+          <summary>
+            Задания <span>{observation.self.objectives.length}</span>
+          </summary>
+          {observation.self.objectives.length ? (
+            observation.self.objectives.map((d) => {
+              const delivered = observation.self.delivered.filter((g) => g.district === d).length;
+              return (
+                <div key={d} className={`objective-progress ${delivered >= 2 ? 'complete' : ''}`}>
+                  <span className="district-icon">{districtIcons[d]}</span>
+                  <span>
+                    {districtNames[d]}
+                    <span className="progress-track">
+                      <i style={{ width: `${Math.min(delivered, 2) * 50}%` }} />
                     </span>
-                    <b>{Math.min(delivered, 2)}/2</b>
-                  </div>
-                );
-              })
-            ) : (
-              <p className="muted">Выберите два района в начале операции.</p>
-            )}
-          </div>
-          <div className="section-heading train-section">
-            <span className="eyebrow">Ваши поезда</span>
-            <span className="muted">2 места в каждом</span>
-          </div>
-          {ownTrains.map((train) => (
-            <TrainEditor
-              key={train.id}
-              train={train}
-              observation={observation}
-              enabled={ownTurn && phase === 'orders'}
-              onCommand={props.onCommand}
-            />
+                  </span>
+                  <b>{Math.min(delivered, 2)}/2</b>
+                </div>
+              );
+            })
+          ) : (
+            <p className="muted">Выберите районы в начале операции.</p>
+          )}
+        </details>
+        <details className="hud-disclosure leaderboard">
+          <summary>
+            Бригады <span>{observation.playerCount}</span>
+          </summary>
+          {observation.players.map((p) => (
+            <div key={p.id} className={p.id === observation.activePlayer ? 'current' : ''}>
+              <span className="player-flag" style={{ background: p.color }}>
+                {p.id + 1}
+              </span>
+              <span>
+                {p.name}
+                <small>
+                  {p.delivered.length} групп · {p.handCount} карт
+                </small>
+              </span>
+              <b>{p.score}</b>
+            </div>
           ))}
-          <div className="leaderboard">
-            <span className="eyebrow">Бригады</span>
-            {observation.players.map((p) => (
-              <div key={p.id} className={p.id === observation.activePlayer ? 'current' : ''}>
-                <span className="player-flag" style={{ background: p.color }}>
-                  {p.id + 1}
-                </span>
-                <span>
-                  {p.name}
-                  <small>
-                    {p.delivered.length} групп · {p.handCount} карт
-                  </small>
-                </span>
-                <b>{p.score}</b>
-              </div>
-            ))}
-          </div>
-        </aside>
-        <section className="map-panel">
-          <div className="map-topbar">
-            <div>
-              <span className="eyebrow">Карта операции</span>
-              <h2>
-                Город Речной <span>14 станций</span>
-              </h2>
-            </div>
-            <div className="camera-tools">
-              <button
-                aria-label={topView ? 'Объёмный вид' : 'Вид сверху'}
-                title={topView ? 'Объёмный вид' : 'Вид сверху'}
-                className={topView ? 'active' : ''}
-                onClick={() => setTopView(!topView)}
-              >
-                ▧
-              </button>
-              <button
-                aria-label="Сбросить камеру"
-                title="Сбросить камеру"
-                onClick={() => setReset(reset + 1)}
-              >
-                ↺
-              </button>
-            </div>
-          </div>
-          <div className="map-canvas">
-            <Diorama
-              observation={observation}
-              selection={selection}
-              onSelect={setSelection}
-              topView={topView}
-              reset={reset}
-            />
-            <div className="map-compass" aria-hidden="true">
-              N <span>↑</span>
-            </div>
-            <div className="map-legend">
+        </details>
+        <details className="hud-disclosure forecast">
+          <summary>
+            Прогноз воды <span>4 волны</span>
+          </summary>
+          {Waves.map((w) => (
+            <div
+              key={w}
+              className={w < observation.round ? 'passed' : w === nextWave ? 'next' : ''}
+            >
+              <b>{String(w).padStart(2, '0')}</b>
               <span>
-                <i className="legend-line open" />
-                Открыто
+                {observation.stations
+                  .filter((s) => s.floodRound === w)
+                  .map((s) => s.name)
+                  .join(', ') || 'Конец операции'}
               </span>
-              <span>
-                <i className="legend-line repair" />
-                Ремонт
-              </span>
-              <span>
-                <i className="legend-dot" />
-                Убежище
-              </span>
+              <small>{w < observation.round ? 'Закрыто' : 'После раунда'}</small>
             </div>
-            {selectedStation && (
-              <div className="station-detail">
-                <button
-                  className="icon-button"
-                  aria-label="Закрыть станцию"
-                  onClick={() => setSelection(null)}
-                >
-                  ×
-                </button>
-                <span className="eyebrow">
-                  {selectedStation.safe
-                    ? 'УБЕЖИЩЕ'
-                    : selectedStation.district
-                      ? districtNames[selectedStation.district]
-                      : 'СТАНЦИЯ'}
-                </span>
-                <h3>{selectedStation.name}</h3>
-                <p>
-                  {selectedStation.safe
-                    ? 'Высокая станция. Вода сюда не поднимется.'
-                    : selectedStation.flooded
-                      ? 'Станция закрыта водой.'
-                      : `${selectedStation.groups.length} групп ждут · закрытие после раунда ${selectedStation.floodRound}`}
-                </p>
-                {!selectedStation.safe && !selectedStation.flooded && (
-                  <small>Назначьте рейс в панели своего поезда.</small>
-                )}
-              </div>
-            )}
-          </div>
-          <div className="city-progress">
-            <span>
-              <b>{saved}</b> / {observation.totalGroups} групп в убежищах
-            </span>
-            <div className="city-progress-bar">
-              <i style={{ width: `${(saved / observation.totalGroups) * 100}%` }} />
-              <i
-                className="lost-progress"
-                style={{
-                  width: `${(observation.lostGroups.length / observation.totalGroups) * 100}%`,
-                }}
-              />
-            </div>
-            <span className="muted">{observation.lostGroups.length} отрезаны водой</span>
-          </div>
-          <div className="dispatch-radio">
-            <span className="radio-icon">⌁</span>
-            <div>
-              <span className="eyebrow">Диспетчерская</span>
-              <p>
-                {observation.events.at(-1)?.message ?? 'Бригады на местах. Планируйте первый рейс.'}
-              </p>
-            </div>
-            <button className="text-button" onClick={() => setShowLog(!showLog)}>
-              {showLog ? 'Скрыть' : 'Журнал'} ↗
-            </button>
-          </div>
-          {showLog && (
-            <div className="event-log" aria-label="Журнал операции">
-              {observation.events
-                .slice(-30)
-                .reverse()
-                .map((e) => (
-                  <p key={e.id}>
-                    <b>Р{e.round}</b> {e.message}
-                  </p>
-                ))}
-            </div>
+          ))}
+        </details>
+      </aside>
+      {selectedStation && (
+        <section className="station-detail hud-sheet">
+          <button
+            className="icon-button"
+            aria-label="Закрыть станцию"
+            onClick={() => setSelection(null)}
+          >
+            ×
+          </button>
+          <span className="eyebrow">
+            {selectedStation.safe
+              ? 'Убежище'
+              : selectedStation.district
+                ? districtNames[selectedStation.district]
+                : 'Станция'}
+          </span>
+          <h3>{selectedStation.name}</h3>
+          <p>
+            {selectedStation.safe
+              ? 'Высокая станция. Здесь жители в безопасности.'
+              : selectedStation.flooded
+                ? 'Станция закрыта водой.'
+                : `${selectedStation.groups.length} групп ждут · закрытие после ${selectedStation.floodRound}`}
+          </p>
+          {!selectedStation.safe && !selectedStation.flooded && (
+            <small className="muted">Назначьте рейс в панели поезда.</small>
           )}
         </section>
-        <aside className="action-panel">
-          <div className={`turn-status ${ownTurn ? 'your-turn' : 'bot-turn'}`}>
-            <span className="status-dot" />
-            <span>
+      )}
+      <aside className="action-panel hud-sheet">
+        <div className={`turn-status ${ownTurn ? 'your-turn' : 'bot-turn'}`} role="status">
+          <span className="status-dot" />
+          <span>
+            {phase === 'finished'
+              ? 'Операция завершена'
+              : ownTurn
+                ? 'Ваш ход'
+                : (active?.name ?? 'Другая бригада')}
+            <small>
               {phase === 'finished'
-                ? 'Итоги операции'
+                ? 'Все рейсы завершены'
                 : ownTurn
-                  ? 'Ваш ход'
-                  : `${active?.name ?? 'Бригада'} планирует`}
-              <small>
-                {phase === 'finished'
-                  ? 'Все рейсы завершены'
-                  : ownTurn
-                    ? phaseNames[phase]
-                    : props.busy
-                      ? 'Бот выбирает действие…'
-                      : 'Ожидание бригады'}
-              </small>
-            </span>
+                  ? phaseNames[phase]
+                  : props.busy
+                    ? 'Планирует рейсы…'
+                    : 'Ожидание бригады'}
+            </small>
+          </span>
+          <span className="turn-seat">{observation.activePlayer + 1}</span>
+        </div>
+        {!ownTurn && phase !== 'finished' ? (
+          <div className="bot-thinking">
+            <p>Можно изучать карту и прогноз, пока другая бригада выбирает ход.</p>
+            <div className="thinking-dots" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </div>
           </div>
-          {!ownTurn && phase !== 'finished' ? (
-            <div className="bot-thinking" role="status" aria-live="polite">
-              <span className="thinking-symbol" aria-hidden="true">
-                ⌁
-              </span>
-              <span className="eyebrow">Ход другой бригады</span>
+        ) : phase === 'setup' ? (
+          <ObjectiveSelection
+            observation={observation}
+            enabled={ownTurn}
+            onCommand={props.onCommand}
+          />
+        ) : phase === 'finished' ? (
+          <div className="action-finished">
+            <h2>Итоги операции</h2>
+            <p className="muted">Посмотрите результаты и начните новую партию.</p>
+            <button className="button primary full" onClick={props.onMenu}>
+              В меню →
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="action-section-heading">
               <h2>
-                {active?.name ?? 'Бригада'}
-                <br />
-                планирует рейсы.
+                {phase === 'orders'
+                  ? 'Приказы поездов'
+                  : phase === 'discard'
+                    ? 'Оставьте 10 карт'
+                    : phase === 'draw'
+                      ? 'Вторая карта'
+                      : 'Действие'}
               </h2>
-              <p>
-                Бот выбирает материалы, восстанавливает линии и отправляет поезда. Скоро ваш ход.
-              </p>
-              <div className="thinking-dots" aria-hidden="true">
-                <i />
-                <i />
-                <i />
-              </div>
-              <small>Можно изучать карту, прогноз и приказы поездов.</small>
+              <span className="eyebrow">{phase === 'orders' ? '02 / 02' : '01 / 02'}</span>
             </div>
-          ) : phase === 'setup' ? (
-            <ObjectiveSelection
-              observation={observation}
-              enabled={ownTurn}
-              onCommand={props.onCommand}
-            />
-          ) : phase === 'finished' ? (
-            <div className="action-finished">
-              <span className="eyebrow">Операция закрыта</span>
-              <h2>
-                Последний рейс
-                <br />
-                прибыл.
-              </h2>
-              <p className="muted">Посмотрите результаты и попробуйте другой план.</p>
-              <button className="button primary full" onClick={props.onMenu}>
-                В меню →
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="action-section-heading">
-                <span className="eyebrow">
-                  {phase === 'orders' ? '02 / Приказы' : '01 / Основное действие'}
-                </span>
-                <h2>
-                  {phase === 'orders'
-                    ? 'Куда отправимся?'
-                    : phase === 'discard'
-                      ? 'Оставьте 10 карт.'
-                      : phase === 'draw'
-                        ? 'Ещё один материал.'
-                        : 'Ваш следующий шаг.'}
-                </h2>
-              </div>
-              {(phase === 'action' || phase === 'draw') && (
-                <>
-                  <div className="action-tabs">
-                    <button
-                      disabled={phase === 'draw'}
-                      className={tab === 'cards' ? 'active' : ''}
-                      onClick={() => setTab('cards')}
-                    >
-                      Материалы
-                    </button>
-                    <button
-                      disabled={phase === 'draw'}
-                      className={tab === 'repair' ? 'active' : ''}
-                      onClick={() => setTab('repair')}
-                    >
-                      Ремонт
-                    </button>
-                    <button
-                      disabled={phase === 'draw'}
-                      className={tab === 'express' ? 'active' : ''}
-                      onClick={() => setTab('express')}
-                    >
-                      Экспресс
-                    </button>
-                  </div>
-                  {tab === 'cards' && (
-                    <>
-                      <p className="action-explanation">
-                        {phase === 'draw'
-                          ? 'Выберите вторую карту. Открытая универсальная сейчас недоступна.'
-                          : 'Возьмите две обычные карты или одну открытую универсальную.'}
-                      </p>
-                      <div className="market">
-                        {observation.market.map((card, index) => (
-                          <button
-                            key={`${index}-${card.id}`}
-                            className={`material-card ${card.color}`}
-                            disabled={!can({ type: 'draw', source: index })}
-                            onClick={() => props.onCommand({ type: 'draw', source: index })}
-                            aria-label={`Взять ${colorNames[card.color].toLowerCase()} материал с рынка`}
-                          >
-                            <span className="card-corner">{colorSymbols[card.color]}</span>
-                            <span className="card-symbol">{colorSymbols[card.color]}</span>
-                            <small>
-                              {card.color === 'wild'
-                                ? 'УНИВЕРС.'
-                                : colorNames[card.color].toUpperCase()}
-                            </small>
-                          </button>
-                        ))}
-                      </div>
-                      <button
-                        className="deck-button"
-                        disabled={!can({ type: 'draw', source: 'deck' })}
-                        onClick={() => props.onCommand({ type: 'draw', source: 'deck' })}
-                      >
-                        <span className="deck-illustration">╱╱</span>
-                        <span>
-                          Взять вслепую
-                          <small>
-                            {observation.deckCount} в колоде · {observation.discardCount} в сбросе
-                          </small>
-                        </span>
-                        <b>→</b>
-                      </button>
-                    </>
-                  )}
-                  {tab === 'repair' && (
-                    <RepairList
-                      observation={observation}
-                      selection={selection}
-                      legal={legal}
-                      enabled={enabled}
-                      onCommand={props.onCommand}
-                      onSelect={setSelection}
-                    />
-                  )}{' '}
-                  {tab === 'express' && (
-                    <>
-                      <p className="action-explanation">
-                        За любые две карты поезд пройдёт до двух линий в этом раунде. Погрузка или
-                        выгрузка остановит движение.
-                      </p>
-                      {ownTrains.map((train) => (
+            {(phase === 'action' || phase === 'draw') && (
+              <>
+                <div className="action-tabs">
+                  <button
+                    disabled={phase === 'draw'}
+                    className={tab === 'cards' ? 'active' : ''}
+                    onClick={() => setTab('cards')}
+                  >
+                    Материалы
+                  </button>
+                  <button
+                    disabled={phase === 'draw'}
+                    className={tab === 'repair' ? 'active' : ''}
+                    onClick={() => setTab('repair')}
+                  >
+                    Ремонт
+                  </button>
+                  <button
+                    disabled={phase === 'draw'}
+                    className={tab === 'express' ? 'active' : ''}
+                    onClick={() => setTab('express')}
+                  >
+                    Экспресс
+                  </button>
+                </div>
+                {tab === 'cards' && (
+                  <>
+                    <p className="action-explanation">
+                      {phase === 'draw'
+                        ? 'Выберите вторую карту. Открытая универсальная недоступна.'
+                        : 'Две обычные карты или одна открытая универсальная.'}
+                    </p>
+                    <div className="market">
+                      {observation.market.map((card, index) => (
                         <button
-                          className="express-option"
-                          key={train.id}
-                          disabled={!can({ type: 'express', trainId: train.id })}
-                          onClick={() => props.onCommand({ type: 'express', trainId: train.id })}
+                          key={`${index}-${card.id}`}
+                          className={`material-card ${card.color}`}
+                          disabled={!can({ type: 'draw', source: index })}
+                          onClick={() => props.onCommand({ type: 'draw', source: index })}
+                          aria-label={`Взять ${colorNames[card.color].toLowerCase()} материал с рынка`}
+                          title={colorNames[card.color]}
                         >
-                          <span>↟</span>
-                          <span>
-                            Поезд {trainNumber(train.id)}
-                            <small>
-                              {train.disabled ? 'Недоступен' : 'Экспресс на один раунд'}
-                            </small>
-                          </span>
-                          <b>2 карты</b>
+                          <span className="card-corner">{colorSymbols[card.color]}</span>
+                          <span className="card-symbol">{colorSymbols[card.color]}</span>
                         </button>
                       ))}
-                    </>
-                  )}
-                </>
-              )}
-              {phase === 'discard' && (
+                    </div>
+                    <button
+                      className="deck-button"
+                      disabled={!can({ type: 'draw', source: 'deck' })}
+                      onClick={() => props.onCommand({ type: 'draw', source: 'deck' })}
+                    >
+                      <span className="deck-illustration" aria-hidden="true">
+                        Ⅱ
+                      </span>
+                      <span>
+                        Взять вслепую
+                        <small>
+                          {observation.deckCount} в колоде · {observation.discardCount} в сбросе
+                        </small>
+                      </span>
+                      <b>→</b>
+                    </button>
+                  </>
+                )}
+                {tab === 'repair' && (
+                  <RepairList
+                    observation={observation}
+                    selection={selection}
+                    legal={legal}
+                    enabled={enabled}
+                    onCommand={props.onCommand}
+                    onSelect={setSelection}
+                  />
+                )}
+                {tab === 'express' && (
+                  <>
+                    <p className="action-explanation">
+                      Две карты: поезд проедет до двух участков в этом раунде. Погрузка или выгрузка
+                      остановит движение.
+                    </p>
+                    {ownTrains.map((train) => (
+                      <button
+                        className="express-option"
+                        key={train.id}
+                        disabled={!can({ type: 'express', trainId: train.id })}
+                        onClick={() => props.onCommand({ type: 'express', trainId: train.id })}
+                      >
+                        <span className="express-number">{trainNumber(train.id)}</span>
+                        <span>
+                          Поезд {trainNumber(train.id)}
+                          <small>{train.disabled ? 'Недоступен' : 'Экспресс на один раунд'}</small>
+                        </span>
+                        <b>2 карты</b>
+                      </button>
+                    ))}
+                  </>
+                )}
+              </>
+            )}
+            {phase === 'discard' && (
+              <div className="orders-hint">
+                <p>
+                  Сбросьте <b>{Math.max(0, observation.self.hand.length - 10)}</b> карт. Нажмите на
+                  карту в руке или её символ внизу экрана.
+                </p>
+              </div>
+            )}
+            {phase === 'orders' && (
+              <>
                 <div className="orders-hint">
-                  <span>↓</span>
                   <p>
-                    Нажмите на лишние карты в вашей руке внизу экрана. Нужно сбросить ещё{' '}
-                    <b>{Math.max(0, observation.self.hand.length - 10)}</b>.
+                    Откройте поезд слева и назначьте рейс. Текущие приказы продолжают действовать.
                   </p>
                 </div>
-              )}
-              {phase === 'orders' && (
-                <>
-                  <div className="orders-hint">
-                    <span>←</span>
-                    <p>
-                      Откройте свой поезд слева, выберите станцию и убежище. Поезда с приказами едут
-                      автоматически.
-                    </p>
-                  </div>
-                  <div className="movement-note">
-                    <b>Когда поедут поезда?</b>
-                    <p>
-                      После хода каждой бригады, одновременно. Приказ можно менять до конца своего
-                      хода.
-                    </p>
-                  </div>
-                  <button
-                    className="button primary full end-turn"
-                    disabled={!ownTurn}
-                    onClick={() => props.onCommand({ type: 'endTurn' })}
-                  >
-                    Закончить ход <span>→</span>
-                  </button>
-                </>
-              )}
-              {phase === 'action' && (
+                <p className="movement-note">
+                  Все поезда поедут после хода каждой бригады. Приказы можно менять до конца хода.
+                </p>
                 <button
-                  className="button pass-button full"
-                  disabled={!can({ type: 'pass' })}
-                  onClick={() => props.onCommand({ type: 'pass' })}
+                  className="button primary full end-turn"
+                  disabled={!ownTurn}
+                  onClick={() => props.onCommand({ type: 'endTurn' })}
                 >
-                  Пропустить действие →
+                  Закончить ход <span>→</span>
                 </button>
-              )}
-              <div className="forecast">
-                <div className="section-heading">
-                  <span className="eyebrow">Прогноз воды</span>
-                  <span>≈</span>
-                </div>
-                {Waves.map((w) => (
-                  <div
-                    key={w}
-                    className={w < observation.round ? 'passed' : w === nextWave ? 'next' : ''}
-                  >
-                    <b>{String(w).padStart(2, '0')}</b>
-                    <span>
-                      {observation.stations
-                        .filter((s) => s.floodRound === w)
-                        .map((s) => s.name)
-                        .join(', ') || 'Конец операции'}
-                    </span>
-                    <small>{w < observation.round ? '✓' : 'раунд'}</small>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </aside>
+              </>
+            )}
+            {phase === 'action' && (
+              <button
+                className="text-button pass-button full"
+                disabled={!can({ type: 'pass' })}
+                onClick={() => props.onCommand({ type: 'pass' })}
+              >
+                Пропустить действие →
+              </button>
+            )}
+          </>
+        )}
+      </aside>
+      <div className="table-status">
+        <div className="dispatch-radio">
+          <span className="eyebrow">Журнал</span>
+          <p>
+            {observation.events.at(-1)?.message ?? 'Бригады на местах. Планируйте первый рейс.'}
+          </p>
+          <button className="text-button" onClick={() => setShowLog(!showLog)}>
+            {showLog ? 'Скрыть' : 'Открыть'}
+          </button>
+        </div>
+        {showLog && (
+          <div className="event-log hud-sheet" aria-label="Журнал операции">
+            {observation.events
+              .slice(-30)
+              .reverse()
+              .map((e) => (
+                <p key={e.id}>
+                  <b>Р{e.round}</b>
+                  {e.message}
+                </p>
+              ))}
+          </div>
+        )}
       </div>
       <footer className="hand-panel">
         <div className="hand-heading">
-          <span className="eyebrow">Ваши материалы</span>
-          <span>
-            <b>{observation.self.hand.length}</b> / 10 карт
-          </span>
+          <span>Рука</span>
+          <b>
+            {observation.self.hand.length}
+            <small>/10</small>
+          </b>
         </div>
-        <div className="hand-cards">
+        <div className="hand-cards" aria-label="Ваши материалы">
           {observation.self.hand.length ? (
-            observation.self.hand.map((card) => (
+            observation.self.hand.map((card, index) => (
               <button
                 key={card.id}
                 className={`hand-card ${card.color} ${phase === 'discard' ? 'discardable' : ''}`}
                 disabled={phase !== 'discard' || !ownTurn}
                 onClick={() => props.onCommand({ type: 'discard', cardId: card.id })}
-                aria-label={`${colorNames[card.color]}. ${phase === 'discard' ? 'Сбросить карту' : 'Карта в руке'}`}
+                aria-label={`${colorNames[card.color]}, карта ${index + 1}. ${phase === 'discard' ? 'Сбросить карту' : 'Карта в руке'}`}
+                title={colorNames[card.color]}
               >
                 <span>{colorSymbols[card.color]}</span>
-                <small>
-                  {card.color === 'wild' ? 'УНИВ.' : colorNames[card.color].toUpperCase()}
-                </small>
               </button>
             ))
           ) : (
-            <span className="muted empty-hand">
-              Рука пуста. Наберите материалы на следующем ходу.
-            </span>
+            <span className="muted empty-hand">Нет карт</span>
           )}
         </div>
         <div className="initiative">
-          <span className="eyebrow">Порядок хода</span>
-          <div>
-            {observation.turnOrder.map((id) => (
-              <span
-                key={id}
-                className={id === observation.activePlayer ? 'active' : ''}
-                style={{ borderColor: observation.players.find((p) => p.id === id)?.color }}
-              >
-                {id + 1}
-              </span>
-            ))}
-          </div>
+          <span>Ход</span>
+          {observation.turnOrder.map((id) => (
+            <span
+              key={id}
+              className={id === observation.activePlayer ? 'active' : ''}
+              style={{ borderColor: observation.players.find((p) => p.id === id)?.color }}
+            >
+              {id + 1}
+            </span>
+          ))}
         </div>
       </footer>
       {props.error && (
@@ -1196,7 +1134,7 @@ export default function App(props: AppProps) {
           </button>
         </div>
       )}
-      {rules && <Rules onClose={() => setRules(false)} />}{' '}
+      {rules && <Rules onClose={() => setRules(false)} />}
       {phase === 'finished' && result && (
         <div className="modal-backdrop">
           <section
@@ -1205,13 +1143,13 @@ export default function App(props: AppProps) {
             aria-modal="true"
             aria-labelledby="result-title"
           >
-            <span className="eyebrow">Речной · Итоги операции</span>
+            <span className="eyebrow">Речной / Итоги операции</span>
             <h1 id="result-title">
               {result.cityOutcome === 'excellent'
-                ? 'Город держится.'
+                ? 'Город держится'
                 : result.cityOutcome === 'failure'
-                  ? 'Вода оказалась быстрее.'
-                  : 'Каждый рейс был важен.'}
+                  ? 'Вода оказалась быстрее'
+                  : 'Операция завершена'}
             </h1>
             <p>
               {result.saved} из {result.total} групп добрались до убежищ. {result.lost} отрезаны
@@ -1220,9 +1158,7 @@ export default function App(props: AppProps) {
             <div className="results-table">
               {result.standings.map((p, index) => (
                 <div key={p.playerId} className={p.winner ? 'winner' : ''}>
-                  <span className="place">
-                    {p.winner ? '★' : String(index + 1).padStart(2, '0')}
-                  </span>
+                  <span className="place">{String(index + 1).padStart(2, '0')}</span>
                   <span className="result-player">
                     {p.name}
                     <small>
@@ -1256,9 +1192,6 @@ export default function App(props: AppProps) {
                 В меню
               </button>
             </div>
-            <small className="muted">
-              Общая дорога открывает новые планы. Попробуйте другую очередь рейсов.
-            </small>
           </section>
         </div>
       )}
