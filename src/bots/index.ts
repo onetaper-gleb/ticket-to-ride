@@ -1,395 +1,317 @@
-import { getLegalCommands, previewOrder } from '../core';
+import { getLegalCommands, getTicketProgress, isRouteAvailable } from '../core';
+import { COLORS, ROUTE_POINTS } from '../data/europe';
 import type {
   BotDifficulty,
-  Card,
-  District,
+  CardColor,
   Edge,
   GameCommand,
   Observation,
-  PublicBoard,
-  RoutePreview,
-  Station,
-  Train,
-  TrainOrder,
+  Ticket,
+  TrainColor,
 } from '../shared/types';
 
-interface Planning {
-  routes: WeakMap<PublicBoard, Map<string, RoutePreview>>;
-  plans: WeakMap<PublicBoard, Map<string, Plan | null>>;
-}
 interface Plan {
-  order: TrainOrder;
-  preview: RoutePreview;
-  value: number;
-  station: Station;
+  ticket: Ticket;
+  edges: Edge[];
+  cost: number;
+  length: number;
 }
-function cachedPreview(
-  planning: Planning,
-  board: PublicBoard,
-  train: Train,
-  order: TrainOrder,
-): RoutePreview {
-  let routes = planning.routes.get(board);
-  if (!routes) {
-    routes = new Map();
-    planning.routes.set(board, routes);
-  }
-  const key = JSON.stringify([
-    train.id,
-    train.stationId,
-    train.cargo.length,
-    train.disabled,
-    train.expressRound,
-    order,
-  ]);
-  const known = routes.get(key);
-  if (known) return known;
-  const preview = previewOrder(board, train, order);
-  routes.set(key, preview);
-  return preview;
+interface Need {
+  color: TrainColor;
+  normal: number;
+  wild: number;
 }
-const ownTrains = (observation: Observation) =>
-  observation.trains.filter((train) => train.playerId === observation.self.id && !train.disabled);
-const shelters = (board: PublicBoard) =>
-  board.stations.filter((station) => station.safe && !station.flooded);
-const sameOrder = (a: TrainOrder, b: TrainOrder) =>
-  a.mode === b.mode &&
-  a.destination === b.destination &&
-  a.returnTo === b.returnTo &&
-  a.repeat === b.repeat;
-const districtCount = (observation: Observation, district: District) =>
-  observation.self.delivered.filter((group) => group.district === district).length;
+const count = (observation: Observation, color: CardColor) =>
+  observation.self.hand.filter((card) => card.color === color).length;
 
-function groupValue(observation: Observation, station: Station, count: number): number {
-  const groups = [...station.groups]
-    .sort((a, b) => Number(b.priority) - Number(a.priority) || a.id.localeCompare(b.id))
-    .slice(0, count);
-  const points = groups.reduce((total, group) => total + (group.priority ? 3 : 2), 0);
-  const quest =
-    station.district &&
-    observation.self.objectives.includes(station.district) &&
-    districtCount(observation, station.district) < 2;
-  return (
-    points + (quest ? Math.min(2 - districtCount(observation, station.district!), count) * 1.5 : 0)
+function need(observation: Observation, edge: Edge): Need {
+  const color =
+    edge.color === 'gray'
+      ? [...COLORS].sort(
+          (a, b) =>
+            count(observation, b) - count(observation, a) || COLORS.indexOf(a) - COLORS.indexOf(b),
+        )[0]!
+      : edge.color;
+  const wild = Math.max(0, edge.ferries - count(observation, 'wild'));
+  const normal = Math.max(
+    0,
+    edge.length -
+      Math.max(edge.ferries, Math.min(count(observation, 'wild'), edge.length)) -
+      count(observation, color),
   );
+  return { color, normal, wild };
 }
 
-function competition(
-  planning: Planning,
-  observation: Observation,
-  station: Station,
-  train: Train,
-  pickup: number,
-): number {
-  let reserved = 0;
-  for (const other of observation.trains) {
-    if (
-      other.id === train.id ||
-      other.disabled ||
-      other.cargo.length ||
-      other.order.mode !== 'evacuate' ||
-      other.order.destination !== station.id
-    )
-      continue;
-    const preview = cachedPreview(planning, observation, other, other.order);
-    if (preview.pickupRound === null || !preview.safe) continue;
-    if (other.playerId === train.playerId || preview.pickupRound < pickup) reserved += 2;
-    else if (preview.pickupRound === pickup) reserved += 1;
-  }
-  return Math.max(0, Math.min(2, station.groups.length - reserved));
-}
-
-function bestPlan(
-  planning: Planning,
-  observation: Observation,
-  train: Train,
-  board: PublicBoard = observation,
-  difficulty: BotDifficulty = 'normal',
-): Plan | null {
-  let plans = planning.plans.get(board);
-  if (!plans) {
-    plans = new Map();
-    planning.plans.set(board, plans);
-  }
-  const key = `${train.id}:${train.expressRound}:${difficulty}`;
-  if (plans.has(key)) return plans.get(key)!;
-  let best: Plan | null = null;
-  for (const station of board.stations) {
-    if (!station.groups.length || station.flooded || station.safe) continue;
-    for (const shelter of shelters(board)) {
-      const order: TrainOrder = {
-        mode: 'evacuate',
-        destination: station.id,
-        returnTo: shelter.id,
-        repeat: true,
+/** Costs use public tracks and our own cards; no opponent hand or ticket enters the planner. */
+function plan(observation: Observation, ticket: Ticket, difficulty: BotDifficulty): Plan | null {
+  const borrowed = new Set(
+    getTicketProgress(observation, observation.self.id, observation.self.tickets)[0]
+      ?.stationRoutes ?? [],
+  );
+  const costs = new Map<string, number>([[ticket.a, 0]]);
+  const paths = new Map<string, Edge[]>([[ticket.a, []]]);
+  const visited = new Set<string>();
+  for (;;) {
+    let at: string | null = null;
+    let distance = Infinity;
+    for (const [city, cost] of costs)
+      if (!visited.has(city) && cost < distance) {
+        at = city;
+        distance = cost;
+      }
+    if (!at) return null;
+    if (at === ticket.b) {
+      const edges = paths.get(at)!;
+      return {
+        ticket,
+        edges,
+        cost: distance,
+        length: edges
+          .filter((edge) => edge.owner !== observation.self.id && !borrowed.has(edge.id))
+          .reduce((n, edge) => n + edge.length, 0),
       };
-      const preview = cachedPreview(planning, board, train, order);
-      if (!preview.safe || preview.pickupRound === null || preview.deliveryRound === null) continue;
-      const groups = competition(planning, observation, station, train, preview.pickupRound);
-      if (!groups) continue;
-      const duration = Math.max(1, preview.deliveryRound - observation.round + 1);
-      const deadline = station.floodRound ?? 12;
-      const urgency = difficulty === 'normal' ? 1 + (14 - deadline) / 4 : 1;
-      let value = (groupValue(observation, station, groups) * urgency) / (1 + Math.sqrt(duration));
-      if (sameOrder(train.order, order)) value *= 1.08;
-      if (
-        !best ||
-        value > best.value + 0.0001 ||
-        (Math.abs(value - best.value) < 0.0001 && station.id < best.station.id)
-      )
-        best = { order, preview, value, station };
+    }
+    visited.add(at);
+    for (const edge of observation.edges) {
+      if (edge.a !== at && edge.b !== at) continue;
+      const own = edge.owner === observation.self.id || borrowed.has(edge.id);
+      if (!own && !isRouteAvailable(observation, edge.id)) continue;
+      const next = edge.a === at ? edge.b : edge.a;
+      const missing = own ? { normal: 0, wild: 0 } : need(observation, edge);
+      const weight = own
+        ? 0
+        : edge.length +
+          (difficulty === 'normal'
+            ? missing.normal * 0.55 + missing.wild * 1.8 + (edge.tunnel ? 0.35 : 0)
+            : 0);
+      const cost = distance + weight;
+      if (cost < (costs.get(next) ?? Infinity)) {
+        costs.set(next, cost);
+        paths.set(next, [...paths.get(at)!, edge]);
+      }
     }
   }
-  plans.set(key, best);
+}
+function chooseTickets(
+  observation: Observation,
+  difficulty: BotDifficulty,
+  legal: GameCommand[],
+): GameCommand {
+  const offered = observation.self.ticketOptions;
+  if (difficulty === 'easy' && observation.phase === 'setup') {
+    const ids = [...offered]
+      .sort((a, b) => a.points - b.points)
+      .slice(0, 2)
+      .map((ticket) => ticket.id);
+    return legal.find(
+      (command) =>
+        command.type === 'chooseTickets' &&
+        command.ticketIds.length === ids.length &&
+        ids.every((id) => command.ticketIds.includes(id)),
+    )!;
+  }
+  const all = [...observation.self.tickets, ...offered];
+  const progress = getTicketProgress(observation, observation.self.id, all);
+  const complete = new Set(progress.filter((item) => item.complete).map((item) => item.ticket.id));
+  const plans = new Map(
+    offered.map((ticket) => [ticket.id, plan(observation, ticket, difficulty)]),
+  );
+  let best = legal[0]!;
+  let bestScore = -Infinity;
+  for (const command of legal) {
+    if (command.type !== 'chooseTickets') continue;
+    const selected = offered.filter((ticket) => command.ticketIds.includes(ticket.id));
+    const union = new Map<string, Edge>();
+    let reward = 0;
+    let impossible = 0;
+    for (const ticket of selected) {
+      const path = plans.get(ticket.id);
+      if (complete.has(ticket.id)) reward += ticket.points * 2.5;
+      else {
+        reward += ticket.points;
+        if (!path || path.length > observation.self.trainsRemaining)
+          impossible += ticket.points * 4 + 30;
+        else
+          for (const edge of path.edges)
+            if (edge.owner !== observation.self.id) union.set(edge.id, edge);
+      }
+    }
+    const cost = [...union.values()].reduce(
+      (n, edge) => n + edge.length + edge.ferries * 0.8 + (edge.tunnel ? 0.2 : 0),
+      0,
+    );
+    const score =
+      reward -
+      cost * (observation.phase === 'setup' ? 1.15 : 1.65) -
+      impossible -
+      Math.max(0, selected.length - (observation.phase === 'setup' ? 2 : 1)) * 2;
+    if (score > bestScore) {
+      best = command;
+      bestScore = score;
+    }
+  }
   return best;
 }
 
-function cargoReturn(
-  planning: Planning,
-  observation: Observation,
-  train: Train,
-): TrainOrder | null {
-  let best: { order: TrainOrder; arrival: number } | null = null;
-  for (const shelter of shelters(observation)) {
-    const order: TrainOrder = {
-      mode: 'return',
-      destination: shelter.id,
-      returnTo: shelter.id,
-      repeat: false,
-    };
-    const preview = cachedPreview(planning, observation, train, order);
-    if (!preview.safe || preview.deliveryRound === null) continue;
-    if (
-      !best ||
-      preview.deliveryRound < best.arrival ||
-      (preview.deliveryRound === best.arrival && train.order.returnTo === shelter.id)
-    )
-      best = { order, arrival: preview.deliveryRound };
-  }
-  return best?.order ?? null;
-}
-
-function ordersCommand(
-  planning: Planning,
-  observation: Observation,
-  difficulty: BotDifficulty,
-): GameCommand {
-  for (const train of ownTrains(observation)) {
-    if (train.cargo.length) {
-      const safeReturn = cargoReturn(planning, observation, train);
-      // Preserve evacuation/repeat metadata when the chosen refuge is already optimal.
-      if (safeReturn && train.order.returnTo !== safeReturn.returnTo)
-        return { type: 'order', trainId: train.id, order: safeReturn };
-      continue;
-    }
-    const best = bestPlan(planning, observation, train, observation, difficulty);
-    if (best && !sameOrder(train.order, best.order))
-      return { type: 'order', trainId: train.id, order: best.order };
-    if (!best && train.order.mode === 'evacuate') {
-      const shelter = shelters(observation)
-        .map((station) => ({
-          station,
-          preview: cachedPreview(planning, observation, train, {
-            mode: 'position',
-            destination: station.id,
-            returnTo: station.id,
-            repeat: false,
-          }),
-        }))
-        .filter((candidate) => candidate.preview.safe && candidate.preview.arrivalRound !== null)
-        .sort((a, b) => a.preview.arrivalRound! - b.preview.arrivalRound!)[0];
-      if (shelter)
-        return {
-          type: 'order',
-          trainId: train.id,
-          order: {
-            mode: 'position',
-            destination: shelter.station.id,
-            returnTo: shelter.station.id,
-            repeat: false,
-          },
-        };
-    }
-  }
-  return { type: 'endTurn' };
-}
-
-function cardValue(observation: Observation, card: Card): number {
-  if (card.color === 'wild') return 10;
-  let value = 0;
-  for (const edge of observation.edges) {
-    if (edge.open || edge.color !== card.color) continue;
-    const a = observation.stations.find((station) => station.id === edge.a)!;
-    const b = observation.stations.find((station) => station.id === edge.b)!;
-    if (a.flooded || b.flooded) continue;
-    const count = observation.self.hand.filter((item) => item.color === card.color).length;
-    const relevant = [a, b].reduce(
-      (sum, station) =>
-        sum +
-        (station.groups.length
-          ? groupValue(observation, station, Math.min(2, station.groups.length))
-          : 0),
-      0,
-    );
-    value = Math.max(value, relevant / Math.max(1, edge.cost) + (count === edge.cost - 1 ? 2 : 0));
-  }
-  return (
-    value + (observation.self.hand.filter((item) => item.color === card.color).length < 3 ? 0.5 : 0)
-  );
-}
-
-function drawCommand(
-  observation: Observation,
-  legal: GameCommand[],
-  difficulty: BotDifficulty,
-): GameCommand | null {
-  const draws = legal.filter(
-    (command): command is Extract<GameCommand, { type: 'draw' }> => command.type === 'draw',
-  );
-  if (!draws.length) return null;
-  if (difficulty === 'easy') return draws.find((command) => command.source === 'deck') ?? draws[0]!;
-  return draws
-    .map((command) => ({
-      command,
-      value:
-        command.source === 'deck'
-          ? 1.8
-          : cardValue(observation, observation.market[command.source]!) *
-            (observation.market[command.source]!.color === 'wild' ? 0.55 : 1),
-    }))
-    .sort(
-      (a, b) =>
-        b.value - a.value || String(a.command.source).localeCompare(String(b.command.source)),
-    )[0]!.command;
-}
-
-function edgeRepairValue(
-  planning: Planning,
-  observation: Observation,
-  edge: Edge,
-  difficulty: BotDifficulty,
-): number {
-  const board: PublicBoard = {
-    round: observation.round,
-    stations: observation.stations,
-    trains: observation.trains,
-    edges: observation.edges.map((item) => (item.id === edge.id ? { ...item, open: true } : item)),
-  };
-  let gain = 0;
-  for (const train of ownTrains(observation)) {
-    if (train.cargo.length) {
-      const oldPreview = cachedPreview(planning, observation, train, train.order),
-        newPreview = cachedPreview(planning, board, train, train.order);
-      if (newPreview.safe && newPreview.deliveryRound !== null)
-        gain +=
-          oldPreview.safe && oldPreview.deliveryRound !== null
-            ? Math.max(0, oldPreview.deliveryRound - newPreview.deliveryRound) * 0.7
-            : 6;
-    } else {
-      const oldPlan = bestPlan(planning, observation, train, observation, difficulty),
-        newPlan = bestPlan(planning, observation, train, board, difficulty);
-      gain += Math.max(0, (newPlan?.value ?? 0) - (oldPlan?.value ?? 0));
-    }
-  }
-  return gain - edge.cost * 0.09;
-}
-
-function expressValue(
-  planning: Planning,
-  observation: Observation,
-  train: Train,
-  difficulty: BotDifficulty,
-): number {
-  const express = { ...train, expressRound: observation.round };
-  if (train.cargo.length) {
-    const current = cachedPreview(planning, observation, train, train.order),
-      accelerated = cachedPreview(planning, observation, express, train.order);
-    if (accelerated.safe && accelerated.deliveryRound !== null)
-      return current.safe && current.deliveryRound !== null
-        ? Math.max(0, current.deliveryRound - accelerated.deliveryRound) * 0.8
-        : 7;
-    return 0;
-  }
-  const current = bestPlan(planning, observation, train, observation, difficulty),
-    accelerated = bestPlan(planning, observation, express, observation, difficulty);
-  return Math.max(0, (accelerated?.value ?? 0) - (current?.value ?? 0));
-}
-
-/** Policy only reads the same public observation and own private hand as a human. */
 export function chooseBotCommand(
   observation: Observation,
   difficulty: BotDifficulty = 'normal',
 ): GameCommand {
-  const planning: Planning = { routes: new WeakMap(), plans: new WeakMap() };
   const legal = getLegalCommands(observation);
-  if (!legal.length) return { type: 'pass' };
-  if (observation.phase === 'setup') {
-    const options = observation.self.objectiveOptions.map((district) => ({
-      district,
-      value: observation.stations
-        .filter((station) => station.district === district)
-        .reduce(
-          (sum, station) =>
-            sum + station.groups.length / Math.max(1, 14 - (station.floodRound ?? 12)),
-          0,
+  if (!legal.length) throw new Error('У этого игрока сейчас нет хода.');
+  if (observation.phase === 'setup' || observation.phase === 'tickets')
+    return chooseTickets(observation, difficulty, legal);
+  if (observation.phase === 'tunnel')
+    return legal.find((command) => command.type === 'resolveTunnel' && command.pay) ?? legal[0]!;
+  const progress = getTicketProgress(observation, observation.self.id, observation.self.tickets);
+  const unfinished = progress.filter((item) => !item.complete).map((item) => item.ticket);
+  const plans = unfinished
+    .map((ticket) => plan(observation, ticket, difficulty))
+    .filter((value): value is Plan => !!value && value.length <= observation.self.trainsRemaining);
+  if (difficulty === 'easy') plans.splice(1);
+  const importance = new Map<string, number>();
+  const completion = new Map<string, number>();
+  for (const path of plans) {
+    const todo = path.edges.filter((edge) => edge.owner === null);
+    for (const edge of todo)
+      importance.set(
+        edge.id,
+        (importance.get(edge.id) ?? 0) + (path.ticket.points + 5) / Math.max(1, path.cost),
+      );
+    if (todo.length === 1)
+      completion.set(todo[0]!.id, (completion.get(todo[0]!.id) ?? 0) + path.ticket.points * 2);
+  }
+  if (difficulty === 'normal' && observation.phase === 'action') {
+    const currentScore = progress.reduce(
+      (n, item) => n + (item.complete ? item.ticket.points : -item.ticket.points),
+      0,
+    );
+    let bestStation: GameCommand | null = null;
+    let bestGain = 4;
+    const byCity = new Map<string, GameCommand>();
+    for (const command of legal)
+      if (command.type === 'buildStation' && !byCity.has(command.cityId))
+        byCity.set(command.cityId, command);
+    for (const [cityId, command] of byCity) {
+      const adjacent = observation.edges.filter((edge) => edge.a === cityId || edge.b === cityId);
+      if (!adjacent.some((edge) => edge.owner !== null && edge.owner !== observation.self.id))
+        continue;
+      if (
+        !adjacent.some((edge) => edge.owner === observation.self.id) &&
+        !unfinished.some((ticket) => ticket.a === cityId || ticket.b === cityId)
+      )
+        continue;
+      const projected = {
+        ...observation,
+        players: observation.players.map((player) =>
+          player.id === observation.self.id
+            ? { ...player, stations: [...player.stations, cityId] }
+            : player,
         ),
-    }));
-    // Favor enduring district bonuses; evacuation deadlines are evaluated independently.
-    options.sort((a, b) =>
-      difficulty === 'normal' ? b.value - a.value : a.district.localeCompare(b.district),
-    );
-    return {
-      type: 'chooseObjectives',
-      districts: options.slice(0, 2).map((option) => option.district),
-    };
-  }
-  if (observation.phase === 'orders') return ordersCommand(planning, observation, difficulty);
-  if (observation.phase === 'discard')
-    return (
-      legal
-        .filter(
-          (command): command is Extract<GameCommand, { type: 'discard' }> =>
-            command.type === 'discard',
-        )
-        .map((command) => ({
-          command,
-          value: cardValue(
-            observation,
-            observation.self.hand.find((card) => card.id === command.cardId)!,
-          ),
-        }))
-        .sort((a, b) => a.value - b.value || a.command.cardId.localeCompare(b.command.cardId))[0]
-        ?.command ?? legal[0]!
-    );
-  if (observation.phase === 'draw') return drawCommand(observation, legal, difficulty) ?? legal[0]!;
-  if (observation.phase !== 'action') return legal[0]!;
-
-  const alternatives: { command: GameCommand; value: number }[] = [];
-  for (const command of legal) {
-    if (command.type === 'repair') {
-      const edge = observation.edges.find((item) => item.id === command.edgeId)!;
-      alternatives.push({
-        command,
-        value: edgeRepairValue(planning, observation, edge, difficulty),
-      });
+      };
+      const future = getTicketProgress(projected, observation.self.id, observation.self.tickets);
+      const score = future.reduce(
+        (n, item) => n + (item.complete ? item.ticket.points : -item.ticket.points),
+        0,
+      );
+      const gain = score - currentScore;
+      if (gain > bestGain) {
+        bestGain = gain;
+        bestStation = command;
+      }
     }
-    if (command.type === 'express') {
-      const train = observation.trains.find((item) => item.id === command.trainId)!;
-      alternatives.push({
-        command,
-        value: expressValue(planning, observation, train, difficulty) - 0.05,
-      });
-    }
+    if (bestStation) return bestStation;
   }
-  alternatives.sort(
-    (a, b) =>
-      b.value - a.value || JSON.stringify(a.command).localeCompare(JSON.stringify(b.command)),
+  const claims = legal.filter(
+    (command): command is Extract<GameCommand, { type: 'claim' }> => command.type === 'claim',
   );
-  const best = alternatives[0];
-  const threshold = difficulty === 'normal' ? 0.42 : 0.7;
-  if (best && best.value >= threshold) return best.command;
-  if (observation.self.hand.length < 9)
-    return drawCommand(observation, legal, difficulty) ?? legal[0]!;
-  if (best && best.value > 0) return best.command;
-  return legal.find((command) => command.type === 'pass') ?? legal[0]!;
+  let bestClaim: GameCommand | null = null;
+  let bestClaimValue = -Infinity;
+  const ourCities = new Set(
+    observation.edges
+      .filter((edge) => edge.owner === observation.self.id)
+      .flatMap((edge) => [edge.a, edge.b]),
+  );
+  for (const command of claims) {
+    const edge = observation.edges.find((edge) => edge.id === command.edgeId)!;
+    const wild = command.cardIds.filter(
+      (id) => observation.self.hand.find((card) => card.id === id)!.color === 'wild',
+    ).length;
+    const value =
+      (importance.get(edge.id) ?? 0) * 12 +
+      (completion.get(edge.id) ?? 0) +
+      (ROUTE_POINTS[edge.length] ?? 0) * 0.55 -
+      wild * (difficulty === 'normal' ? 0.7 : 0.1) +
+      (ourCities.has(edge.a) || ourCities.has(edge.b) ? 0.6 : 0) -
+      (edge.tunnel ? 0.3 : 0);
+    if (value > bestClaimValue) {
+      bestClaimValue = value;
+      bestClaim = command;
+    }
+  }
+  if (observation.phase === 'action') {
+    const targeted = bestClaim?.type === 'claim' && importance.has(bestClaim.edgeId);
+    if (targeted) return bestClaim!;
+    if (
+      difficulty === 'normal' &&
+      !unfinished.length &&
+      observation.self.trainsRemaining >= 12 &&
+      observation.finalTurnsRemaining === null &&
+      observation.ticketDeckCount
+    )
+      return legal.find((command) => command.type === 'drawTickets')!;
+    if (
+      bestClaim &&
+      (!plans.length ||
+        observation.self.trainsRemaining <= 12 ||
+        observation.finalTurnsRemaining !== null)
+    )
+      return bestClaim;
+  }
+  const demand = new Map<CardColor, number>();
+  const targets = [...importance].sort((a, b) => b[1] - a[1]);
+  for (const [edgeId, value] of targets) {
+    const edge = observation.edges.find((edge) => edge.id === edgeId)!;
+    const missing = need(observation, edge);
+    if (missing.normal)
+      demand.set(
+        missing.color,
+        Math.max(demand.get(missing.color) ?? 0, value * (1 + 1 / missing.normal)),
+      );
+    if (missing.wild) demand.set('wild', Math.max(demand.get('wild') ?? 0, value * 4));
+    if (!missing.wild && missing.normal)
+      demand.set('wild', Math.max(demand.get('wild') ?? 0, value * 1.25));
+    if (difficulty === 'easy') break;
+  }
+  if (!targets.length) {
+    for (const edge of observation.edges)
+      if (
+        isRouteAvailable(observation, edge.id) &&
+        edge.length <= observation.self.trainsRemaining
+      ) {
+        const missing = need(observation, edge);
+        const value =
+          (ROUTE_POINTS[edge.length] ?? 0) / Math.max(1, edge.length) +
+          (ourCities.has(edge.a) || ourCities.has(edge.b) ? 0.5 : 0);
+        if (missing.normal)
+          demand.set(missing.color, Math.max(demand.get(missing.color) ?? 0, value));
+        if (missing.wild) demand.set('wild', Math.max(demand.get('wild') ?? 0, value * 3));
+      }
+  }
+  const draws = legal.filter(
+    (command): command is Extract<GameCommand, { type: 'draw' }> => command.type === 'draw',
+  );
+  let bestDraw: GameCommand | null = draws.find((command) => command.source === 'deck') ?? null;
+  let bestDrawValue = 0.35;
+  for (const command of draws)
+    if (typeof command.source === 'number') {
+      const color = observation.market[command.source]!.color;
+      const value = (demand.get(color) ?? 0) / (color === 'wild' ? 2 : 1);
+      if (value > bestDrawValue) {
+        bestDrawValue = value;
+        bestDraw = command;
+      }
+    }
+  if (bestDraw) return bestDraw;
+  return bestClaim ?? legal[0]!;
 }

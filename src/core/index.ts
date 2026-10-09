@@ -1,5 +1,7 @@
 import type {
   Card,
+  CardColor,
+  ClaimOption,
   Edge,
   GameCommand,
   GameEvent,
@@ -9,790 +11,626 @@ import type {
   Observation,
   Player,
   PublicBoard,
-  Train,
-  TrainOrder,
+  PublicPlayer,
+  Standing,
   Transition,
 } from '../shared/types';
 import {
-  CAPACITY,
   COLORS,
   createBoard,
-  DISTRICTS,
-  FIRST_PLAYERS,
-  HAND_LIMIT,
-  LAST_ROUND,
   PLAYER_COLORS,
-  REPAIR_SCORE_CAP,
+  ROUTE_POINTS,
   RULES_VERSION,
-} from '../data/scenario';
+  TICKETS,
+} from '../data/europe';
 import { hashSeed, shuffle } from './random';
-import { orderTarget, previewOrder, routeForTrain } from './routing';
-export { previewOrder } from './routing';
+import { getLongestRouteLength, getTicketProgress } from './routing';
+export { getLongestRouteLength, getTicketProgress } from './routing';
+export { RULES_VERSION } from '../data/europe';
 
 const clone = <T>(value: T): T => structuredClone(value);
-const idleOrder = (): TrainOrder => ({
-  mode: 'idle',
-  destination: null,
-  returnTo: null,
-  repeat: false,
-});
-const active = (state: GameState): Player =>
-  state.players.find((player) => player.id === state.activePlayer)!;
-const boardFor = (state: GameState): PublicBoard => ({
-  round: state.round,
-  stations: state.stations,
-  edges: state.edges,
-  trains: state.trains,
-});
+const active = (state: GameState): Player => state.players[state.activePlayer]!;
+function fail(message: string): never {
+  throw new Error(message);
+}
+
 function emit(
   state: GameState,
   kind: GameEvent['kind'],
   message: string,
-  fields: Partial<Omit<GameEvent, 'id' | 'round' | 'kind' | 'message'>> = {},
+  fields: Partial<Pick<GameEvent, 'playerId' | 'edgeId' | 'cityId'>> = {},
 ): void {
   state.events.push({
     id: (state.events.at(-1)?.id ?? 0) + 1,
-    round: state.round,
+    turn: state.turn,
     kind,
     message,
     ...fields,
   });
 }
-function scorePlayer(player: Player): void {
-  const objectives = player.objectives.filter(
-    (district) => player.delivered.filter((group) => group.district === district).length >= 2,
-  ).length;
-  player.score =
-    player.delivered.reduce((sum, group) => sum + (group.priority ? 3 : 2), 0) +
-    objectives * 3 +
-    player.repairScore;
+function publicPlayers(state: GameState): PublicPlayer[] {
+  return state.players.map((player) => ({
+    id: player.id,
+    name: player.name,
+    color: player.color,
+    handCount: player.hand.length,
+    ticketCount: player.tickets.length,
+    trainsRemaining: player.trainsRemaining,
+    stationsRemaining: player.stationsRemaining,
+    stations: player.stations,
+    score: player.score,
+    ...(state.phase === 'finished' ? { tickets: player.tickets } : {}),
+  }));
 }
-function turnOrder(state: GameState): number[] {
-  const first = state.initiative[state.round - 1] ?? 0;
-  return Array.from(
-    { length: state.playerCount },
-    (_, index) => (first + index) % state.playerCount,
-  );
+function boardFor(state: GameState): PublicBoard {
+  return { cities: state.cities, edges: state.edges, players: publicPlayers(state) };
+}
+function drawCard(state: GameState): Card | undefined {
+  if (!state.deck.length && state.discard.length) {
+    state.deck = shuffle(state.discard, state);
+    state.discard = [];
+  }
+  return state.deck.shift();
+}
+
+/** Rejection sampling follows the three-locomotive reset, with a finite blind-only fallback. */
+function refillMarket(state: GameState): void {
+  for (let attempt = 0; ; attempt++) {
+    while (state.market.length < 5) {
+      const card = drawCard(state);
+      if (!card) break;
+      state.market.push(card);
+    }
+    if (state.market.filter((card) => card.color === 'wild').length < 3) return;
+    const available = [...state.market, ...state.deck, ...state.discard];
+    const requiredRegular = Math.max(0, Math.min(5, available.length) - 2);
+    state.discard.push(...state.market);
+    state.market = [];
+    if (available.filter((card) => card.color !== 'wild').length < requiredRegular) {
+      // There is no legal face-up row in this exceptional hoarding state. Blind cards remain available.
+      emit(
+        state,
+        'draw',
+        'Рынок убран: доступных цветных карт недостаточно. Можно брать карты вслепую.',
+      );
+      return;
+    }
+    if (attempt >= 999) {
+      // Bounded safeguard for pathological PRNG cycles. All cards still occur exactly once.
+      const pool = shuffle([...state.deck, ...state.discard], state);
+      const regular = pool.filter((card) => card.color !== 'wild').slice(0, requiredRegular);
+      const ids = new Set(regular.map((card) => card.id));
+      const remainder = pool.filter((card) => !ids.has(card.id));
+      state.market = [...regular, ...remainder.splice(0, 5 - regular.length)];
+      state.deck = remainder;
+      state.discard = [];
+      return;
+    }
+  }
 }
 
 export function createGame(options: GameOptions = {}): GameState {
   const playerCount = options.playerCount ?? 3;
-  if (![2, 3, 4].includes(playerCount)) throw new Error('В партии участвуют 2–4 бригады.');
-  const seed = options.seed?.trim() || 'river-default';
+  if (![2, 3, 4, 5].includes(playerCount)) throw new Error('В партии участвуют 2–5 игроков.');
+  const seed = options.seed?.trim() || 'europe-default';
   const state: GameState = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     rulesVersion: RULES_VERSION,
     seed,
     rng: hashSeed(seed),
     revision: 0,
+    turn: 1,
     round: 1,
     playerCount,
     activePlayer: 0,
     phase: 'setup',
     drawsRemaining: 0,
     players: [],
-    trains: [],
-    ...createBoard(playerCount),
+    ...createBoard(),
     deck: [],
     discard: [],
     market: [],
-    lostGroups: [],
+    ticketDeck: [],
+    unusedTickets: [],
+    pendingTunnel: null,
+    finalTurnsRemaining: null,
+    finalRoundTrigger: null,
+    consecutivePasses: 0,
     events: [],
-    initiative: [],
-    turnOrder: [],
-    turnIndex: 0,
-    setupIndex: 0,
-    totalGroups: playerCount * 12,
   };
   const cards: Card[] = COLORS.flatMap((color) =>
-    Array.from({ length: 15 }, (_, index) => ({ id: `${color}-${index + 1}`, color })),
+    Array.from({ length: 12 }, (_, i) => ({ id: `${color}-${i + 1}`, color })),
   );
   cards.push(
-    ...Array.from({ length: 4 }, (_, index) => ({
-      id: `wild-${index + 1}`,
-      color: 'wild' as const,
-    })),
+    ...Array.from({ length: 14 }, (_, i) => ({ id: `wild-${i + 1}`, color: 'wild' as const })),
   );
   state.deck = shuffle(cards, state);
-  const permutation = shuffle(
-    Array.from({ length: playerCount }, (_, index) => index),
+  const long = shuffle(
+    TICKETS.filter((ticket) => ticket.long),
     state,
   );
-  state.initiative = FIRST_PLAYERS[playerCount]!.map((seat) => permutation[seat]!);
+  state.ticketDeck = shuffle(
+    TICKETS.filter((ticket) => !ticket.long),
+    state,
+  );
   for (let id = 0; id < playerCount; id++) {
-    const objectiveOptions = shuffle(DISTRICTS, state).slice(0, 3);
     state.players.push({
       id,
-      name:
-        id === 0 ? options.playerName?.trim().slice(0, 30) || 'Ваша бригада' : `Бригада ${id + 1}`,
+      name: id === 0 ? options.playerName?.trim().slice(0, 30) || 'Вы' : `Игрок ${id + 1}`,
       color: PLAYER_COLORS[id]!,
-      hand: state.deck.splice(0, 5),
-      objectiveOptions,
-      objectives: [],
-      delivered: [],
-      repairScore: 0,
+      hand: state.deck.splice(0, 4),
+      tickets: [],
+      ticketOptions: [long.shift()!, ...state.ticketDeck.splice(0, 3)],
+      trainsRemaining: 45,
+      stationsRemaining: 3,
+      stations: [],
       score: 0,
     });
-    ['hill', 'upper'].forEach((stationId, index) =>
-      state.trains.push({
-        id: `p${id}-t${index + 1}`,
-        playerId: id,
-        stationId,
-        cargo: [],
-        cargoEdges: [],
-        order: idleOrder(),
-        disabled: false,
-        expressRound: null,
-      }),
-    );
   }
-  state.market = state.deck.splice(0, 5);
-  state.turnOrder = turnOrder(state);
+  state.unusedTickets = long;
+  refillMarket(state);
   emit(
     state,
     'setup',
-    'Диспетчер Вера: вода поднимется после раундов 6, 8, 10 и 12. Выберите два района.',
+    'Оставьте минимум два из четырёх билетов. За выполненный билет получите очки; за невыполненный потеряете столько же.',
   );
   return state;
 }
 
-/** Explicit allow-list; no deck, PRNG, opponents' cards or objectives cross this boundary. */
+/** Explicit allow-list: opponents' hands, hidden tickets, deck order and random state stay private. */
 export function getObservation(state: GameState, playerId: number): Observation {
   const player = state.players.find((item) => item.id === playerId);
-  if (!player) throw new Error('Такой бригады нет.');
+  if (!player) throw new Error('Такого игрока нет.');
   return clone({
     schemaVersion: state.schemaVersion,
     rulesVersion: state.rulesVersion,
     revision: state.revision,
+    turn: state.turn,
     round: state.round,
     playerCount: state.playerCount,
     activePlayer: state.activePlayer,
     phase: state.phase,
     drawsRemaining: state.drawsRemaining,
-    players: state.players.map((item) => ({
-      id: item.id,
-      name: item.name,
-      color: item.color,
-      handCount: item.hand.length,
-      delivered: item.delivered,
-      repairScore: item.repairScore,
-      score: item.score,
-    })),
-    self: {
-      id: player.id,
-      name: player.name,
-      color: player.color,
-      hand: player.hand,
-      objectiveOptions: player.objectiveOptions,
-      objectives: player.objectives,
-      delivered: player.delivered,
-      repairScore: player.repairScore,
-      score: player.score,
-    },
-    stations: state.stations,
-    edges: state.edges,
-    trains: state.trains,
+    ...boardFor(state),
+    self: player,
     market: state.market,
     deckCount: state.deck.length,
     discardCount: state.discard.length,
-    lostGroups: state.lostGroups,
+    ticketDeckCount: state.ticketDeck.length,
+    pendingTunnel: state.pendingTunnel,
+    finalTurnsRemaining: state.finalTurnsRemaining,
+    finalRoundTrigger: state.finalRoundTrigger,
     events: state.events,
-    initiative: state.initiative,
-    turnOrder: state.turnOrder,
-    totalGroups: state.totalGroups,
   });
 }
 
-function payment(hand: Card[], edge: Edge): Card[] | null {
+function canonicalPayments(
+  hand: Card[],
+  length: number,
+  color: Edge['color'] | CardColor,
+  minimumWild = 0,
+): ClaimOption[] {
   const wild = hand.filter((card) => card.color === 'wild');
-  const possible =
-    edge.color === 'gray'
-      ? [...COLORS].sort(
-          (a, b) =>
-            hand.filter((card) => card.color === b).length -
-            hand.filter((card) => card.color === a).length,
-        )
-      : [edge.color];
-  for (const color of possible) {
-    const normal = hand.filter((card) => card.color === color);
-    if (normal.length + wild.length >= edge.cost)
-      return [
-        ...normal.slice(0, edge.cost),
-        ...wild.slice(0, Math.max(0, edge.cost - normal.length)),
-      ];
+  const options: ClaimOption[] = [];
+  const colors: CardColor[] = color === 'gray' ? [...COLORS] : [color];
+  for (const candidate of colors) {
+    const normal = hand.filter((card) => card.color === candidate && candidate !== 'wild');
+    for (let wildCount = minimumWild; wildCount <= Math.min(length, wild.length); wildCount++) {
+      const normalCount = length - wildCount;
+      if (normalCount > normal.length || (candidate === 'wild' && normalCount > 0)) continue;
+      // An all-locomotive payment has one meaning, independent of the printed route color.
+      if (!normalCount && options.some((option) => option.color === 'wild')) continue;
+      options.push({
+        color: normalCount ? candidate : 'wild',
+        wildCount,
+        cardIds: [...normal.slice(0, normalCount), ...wild.slice(0, wildCount)].map(
+          (card) => card.id,
+        ),
+      });
+    }
   }
-  return null;
+  return options;
 }
-function expressPayment(hand: Card[]): Card[] {
-  return [...hand]
-    .sort((a, b) => Number(a.color === 'wild') - Number(b.color === 'wild'))
-    .slice(0, 2);
-}
-function edgeAvailable(board: PublicBoard, edge: Edge): boolean {
+function edgeAvailable(
+  board: PublicBoard,
+  edge: Edge,
+  playerId: number,
+  playerCount: number,
+): boolean {
+  if (edge.owner !== null) return false;
   return (
-    !edge.open &&
-    board.stations.some((station) => station.id === edge.a && !station.flooded) &&
-    board.stations.some((station) => station.id === edge.b && !station.flooded)
+    !edge.parallel ||
+    !board.edges.some(
+      (other) =>
+        other.id !== edge.id &&
+        other.parallel === edge.parallel &&
+        other.owner !== null &&
+        (playerCount <= 3 || other.owner === playerId),
+    )
   );
 }
-function legalDrawSources(observation: Observation): GameCommand[] {
+export function isRouteAvailable(observation: Observation, edgeId: string): boolean {
+  const edge = observation.edges.find((item) => item.id === edgeId);
+  return !!edge && edgeAvailable(observation, edge, observation.self.id, observation.playerCount);
+}
+export function getClaimOptions(observation: Observation, edgeId: string): ClaimOption[] {
+  const edge = observation.edges.find((item) => item.id === edgeId);
+  if (
+    !edge ||
+    !edgeAvailable(observation, edge, observation.self.id, observation.playerCount) ||
+    observation.self.trainsRemaining < edge.length
+  )
+    return [];
+  return canonicalPayments(observation.self.hand, edge.length, edge.color, edge.ferries);
+}
+export function getStationOptions(observation: Observation, cityId: string): ClaimOption[] {
+  if (
+    !observation.cities.some((city) => city.id === cityId) ||
+    !observation.self.stationsRemaining ||
+    observation.players.some((player) => player.stations.includes(cityId))
+  )
+    return [];
+  return canonicalPayments(observation.self.hand, 4 - observation.self.stationsRemaining, 'gray');
+}
+export function getTunnelPaymentOptions(observation: Observation): ClaimOption[] {
+  const pending = observation.pendingTunnel;
+  return pending ? canonicalPayments(observation.self.hand, pending.extraCost, pending.color) : [];
+}
+function combinations<T>(items: T[], min: number): T[][] {
+  const result: T[][] = [];
+  for (let mask = 0; mask < 2 ** items.length; mask++) {
+    const chosen = items.filter((_, index) => mask & (1 << index));
+    if (chosen.length >= min) result.push(chosen);
+  }
+  return result;
+}
+function drawCommands(observation: Observation): GameCommand[] {
   const commands: GameCommand[] = [];
   if (observation.deckCount + observation.discardCount > 0)
     commands.push({ type: 'draw', source: 'deck' });
-  observation.market.forEach((card, source) => {
-    if (observation.phase === 'action' || card.color !== 'wild')
-      commands.push({ type: 'draw', source });
+  observation.market.forEach((card, index) => {
+    if (observation.phase !== 'draw' || card.color !== 'wild')
+      commands.push({ type: 'draw', source: index });
   });
   return commands;
 }
-function orderError(board: PublicBoard, train: Train, order: TrainOrder): string | null {
-  if (train.disabled) return 'Затопленным поездом управлять нельзя.';
-  if (
-    typeof order.repeat !== 'boolean' ||
-    (order.destination !== null && typeof order.destination !== 'string') ||
-    (order.returnTo !== null && typeof order.returnTo !== 'string') ||
-    (order.confirmRisk !== undefined && typeof order.confirmRisk !== 'boolean')
-  )
-    return 'Некорректные параметры приказа.';
-  if (!['idle', 'position', 'evacuate', 'return'].includes(order.mode))
-    return 'Неизвестный приказ.';
-  if (order.mode === 'idle')
-    return train.cargo.length ? 'Поезд с пассажирами должен идти в убежище.' : null;
-  const station = board.stations.find((item) => item.id === order.destination);
-  const refuge = board.stations.find(
-    (item) => item.id === (order.returnTo ?? (order.mode === 'return' ? order.destination : null)),
-  );
-  if (train.cargo.length) {
-    if (!['evacuate', 'return'].includes(order.mode) || !refuge?.safe || refuge.flooded)
-      return 'Пассажиров можно везти только в убежище.';
-    if (order.mode === 'evacuate' && order.destination !== train.order.destination)
-      return 'После погрузки источник рейса менять нельзя.';
-  } else if (order.mode === 'evacuate') {
-    if (!station || station.safe || station.flooded) return 'Выберите открытую станцию эвакуации.';
-    if (!refuge?.safe || refuge.flooded) return 'Выберите убежище для обратного рейса.';
-  } else if (order.mode === 'position') {
-    if (!station || station.flooded) return 'Выберите открытую станцию для перемещения.';
-  } else if (!refuge?.safe || refuge.flooded) return 'Возвращаться можно только в убежище.';
-  const preview = previewOrder(board, train, order);
-  if (preview.path.length > 0 && !preview.safe && !order.confirmRisk)
-    return 'Рейс опасен. Подтвердите риск или выберите другой маршрут.';
-  return null;
-}
-
 export function getLegalCommands(observation: Observation): GameCommand[] {
-  if (observation.phase === 'finished' || observation.activePlayer !== observation.self.id)
+  if (observation.self.id !== observation.activePlayer || observation.phase === 'finished')
     return [];
-  if (observation.phase === 'setup') {
-    const options = observation.self.objectiveOptions;
-    return options.flatMap((first, index) =>
-      options
-        .slice(index + 1)
-        .map((second) => ({ type: 'chooseObjectives' as const, districts: [first, second] })),
-    );
+  if (observation.phase === 'setup' || observation.phase === 'tickets') {
+    const min = observation.phase === 'setup' ? 2 : 1;
+    return combinations(observation.self.ticketOptions, min).map((tickets) => ({
+      type: 'chooseTickets',
+      ticketIds: tickets.map((ticket) => ticket.id),
+    }));
   }
-  if (observation.phase === 'discard')
-    return observation.self.hand.map((card) => ({ type: 'discard', cardId: card.id }));
-  if (observation.phase === 'draw') return legalDrawSources(observation);
-  if (observation.phase === 'action') {
-    const commands: GameCommand[] = [...legalDrawSources(observation)];
-    for (const edge of observation.edges)
-      if (edgeAvailable(observation, edge) && payment(observation.self.hand, edge))
-        commands.push({ type: 'repair', edgeId: edge.id });
-    if (observation.self.hand.length >= 2)
-      for (const train of observation.trains) {
-        if (
-          train.playerId === observation.self.id &&
-          !train.disabled &&
-          train.expressRound !== observation.round
-        )
-          commands.push({ type: 'express', trainId: train.id });
-      }
-    commands.push({ type: 'pass' });
-    return commands;
+  if (observation.phase === 'tunnel') {
+    return [
+      ...getTunnelPaymentOptions(observation).map((option): GameCommand => ({
+        type: 'resolveTunnel',
+        pay: true,
+        cardIds: option.cardIds,
+      })),
+      { type: 'resolveTunnel', pay: false },
+    ];
   }
-  const commands: GameCommand[] = [];
-  const refuges = observation.stations.filter((station) => station.safe && !station.flooded);
-  for (const train of observation.trains.filter(
-    (item) => item.playerId === observation.self.id && !item.disabled,
-  )) {
-    const candidates: TrainOrder[] = [];
-    if (train.cargo.length) {
-      refuges.forEach((refuge) =>
-        candidates.push({
-          mode: 'evacuate',
-          destination: train.order.destination,
-          returnTo: refuge.id,
-          repeat: train.order.repeat,
-        }),
-      );
-    } else {
-      candidates.push(idleOrder());
-      for (const station of observation.stations.filter((item) => !item.flooded)) {
-        if (!station.safe && station.groups.length)
-          for (const refuge of refuges)
-            candidates.push({
-              mode: 'evacuate',
-              destination: station.id,
-              returnTo: refuge.id,
-              repeat: true,
-            });
-        if (station.id !== train.stationId)
-          candidates.push({
-            mode: 'position',
-            destination: station.id,
-            returnTo: null,
-            repeat: false,
-          });
-      }
-      refuges.forEach((refuge) =>
-        candidates.push({
-          mode: 'return',
-          destination: train.order.destination,
-          returnTo: refuge.id,
-          repeat: false,
-        }),
-      );
-    }
-    for (const order of candidates) {
-      if (JSON.stringify({ ...train.order, confirmRisk: undefined }) === JSON.stringify(order))
-        continue;
-      if (!orderError(observation, train, order))
-        commands.push({ type: 'order', trainId: train.id, order });
-    }
+  const commands = drawCommands(observation);
+  if (observation.phase === 'draw') return commands;
+  if (observation.ticketDeckCount) commands.push({ type: 'drawTickets' });
+  for (const edge of observation.edges) {
+    for (const option of getClaimOptions(observation, edge.id))
+      commands.push({ type: 'claim', edgeId: edge.id, cardIds: option.cardIds });
   }
-  commands.push({ type: 'endTurn' });
-  return commands;
+  for (const city of observation.cities) {
+    for (const option of getStationOptions(observation, city.id))
+      commands.push({ type: 'buildStation', cityId: city.id, cardIds: option.cardIds });
+  }
+  return commands.length ? commands : [{ type: 'pass' }];
 }
 
-function spend(state: GameState, player: Player, cards: Card[]): void {
+function selectedCards(hand: Card[], ids: string[]): Card[] {
+  if (new Set(ids).size !== ids.length) fail('Каждую карту можно использовать только один раз.');
+  return ids.map(
+    (id) => hand.find((card) => card.id === id) ?? fail('Выбранной карты нет в вашей руке.'),
+  );
+}
+function paymentColor(
+  cards: Card[],
+  length: number,
+  routeColor: Edge['color'] | CardColor,
+  minimumWild = 0,
+): CardColor {
+  if (cards.length !== length) fail(`Для оплаты нужно ровно ${length} карт.`);
+  const regular = [
+    ...new Set(cards.filter((card) => card.color !== 'wild').map((card) => card.color)),
+  ];
+  if (regular.length > 1) fail('Для оплаты нужны карты одного цвета и локомотивы.');
+  if (routeColor === 'wild' && regular.length) fail('Для этой доплаты подходят только локомотивы.');
+  if (regular.length && routeColor !== 'gray' && regular[0] !== routeColor)
+    fail('Цвет карт не совпадает с цветом участка.');
+  if (cards.filter((card) => card.color === 'wild').length < minimumWild)
+    fail(`Для парома нужно минимум ${minimumWild} локомотивов.`);
+  return regular[0] ?? 'wild';
+}
+function removeCards(player: Player, cards: Card[]): void {
   const ids = new Set(cards.map((card) => card.id));
   player.hand = player.hand.filter((card) => !ids.has(card.id));
-  state.discard.push(...cards);
 }
-function refillDeck(state: GameState): void {
-  if (!state.deck.length && state.discard.length) {
-    state.deck = shuffle(state.discard, state);
-    state.discard = [];
-  }
-}
-function refillMarket(state: GameState): void {
-  while (state.market.length < 5) {
-    refillDeck(state);
-    const card = state.deck.shift();
-    if (!card) break;
-    state.market.push(card);
-  }
-}
-function finishDraw(state: GameState): void {
+function finishAction(state: GameState, passed = false): void {
   state.drawsRemaining = 0;
-  state.phase = active(state).hand.length > HAND_LIMIT ? 'discard' : 'orders';
-}
-function draw(state: GameState, source: 'deck' | number): string | null {
-  if (!['action', 'draw'].includes(state.phase)) return 'Сейчас нельзя брать карты.';
-  const first = state.phase === 'action';
-  let card: Card | undefined;
-  if (source === 'deck') {
-    refillDeck(state);
-    card = state.deck.shift();
-    if (!card) return 'Закрытая колода пуста.';
-  } else {
-    if (!Number.isInteger(source) || source < 0 || source >= state.market.length)
-      return 'Этой карты на рынке нет.';
-    if (!first && state.market[source]?.color === 'wild')
-      return 'Открытая универсальная карта занимает весь добор и доступна только первой.';
-    card = state.market.splice(source, 1)[0];
-    refillMarket(state);
-  }
-  active(state).hand.push(card!);
-  emit(
-    state,
-    'draw',
-    `${active(state).name}: получены материалы${source === 'deck' ? ' из колоды' : ' с рынка'}.`,
-    { playerId: state.activePlayer },
-  );
-  state.drawsRemaining = first ? 1 : 0;
-  if (first && source !== 'deck' && card!.color === 'wild') state.drawsRemaining = 0;
-  state.phase = 'draw';
-  if (!state.drawsRemaining || !legalDrawSources(getObservation(state, state.activePlayer)).length)
-    finishDraw(state);
-  return null;
-}
-
-function serviceTrain(state: GameState, train: Train): boolean {
-  const station = state.stations.find((item) => item.id === train.stationId)!;
-  if (station.id !== orderTarget(train)) return false;
-  if (train.cargo.length > 0) {
-    if (!station.safe) return false;
-    const player = state.players[train.playerId]!;
-    const count = train.cargo.length;
-    player.delivered.push(...train.cargo);
-    for (const edgeId of train.cargoEdges) {
-      const edge = state.edges.find((item) => item.id === edgeId);
-      if (!edge || edge.credited || edge.builder === null) continue;
-      edge.credited = true;
-      const builder = state.players[edge.builder]!;
-      if (builder.repairScore < REPAIR_SCORE_CAP) builder.repairScore++;
-    }
-    train.cargo = [];
-    train.cargoEdges = [];
-    state.players.forEach(scorePlayer);
-    emit(
-      state,
-      'deliver',
-      `${player.name}: ${count} ${count === 1 ? 'группа доставлена' : 'группы доставлены'} в ${station.name}.`,
-      { playerId: player.id, trainId: train.id, stationId: station.id },
-    );
-    const nextBoard = { ...boardFor(state), round: state.round + 1 };
-    const source = state.stations.find((item) => item.id === train.order.destination);
-    if (!(
-      train.order.mode === 'evacuate' &&
-      train.order.repeat &&
-      source?.groups.length &&
-      previewOrder(nextBoard, train, train.order).safe
-    ))
-      train.order = idleOrder();
-  } else if (train.order.mode === 'evacuate') {
-    const groups = [...station.groups]
-      .sort((a, b) => Number(b.priority) - Number(a.priority) || a.id.localeCompare(b.id))
-      .slice(0, CAPACITY);
-    train.cargo = groups;
-    train.cargoEdges = [];
-    station.groups = station.groups.filter(
-      (group) => !groups.some((loaded) => loaded.id === group.id),
-    );
-    if (groups.length)
+  state.pendingTunnel = null;
+  state.consecutivePasses = passed ? state.consecutivePasses + 1 : 0;
+  if (state.finalTurnsRemaining !== null) {
+    state.finalTurnsRemaining--;
+    if (state.finalTurnsRemaining === 0) {
+      state.phase = 'finished';
       emit(
         state,
-        'load',
-        `${state.players[train.playerId]!.name}: погружено ${groups.length} группы на станции ${station.name}.`,
-        { playerId: train.playerId, trainId: train.id, stationId: station.id },
+        'finish',
+        'Последний круг завершён. Подсчитываем билеты, станции и Европейский экспресс.',
       );
-    else {
-      train.order = { ...train.order, mode: 'return', repeat: false };
-      emit(state, 'load', `${station.name}: очередь уже эвакуирована, поезд вернётся пустым.`, {
-        playerId: train.playerId,
-        trainId: train.id,
-        stationId: station.id,
-      });
+      return;
     }
-  } else train.order = idleOrder();
-  return true;
-}
-function moveStep(
-  state: GameState,
-  ordered: Train[],
-  serviced: Set<string>,
-  second: boolean,
-): void {
-  for (const train of ordered) {
-    if (train.disabled || serviced.has(train.id) || (second && train.expressRound !== state.round))
-      continue;
-    const target = orderTarget(train);
-    if (!target || target === train.stationId) continue;
-    const route = routeForTrain(
-      boardFor(state),
-      train,
-      train.order,
-      second ? 1 : train.expressRound === state.round ? 2 : 1,
-    );
-    const next = route.path[1];
-    if (!next) continue;
-    const edge = state.edges.find(
-      (item) =>
-        item.open &&
-        ((item.a === train.stationId && item.b === next) ||
-          (item.b === train.stationId && item.a === next)),
-    );
-    const destination = state.stations.find((item) => item.id === next);
-    if (!edge || !destination || destination.flooded) continue;
-    const from = train.stationId;
-    train.stationId = next;
-    if (train.cargo.length && edge.builder !== null && !train.cargoEdges.includes(edge.id))
-      train.cargoEdges.push(edge.id);
-    emit(state, 'move', `${state.players[train.playerId]!.name}: поезд → ${destination.name}.`, {
-      playerId: train.playerId,
-      trainId: train.id,
-      from,
-      to: next,
-      stationId: next,
-    });
-  }
-  for (const train of ordered) {
-    if (train.disabled || serviced.has(train.id) || (second && train.expressRound !== state.round))
-      continue;
-    if (serviceTrain(state, train)) serviced.add(train.id);
-  }
-}
-function resolveRound(state: GameState): void {
-  const ordered = state.turnOrder.flatMap((playerId) =>
-    state.trains
-      .filter((train) => train.playerId === playerId)
-      .sort((a, b) => a.id.localeCompare(b.id)),
-  );
-  const serviced = new Set<string>();
-  moveStep(state, ordered, serviced, false);
-  moveStep(state, ordered, serviced, true);
-  for (const station of state.stations) {
-    if (station.flooded || station.floodRound !== state.round) continue;
-    station.flooded = true;
-    const stranded = station.groups.length;
-    state.lostGroups.push(...station.groups);
-    station.groups = [];
+  } else if (active(state).trainsRemaining <= 2) {
+    state.finalTurnsRemaining = state.playerCount;
+    state.finalRoundTrigger = state.activePlayer;
     emit(
       state,
-      'flood',
-      `${station.name} закрыта водой${stranded ? `: отрезано ${stranded} группы` : ''}.`,
-      { stationId: station.id },
+      'turn',
+      'Осталось не больше двух вагонов: каждому игроку предстоит ещё один последний ход.',
     );
-    for (const train of state.trains.filter(
-      (item) => !item.disabled && item.stationId === station.id,
-    )) {
-      const lost = train.cargo.length;
-      state.lostGroups.push(...train.cargo);
-      train.cargo = [];
-      train.cargoEdges = [];
-      train.disabled = true;
-      train.order = idleOrder();
-      emit(
-        state,
-        'loss',
-        `${state.players[train.playerId]!.name}: поезд затоплен на станции ${station.name}${lost ? `, потеряно ${lost} группы` : ''}.`,
-        { trainId: train.id, playerId: train.playerId, stationId: station.id },
-      );
-    }
-    state.edges
-      .filter((edge) => edge.a === station.id || edge.b === station.id)
-      .forEach((edge) => {
-        edge.open = false;
-      });
   }
-  const groupsRemain =
-    state.stations.some((station) => station.groups.length) ||
-    state.trains.some((train) => train.cargo.length);
-  if (state.round >= LAST_ROUND || !groupsRemain) {
+  if (state.consecutivePasses >= state.playerCount) {
     state.phase = 'finished';
-    state.drawsRemaining = 0;
-    emit(state, 'finish', 'Операция завершена. Диспетчерская подводит итог эвакуации.');
+    emit(state, 'finish', 'Ни у одного игрока нет допустимого действия. Партия завершена.');
     return;
   }
-  state.round++;
-  state.turnOrder = turnOrder(state);
-  state.turnIndex = 0;
-  state.activePlayer = state.turnOrder[0]!;
+  state.activePlayer = (state.activePlayer + 1) % state.playerCount;
+  state.turn++;
+  if (state.activePlayer === 0) state.round++;
   state.phase = 'action';
-  emit(
-    state,
-    'round',
-    `Раунд ${state.round}. Первой действует ${state.players[state.activePlayer]!.name}.`,
-  );
+  refillMarket(state);
+}
+function claimRoute(state: GameState, edge: Edge, cards: Card[]): void {
+  const player = active(state);
+  edge.owner = player.id;
+  player.trainsRemaining -= edge.length;
+  const points = ROUTE_POINTS[edge.length]!;
+  if (points === undefined) fail('Для длины этого участка нет таблицы очков.');
+  player.score += points;
+  state.discard.push(...cards);
+  const a = state.cities.find((city) => city.id === edge.a)!.name;
+  const b = state.cities.find((city) => city.id === edge.b)!.name;
+  emit(state, 'claim', `${player.name}: ${a} — ${b}, +${points} очков.`, {
+    playerId: player.id,
+    edgeId: edge.id,
+  });
 }
 
 export function applyCommand(input: GameState, command: GameCommand): Transition {
-  if (!command || typeof command !== 'object' || !('type' in command))
-    return { state: input, events: [], error: 'Некорректная команда.' };
-  if (input.phase === 'finished')
-    return { state: input, events: [], error: 'Партия уже завершена.' };
   const state = clone(input);
-  const eventIndex = state.events.length;
-  let error: string | null = null;
-  const player = active(state);
-  switch (command.type) {
-    case 'chooseObjectives': {
-      const districts = command.districts;
-      if (state.phase !== 'setup') {
-        error = 'Задания уже выбраны.';
-        break;
-      }
+  const priorEvent = state.events.at(-1)?.id ?? 0;
+  try {
+    if (state.phase === 'finished') fail('Партия уже завершена.');
+    const player = active(state);
+    if (command.type === 'chooseTickets') {
+      if (state.phase !== 'setup' && state.phase !== 'tickets')
+        fail('Сейчас не нужно выбирать билеты.');
+      const minimum = state.phase === 'setup' ? 2 : 1;
       if (
-        !Array.isArray(districts) ||
-        districts.length !== 2 ||
-        new Set(districts).size !== 2 ||
-        !districts.every((district) => player.objectiveOptions.includes(district))
-      ) {
-        error = 'Выберите два разных района из трёх предложенных.';
-        break;
+        new Set(command.ticketIds).size !== command.ticketIds.length ||
+        command.ticketIds.length < minimum ||
+        command.ticketIds.some((id) => !player.ticketOptions.some((ticket) => ticket.id === id))
+      )
+        fail(`Оставьте минимум ${minimum} разных билета из предложенных.`);
+      const kept = player.ticketOptions.filter((ticket) => command.ticketIds.includes(ticket.id));
+      const returned = player.ticketOptions.filter(
+        (ticket) => !command.ticketIds.includes(ticket.id),
+      );
+      player.tickets.push(...kept);
+      player.ticketOptions = [];
+      emit(state, 'tickets', `${player.name} оставляет ${kept.length} билета.`, {
+        playerId: player.id,
+      });
+      if (state.phase === 'setup') {
+        state.unusedTickets.push(...returned);
+        if (state.activePlayer === state.playerCount - 1) {
+          state.activePlayer = 0;
+          state.phase = 'action';
+        } else state.activePlayer++;
+      } else {
+        state.ticketDeck.push(...returned);
+        finishAction(state);
       }
-      player.objectives = [...districts];
-      emit(state, 'setup', `${player.name}: районы выбраны.`, { playerId: player.id });
-      state.setupIndex++;
-      if (state.setupIndex >= state.playerCount) {
-        state.phase = 'action';
-        state.activePlayer = state.turnOrder[0]!;
-      } else state.activePlayer = state.setupIndex;
-      break;
-    }
-    case 'draw':
-      error = draw(state, command.source);
-      break;
-    case 'repair': {
-      if (state.phase !== 'action') {
-        error = 'Основное действие уже использовано.';
-        break;
+    } else if (command.type === 'draw') {
+      if (state.phase !== 'action' && state.phase !== 'draw')
+        fail('Сначала завершите текущее действие.');
+      const second = state.phase === 'draw';
+      let card: Card | undefined;
+      if (command.source === 'deck') card = drawCard(state);
+      else {
+        if (!Number.isInteger(command.source) || command.source < 0)
+          fail('Такой карты на рынке нет.');
+        card = state.market[command.source];
+        if (!card) fail('Такой карты на рынке нет.');
+        if (second && card.color === 'wild')
+          fail('Вторым добором открытый локомотив брать нельзя.');
+        state.market.splice(command.source, 1);
+        const replacement = drawCard(state);
+        if (replacement) state.market.splice(command.source, 0, replacement);
       }
-      const edge = state.edges.find((item) => item.id === command.edgeId);
-      if (!edge || !edgeAvailable(boardFor(state), edge)) {
-        error = 'Эту линию сейчас восстановить нельзя.';
-        break;
-      }
-      const cards = payment(player.hand, edge);
-      if (!cards) {
-        error = 'Не хватает материалов одного нужного цвета.';
-        break;
-      }
-      spend(state, player, cards);
-      edge.open = true;
-      edge.builder = player.id;
-      state.phase = 'orders';
+      if (!card) fail('Колода и сброс пусты. Выберите другое действие.');
+      player.hand.push(card);
       emit(
         state,
-        'repair',
-        `${player.name}: восстановлена линия ${state.stations.find((item) => item.id === edge.a)!.name} — ${state.stations.find((item) => item.id === edge.b)!.name}.`,
+        'draw',
+        `${player.name} берёт карту${command.source === 'deck' ? ' вслепую' : ' с рынка'}.`,
         { playerId: player.id },
       );
-      break;
-    }
-    case 'express': {
-      const train = state.trains.find(
-        (item) => item.id === command.trainId && item.playerId === player.id,
-      );
-      if (state.phase !== 'action') {
-        error = 'Основное действие уже использовано.';
-        break;
-      }
-      if (!train || train.disabled || train.expressRound === state.round) {
-        error = 'Этот поезд сейчас нельзя ускорить.';
-        break;
-      }
-      if (player.hand.length < 2) {
-        error = 'Для экспресса нужны любые две карты.';
-        break;
-      }
-      spend(state, player, expressPayment(player.hand));
-      train.expressRound = state.round;
-      state.phase = 'orders';
-      emit(state, 'express', `${player.name}: экспресс может пройти две линии в этом раунде.`, {
+      refillMarket(state);
+      if (!second && !(command.source !== 'deck' && card.color === 'wild')) {
+        state.phase = 'draw';
+        state.drawsRemaining = 1;
+        if (!drawCommands(getObservation(state, player.id)).length) finishAction(state);
+      } else finishAction(state);
+    } else if (command.type === 'drawTickets') {
+      if (state.phase !== 'action') fail('Сначала завершите текущее действие.');
+      if (!state.ticketDeck.length) fail('Все билеты уже разобраны.');
+      player.ticketOptions = state.ticketDeck.splice(0, 3);
+      state.phase = 'tickets';
+      emit(state, 'tickets', `${player.name} берёт новые билеты и должен оставить минимум один.`, {
         playerId: player.id,
-        trainId: train.id,
       });
-      break;
-    }
-    case 'pass':
-      if (state.phase !== 'action') error = 'Пропустить можно только основное действие.';
-      else {
-        state.phase = 'orders';
-        emit(state, 'pass', `${player.name}: сохранены материалы.`, { playerId: player.id });
+    } else if (command.type === 'claim') {
+      if (state.phase !== 'action') fail('Сначала завершите текущее действие.');
+      const edge = state.edges.find((item) => item.id === command.edgeId);
+      if (!edge || !edgeAvailable(boardFor(state), edge, player.id, state.playerCount))
+        fail('Этот участок уже занят или закрыт правилом двойных путей.');
+      if (player.trainsRemaining < edge.length) fail('Для этого участка не хватает вагонов.');
+      const cards = selectedCards(player.hand, command.cardIds);
+      const color = paymentColor(cards, edge.length, edge.color, edge.ferries);
+      removeCards(player, cards);
+      if (edge.tunnel) {
+        const revealed: Card[] = [];
+        for (let i = 0; i < 3; i++) {
+          const card = drawCard(state);
+          if (card) revealed.push(card);
+        }
+        const extraCost = revealed.filter(
+          (card) => card.color === color || card.color === 'wild',
+        ).length;
+        state.pendingTunnel = { edgeId: edge.id, color, baseCards: cards, revealed, extraCost };
+        state.phase = 'tunnel';
+        emit(
+          state,
+          'tunnel',
+          `Туннель: открыто ${revealed.length} карт. Доплата — ${extraCost}. Можно оплатить или вернуть карты и закончить ход.`,
+          { playerId: player.id, edgeId: edge.id },
+        );
+        if (!extraCost) {
+          claimRoute(state, edge, cards);
+          state.discard.push(...revealed);
+          finishAction(state);
+        }
+      } else {
+        claimRoute(state, edge, cards);
+        finishAction(state);
       }
-      break;
-    case 'discard': {
-      if (state.phase !== 'discard') {
-        error = 'Обязательного сброса сейчас нет.';
-        break;
+    } else if (command.type === 'resolveTunnel') {
+      if (state.phase !== 'tunnel' || !state.pendingTunnel)
+        fail('Сейчас нет незавершённой попытки пройти туннель.');
+      const pending = state.pendingTunnel;
+      const edge = state.edges.find((item) => item.id === pending.edgeId)!;
+      if (command.pay) {
+        const extra = selectedCards(player.hand, command.cardIds ?? []);
+        paymentColor(extra, pending.extraCost, pending.color);
+        removeCards(player, extra);
+        claimRoute(state, edge, [...pending.baseCards, ...extra]);
+      } else {
+        if (command.cardIds?.length) fail('При отмене не нужно выбирать карты доплаты.');
+        player.hand.push(...pending.baseCards);
+        emit(state, 'tunnel', 'Попытка отменена: первоначальные карты возвращены, ход закончен.', {
+          playerId: player.id,
+          edgeId: edge.id,
+        });
       }
-      const card = player.hand.find((item) => item.id === command.cardId);
-      if (!card) {
-        error = 'Такой карты в руке нет.';
-        break;
-      }
-      spend(state, player, [card]);
-      if (player.hand.length <= HAND_LIMIT) state.phase = 'orders';
-      break;
-    }
-    case 'order': {
-      if (state.phase !== 'orders') {
-        error = 'Сначала завершите основное действие.';
-        break;
-      }
-      const train = state.trains.find(
-        (item) => item.id === command.trainId && item.playerId === player.id,
+      state.discard.push(...pending.revealed);
+      finishAction(state);
+    } else if (command.type === 'buildStation') {
+      if (state.phase !== 'action') fail('Сначала завершите текущее действие.');
+      if (!state.cities.some((city) => city.id === command.cityId)) fail('Такого города нет.');
+      if (!player.stationsRemaining) fail('Все три станции уже построены.');
+      if (state.players.some((item) => item.stations.includes(command.cityId)))
+        fail('В этом городе уже есть станция.');
+      const cards = selectedCards(player.hand, command.cardIds);
+      paymentColor(cards, 4 - player.stationsRemaining, 'gray');
+      removeCards(player, cards);
+      state.discard.push(...cards);
+      player.stations.push(command.cityId);
+      player.stationsRemaining--;
+      emit(
+        state,
+        'station',
+        `${player.name} строит станцию. В финале она позволит использовать один чужой соседний участок для билетов.`,
+        { playerId: player.id, cityId: command.cityId },
       );
-      if (!train) {
-        error = 'Это не ваш поезд.';
-        break;
-      }
-      if (!command.order || typeof command.order !== 'object') {
-        error = 'Некорректный приказ.';
-        break;
-      }
-      error = orderError(boardFor(state), train, command.order);
-      if (error) break;
-      train.order = command.order.mode === 'idle' ? idleOrder() : clone(command.order);
-      if (train.order.mode === 'return') train.order.returnTo ??= train.order.destination;
-      emit(state, 'order', `${player.name}: приказ поезду обновлён.`, {
-        playerId: player.id,
-        trainId: train.id,
-      });
-      break;
+      finishAction(state);
+    } else if (command.type === 'pass') {
+      if (
+        state.phase !== 'action' ||
+        getLegalCommands(getObservation(state, player.id)).some((item) => item.type !== 'pass')
+      )
+        fail('Пропустить ход можно только когда нет ни одного допустимого действия.');
+      emit(state, 'pass', `${player.name}: нет допустимого действия.`, { playerId: player.id });
+      finishAction(state, true);
+    } else {
+      fail('Неизвестная команда.');
     }
-    case 'endTurn':
-      if (state.phase !== 'orders') {
-        error = 'Сначала завершите действие, добор и сброс.';
-        break;
-      }
-      state.turnIndex++;
-      if (state.turnIndex >= state.playerCount) resolveRound(state);
-      else {
-        state.activePlayer = state.turnOrder[state.turnIndex]!;
-        state.phase = 'action';
-      }
-      break;
-    default:
-      error = 'Неизвестная команда.';
+    state.revision++;
+    return { state, events: state.events.filter((event) => event.id > priorEvent) };
+  } catch (error) {
+    return {
+      state: input,
+      events: [],
+      error: error instanceof Error ? error.message : 'Команда отклонена.',
+    };
   }
-  if (error) return { state: input, events: [], error };
-  state.revision++;
-  return { state, events: state.events.slice(eventIndex) };
 }
 
-export function getGameResult(state: GameState | Observation): GameResult {
-  const saved = state.players.reduce((sum, player) => sum + player.delivered.length, 0);
-  const stranded =
-    state.stations.reduce((sum, station) => sum + station.groups.length, 0) +
-    state.trains.reduce((sum, train) => sum + train.cargo.length, 0);
-  const standings = state.players
-    .map((player) => {
-      // Objective count follows score accounting; opponents' actual district choices remain private in an observation.
-      const passengerScore = player.delivered.reduce(
-        (sum, group) => sum + (group.priority ? 3 : 2),
-        0,
-      );
-      return {
-        playerId: player.id,
-        name: player.name,
-        color: player.color,
-        score: player.score,
-        delivered: player.delivered.length,
-        priority: player.delivered.filter((group) => group.priority).length,
-        objectivesCompleted: Math.max(
-          0,
-          Math.round((player.score - passengerScore - player.repairScore) / 3),
-        ),
-        repairScore: player.repairScore,
-        winner: false,
-      };
-    })
-    .sort(
-      (a, b) =>
-        b.score - a.score ||
-        b.delivered - a.delivered ||
-        b.priority - a.priority ||
-        a.playerId - b.playerId,
-    );
-  const first = standings[0]!;
-  for (const standing of standings)
-    standing.winner =
-      saved > 0 &&
-      state.phase === 'finished' &&
-      standing.score === first.score &&
-      standing.delivered === first.delivered &&
-      standing.priority === first.priority;
-  return {
-    standings,
-    saved,
-    lost: state.lostGroups.length,
-    stranded,
-    total: state.totalGroups,
-    cityOutcome:
-      saved === 0 ? 'failure' : saved / state.totalGroups >= 0.75 ? 'excellent' : 'partial',
-    finished: state.phase === 'finished',
+export function getGameResult(input: GameState | Observation): GameResult {
+  const finished = input.phase === 'finished';
+  const board: PublicBoard = {
+    cities: input.cities,
+    edges: input.edges,
+    players: 'self' in input ? input.players : publicPlayers(input),
   };
+  const longest = finished
+    ? input.players.map((player) => getLongestRouteLength(board, player.id))
+    : input.players.map(() => 0);
+  const maximum = Math.max(...longest);
+  const standings: Standing[] = input.players.map((player, index) => {
+    const tickets =
+      ('self' in input
+        ? player.id === input.self.id
+          ? input.self.tickets
+          : (player.tickets ?? [])
+        : player.tickets) ?? [];
+    const progress = finished ? getTicketProgress(board, player.id, tickets) : [];
+    const ticketScore = progress.reduce(
+      (total, item) => total + (item.complete ? item.ticket.points : -item.ticket.points),
+      0,
+    );
+    const routeScore = board.edges
+      .filter((edge) => edge.owner === player.id)
+      .reduce((total, edge) => total + (ROUTE_POINTS[edge.length] ?? 0), 0);
+    const stationScore = finished ? player.stationsRemaining * 4 : 0;
+    const expressScore = finished && maximum > 0 && longest[index] === maximum ? 10 : 0;
+    return {
+      playerId: player.id,
+      name: player.name,
+      color: player.color,
+      score: routeScore + ticketScore + stationScore + expressScore,
+      routeScore,
+      ticketScore,
+      stationScore,
+      expressScore,
+      completedTickets: progress.filter((item) => item.complete).length,
+      totalTickets: 'ticketCount' in player ? player.ticketCount : player.tickets.length,
+      longestPath: longest[index]!,
+      stationRoutes: progress[0]?.stationRoutes ?? [],
+      tickets: progress,
+      winner: false,
+    };
+  });
+  const stationCount = (standing: Standing) =>
+    input.players.find((player) => player.id === standing.playerId)!.stationsRemaining;
+  const compare = (a: Standing, b: Standing) =>
+    b.score - a.score ||
+    b.completedTickets - a.completedTickets ||
+    stationCount(b) - stationCount(a) ||
+    b.expressScore - a.expressScore;
+  standings.sort(compare);
+  if (finished)
+    for (const standing of standings) standing.winner = compare(standing, standings[0]!) === 0;
+  return { standings, finished };
 }

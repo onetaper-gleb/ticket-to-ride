@@ -1,25 +1,39 @@
 ---
 name: lt-core
-description: "Implement Last Train rules, routing, scenario data and invariants in src/core and src/data. Use for game-state transitions, deadlines, scoring and replay behavior."
+description: 'Разработка и проверка чистого ядра классической Ticket to Ride Europe: команды, оплата, билеты, станции и итоговый счёт.'
 ---
 
-# Last Train core
+# Ядро Europe
 
-Read [architecture](../../../docs/architecture.md), the relevant rules in `docs/concept.md`, and `src/shared/types.ts`. Own only the paths assigned in the architecture. Request shared-contract changes from the integrator.
+Применяй скилл для изменений в `src/core/` и проверки правил. Перед работой прочитай `AGENTS.md`, `docs/europe-rules.md`, `docs/architecture.md` и текущие типы. Источник правил — официальная книга Europe 2019, версия приложения `europe-base-v1`. Europe 1912 и обновлённые правила 2026 не входят в этот контракт.
 
-Keep one pure transition as the authority for legality and mutation. Rejected commands preserve the input. Preview and execution share routing and deadline calculations. Inject reproducible randomness. Do not import React, Three.js, browser storage, timers or bot code into the core.
+## Границы работы
 
-Implement the fixed exports in `src/core/index.ts`: `createGame`, `applyCommand`, `getObservation`, `getLegalCommands`, `previewOrder`, and `getGameResult`. Begin with `setup` and `chooseObjectives` before action phases. Preserve `drawsRemaining` through partial draws and restores.
+Редактируй только назначенные пути. Общие типы меняет интегратор; согласуй контракт до изменения потребителей. Ядро не импортирует React, Three.js, браузерное хранилище, часы и бота.
 
-Preserve these rules when implementing phases:
+Сохраняй чистые функции `createGame`, `applyCommand`, `getObservation`, `getLegalCommands`, запросы вариантов оплаты и подсчёт результата. Неверная команда возвращает исходное состояние с объяснением; она не списывает карты и не увеличивает ревизию.
 
-- Every brigade acts before movement. Resolve ordinary steps, express second steps, then the wave.
-- Loading, unloading and reaching a positioning target end that train's movement for the round.
-- A station closing after F allows departure in F. Loading in F does not permit same-round departure.
-- A flooded train stays unavailable. It does not return to a shelter.
-- Credit a repair only after a successful delivery uses its line. Credit each line once, within the brigade cap.
-- Use the public initiative schedule from scenario data. Preserve group IDs through queue, cargo, delivery and loss.
+## Правила переходов
 
-Construct observations from allowed fields. Keep deck order, PRNG state and opponents' hands or objectives outside them. Route queries used by bots must accept public board data, not require full state.
+- Раздача: четыре карты вагонов, один длинный и три обычных билета; оставить минимум два. Все отвергнутые стартовые билеты уходят в коробку.
+- Одно действие за ход: добор карт, занятие линии, добор билетов или строительство станции. Подфазы `draw`, `tickets` и `tunnel` завершают то же действие.
+- Добор: две карты. Открытый локомотив можно взять только первым; он завершает действие. Закрытый локомотив считается обычным добором. Три открытых локомотива требуют замены рынка.
+- Оплата: проверяй каждый `cardId`, отсутствие повторов, цвет и число локомотивов. Серые линии принимают один выбранный цвет с заменами локомотивами. Паром требует указанное минимальное число локомотивов.
+- Тоннель: отдели базовую оплату, открой до трёх доступных карт, рассчитай доплату. Если базовая оплата состоит только из локомотивов, доплату вызывают только открытые локомотивы. Отказ возвращает базовую оплату и завершает ход.
+- Двойные линии: в партии на 2–3 игроков занятие одной закрывает вторую; на 4–5 игроков второй путь доступен другому игроку. Один игрок не занимает обе линии пары.
+- Новые билеты: предложить до трёх, оставить минимум один; отвергнутые вернуть вниз обычной колоды.
+- Станции: не более одной на город и трёх на игрока; первая стоит одну карту, вторая две, третья три. Выбери одну чужую соседнюю линию для каждой станции и используй одно общее назначение для всех билетов.
+- Завершение: после действия с остатком двух вагонов или меньше каждому, включая инициатора, остаётся один ход. Билеты добавляют или вычитают стоимость; неиспользованная станция даёт четыре очка. Длиннейший путь даёт десять очков всем участникам равенства.
+- Равенство итогового счёта 2019: выполненные билеты, затем меньше построенных станций, затем European Express; полное равенство допускает общую победу.
 
-Test phase boundaries, card and group conservation, nonnegative resources, rejected actions, bounded completion and replay determinism. Use concrete failing scenarios when fixing rules. Hand off exports, changed behavior, verification and unresolved decisions.
+Длиннейший путь считает длину участков, допускает повтор города и циклы, но не повтор участка. Линии, заимствованные через станции, в него не входят. Не заменяй точный расчёт эвристикой.
+
+## Приватность и проверки
+
+`GameState` содержит секреты. `Observation` исключает порядок колод, seed, rng, чужие карты и скрытые билеты. Подбор команды бота получает только наблюдение своего места.
+
+Проверяй сохранение 110 уникальных карт, включая базовую оплату `pendingTunnel`, и 46 билетов во всех колодах, руках и коробке. Повтор команд с одним seed должен давать тот же результат.
+
+Тестируй двойные линии для всех размеров партии, сброс рынка, чистые локомотивы в тоннеле и отмену тоннеля. Отдельно проверь общее назначение станций, последние ходы и равенства. Независимый перебор малых графов проверяет расчёт длиннейшего пути на циклах.
+
+Технические исключения для невозможного рынка и полного отсутствия действий описаны в `docs/europe-rules.md`. Не расширяй их до произвольного пропуска хода и не меняй числа настолки ради результатов ботов.

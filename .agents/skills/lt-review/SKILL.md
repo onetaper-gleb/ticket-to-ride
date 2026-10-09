@@ -1,18 +1,20 @@
 ---
 name: lt-review
-description: "Independently review Last Train rules, bot fairness, player flow and readiness. Use for milestone acceptance, concrete gameplay defects and architecture boundary checks."
+description: 'Независимая проверка классической Europe: точность правил, приватность ботов, цикл игрока и готовность текущего этапа.'
 ---
 
-# Last Train review
+# Независимая проверка Europe
 
-Read [architecture](../../../docs/architecture.md), the current milestone in [development](../../../docs/development.md), and the relevant concept rules. Review files read-only unless the integrator explicitly assigns a fix path.
+Прочитай [правила и источники](../../../docs/europe-rules.md), [архитектуру](../../../docs/architecture.md) и [приёмку](../../../docs/development.md). Проверяй классические правила 2019. Читай реализацию без изменений, пока интегратор не передаст конкретный путь для исправления.
 
-Choose reproducible scenarios that can disprove readiness. Check a train loading at F, express stopping after service, an empty contested queue, one repair credit, a flooded train and final tie/zero-delivery outcomes. Compare core preview with execution. Trace cards and groups through the complete match.
+Выбирай сценарии, способные обнаружить ошибку: отклонённые стартовые билеты, три открытых локомотива, второй добор, двойные пути для 2–3 и 4–5 игроков, паром и чистые локомотивы в тоннеле. Проверь отказ тоннеля, общие назначения станций, последние ходы и порядок равенств. Сравни варианты оплаты с исполнением. Следи за 110 картами и 46 билетами.
 
-Inspect bot inputs and imported queries. Run equal-observation cases with different hidden states. Confirm that UI handlers emit commands and do not change scores, resources or movement. Verify complete human turns and restore after a partial draw.
+Длиннейший путь проверь отдельным полным перебором на малых графах, включая циклы и развилки. Для станции нужен один выбор линии на весь набор билетов.
 
-For an online milestone, inspect packets for private information and exercise duplicate commit, restart and changed controlEpoch. Use the actual clients and persistence layer, not only mocked handlers.
+Проверь входы бота: одинаковое наблюдение должно давать одинаковое решение при разных скрытых состояниях. UI не меняет владельца, ресурсы или счёт самостоятельно.
 
-Separate a defect from a balance hypothesis. Each defect includes trigger, expected rule, observed result, owning file and a minimal test or browser reproduction. A tuning suggestion includes measured evidence or states that it needs playtests. Keep fixes within assigned ownership.
+В браузере выполни действия игрока, ручную оплату, первое обучение и восстановление частичного добора, билетов и тоннеля. Перезапуск должен очистить старый выбор; обучение не заменяет обычное сохранение.
 
-Return blocking defects first, followed by completed scenarios and untested limits. Passing unit tests alone does not establish browser playability or multiplayer recovery.
+Каждый дефект описывает действие, ожидаемое правило, наблюдаемый результат, файл-владелец и воспроизведение. Гипотеза о сложности требует человеческих партий; партии ботов подтверждают только измеренное поведение политик.
+
+Верни блокирующие ошибки, пройденные сценарии и непроверенные границы. Не считай старые отчёты эвакуационной версии доказательствами Europe. Для будущего онлайна отдельно проверяются персональные пакеты, повторные команды и восстановление сервера.

@@ -1,4 +1,4 @@
 interface:
-  display_name: "Last Train Core"
-  short_description: "Implement rules, routing and state invariants"
-  default_prompt: "Use $lt-core to implement the assigned Last Train rule and verify its phase boundaries."
+  display_name: 'Europe: ядро'
+  short_description: 'Классические правила, маршруты и инварианты'
+  default_prompt: 'Используй $lt-core для назначенного правила Europe 2019 и проверки границ его фаз.'

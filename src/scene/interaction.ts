@@ -1,8 +1,5 @@
-import type { District } from '../shared/types';
-
-// Presentation intents only. App translates these into core-validated commands.
 export type TableInteraction = {
-  kind: 'station' | 'edge' | 'train' | 'market' | 'deck' | 'card' | 'control' | 'objective';
+  kind: 'station' | 'edge' | 'market' | 'deck' | 'card' | 'control' | 'objective';
   id: string;
 };
 export type TableControl = {
@@ -13,12 +10,14 @@ export type TableControl = {
   placement?: 'paper' | 'dock' | 'bell';
 };
 export type TableGoal = {
-  id: District;
+  id: string;
   label: string;
   progress: string;
   selected: boolean;
   enabled: boolean;
   completed?: boolean;
+  points: number;
+  long?: boolean;
 };
 export type TableView = {
   headline: string;
@@ -26,12 +25,10 @@ export type TableView = {
   detailLines: string[];
   controls: TableControl[];
   goals: TableGoal[];
-  selectedTrainId: string | null;
   routeStationIds: string[];
   enabledMarketIndices: number[];
   deckEnabled: boolean;
-  discardEnabled: boolean;
   enabledEdgeIds: string[];
-  enabledTrainIds: string[];
-  highlightedDistrict?: District | null;
+  selectedCardIds: string[];
+  revealedCards?: import('../shared/types').Card[];
 };

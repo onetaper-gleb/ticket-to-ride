@@ -1,32 +1,33 @@
 import * as THREE from 'three';
 import type { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import type { CardColor, Observation, Station } from '../shared/types';
+import type { CardColor, Observation } from '../shared/types';
 import type { TableInteraction, TableView } from './interaction';
 import { buildDispatcher } from './characters';
 
 export const railColors: Record<string, string> = {
-  red: '#a34d3c',
-  blue: '#476b83',
-  green: '#5c7751',
-  yellow: '#b58a38',
-  gray: '#777c76',
-  wild: '#554d65',
+  red: '#b54e3d',
+  blue: '#4a80ab',
+  green: '#4b805f',
+  yellow: '#d9b44c',
+  orange: '#d98643',
+  purple: '#b57da5',
+  black: '#33383a',
+  white: '#ebe3cd',
+  gray: '#89877a',
+  wild: '#a68d52',
 };
 const cardNames: Record<CardColor, string> = {
-  red: 'СТАЛЬ',
-  blue: 'ПИТАНИЕ',
-  green: 'ДЕРЕВО',
-  yellow: 'ИНСТРУМЕНТ',
-  wild: 'РЕЗЕРВ',
+  red: 'КРАСНЫЙ',
+  blue: 'СИНИЙ',
+  green: 'ЗЕЛЁНЫЙ',
+  yellow: 'ЖЁЛТЫЙ',
+  orange: 'ОРАНЖЕВЫЙ',
+  purple: 'РОЗОВЫЙ',
+  black: 'ЧЁРНЫЙ',
+  white: 'БЕЛЫЙ',
+  wild: 'ЛОКОМОТИВ',
 };
-const cardUses: Record<CardColor, string> = {
-  red: 'Красные линии',
-  blue: 'Синие линии',
-  green: 'Зелёные линии',
-  yellow: 'Жёлтые линии',
-  wild: 'Любой цвет',
-};
-export type MapSelection = { kind: 'station' | 'edge' | 'train'; id: string } | null;
+export type MapSelection = { kind: 'station' | 'edge'; id: string } | null;
 export type CardMesh = { group: THREE.Group; cardId: string; baseY: number; baseZ: number };
 export type Engine = {
   scene: THREE.Scene;
@@ -114,118 +115,66 @@ export function textureFromCanvas(
 // Locally drawn supply documents; no downloaded illustrations or hidden font fetches.
 export function cardPrint(color: CardColor, back = false, maxAnisotropy = 4) {
   const texture = textureFromCanvas((ctx) => {
-    ctx.fillStyle = back ? '#25312e' : '#e7dfcc';
+    ctx.fillStyle = back ? '#263833' : '#eee5cf';
     ctx.fillRect(0, 0, 512, 768);
-    ctx.strokeStyle = back ? '#9eaa92' : '#b7ad98';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = back ? '#c1b891' : '#ac9e7b';
+    ctx.lineWidth = 4;
     ctx.strokeRect(22, 22, 468, 724);
-    ctx.strokeRect(30, 30, 452, 708);
+    ctx.textAlign = 'center';
+    const sans = '"IBM Plex Sans", Arial, sans-serif';
     if (back) {
-      ctx.translate(256, 384);
-      ctx.strokeStyle = '#c7c2a7';
-      for (let i = -3; i <= 3; i++) {
+      ctx.strokeStyle = '#8b967e';
+      for (let i = -6; i <= 6; i++) {
         ctx.beginPath();
-        ctx.moveTo(i * 42 - 145, -270);
-        ctx.lineTo(i * 42 + 145, 270);
+        ctx.moveTo(60, 384 + i * 38);
+        ctx.lineTo(452, 384 - i * 38);
         ctx.stroke();
       }
-      ctx.fillStyle = '#25312e';
-      ctx.fillRect(-218, -94, 436, 188);
-      ctx.strokeRect(-218, -94, 436, 188);
-      ctx.fillStyle = '#d5cfb5';
-      ctx.textAlign = 'center';
-      ctx.font = '64px "IBM Plex Sans", Arial, sans-serif';
-      ctx.fillText('МАТЕРИАЛЫ', 0, -6);
-      ctx.font = '40px "IBM Plex Sans", Arial, sans-serif';
-      ctx.fillText('Речной', 0, 56);
+      ctx.fillStyle = '#263833';
+      ctx.fillRect(30, 280, 452, 190);
+      ctx.fillStyle = '#e0d7b9';
+      ctx.font = `64px ${sans}`;
+      ctx.fillText('ВАГОНЫ', 256, 355);
+      ctx.font = `40px ${sans}`;
+      ctx.fillText('EUROPE · 1900', 256, 420);
       return;
     }
-    ctx.fillStyle = railColors[color];
-    ctx.fillRect(34, 34, 444, 116);
-    ctx.fillStyle = color === 'yellow' ? '#26352f' : '#fff7e4';
-    ctx.font = '68px "IBM Plex Sans", Arial, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(cardNames[color], 256, 115);
-    ctx.fillStyle = '#353b32';
-    ctx.font = '44px "IBM Plex Mono", Consolas, monospace';
-    ctx.fillText('1 КАРТА', 256, 217);
-    ctx.save();
-    ctx.translate(256, 399);
-    ctx.strokeStyle = railColors[color];
-    ctx.fillStyle = railColors[color];
-    ctx.lineWidth = 8;
-    ctx.lineCap = 'round';
-    if (color === 'red') {
-      for (const x of [-80, 80]) {
-        ctx.strokeRect(x - 13, -135, 26, 270);
-        ctx.fillRect(x - 28, -135, 56, 13);
-        ctx.fillRect(x - 28, 122, 56, 13);
-      }
-      for (let y = -92; y <= 92; y += 46) {
-        ctx.fillStyle = '#998c72';
-        ctx.fillRect(-112, y - 8, 224, 16);
-      }
-    } else if (color === 'blue') {
+    ctx.fillStyle = '#35413a';
+    ctx.font = `54px ${sans}`;
+    ctx.fillText(cardNames[color], 256, 103);
+    ctx.font = `42px ${sans}`;
+    ctx.fillText(color === 'wild' ? 'Любой цвет' : '1 вагон', 256, 164);
+    const colors =
+      color === 'wild'
+        ? ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'black', 'white']
+        : [color];
+    const stripeHeight = 235 / colors.length;
+    colors.forEach((item, i) => {
+      ctx.fillStyle = railColors[item];
+      ctx.fillRect(68, 243 + i * stripeHeight, 376, stripeHeight + 1);
+    });
+    ctx.strokeStyle = '#263833';
+    ctx.lineWidth = 9;
+    ctx.strokeRect(68, 243, 376, 235);
+    ctx.fillStyle = '#eae5d3';
+    for (let i = 0; i < 4; i++) ctx.fillRect(92 + i * 87, 272, 56, 68);
+    ctx.fillStyle = '#263833';
+    for (const x of [138, 374]) {
       ctx.beginPath();
-      ctx.moveTo(38, -148);
-      ctx.lineTo(-75, 19);
-      ctx.lineTo(-8, 19);
-      ctx.lineTo(-36, 148);
-      ctx.lineTo(78, -24);
-      ctx.lineTo(9, -24);
-      ctx.closePath();
-      ctx.stroke();
-    } else if (color === 'green') {
-      for (let i = 0; i < 3; i++) {
-        ctx.save();
-        ctx.translate(-20 + i * 20, -60 + i * 56);
-        ctx.rotate(-0.24);
-        ctx.strokeRect(-118, -30, 230, 60);
-        ctx.lineWidth = 2;
-        for (let j = 0; j < 4; j++) {
-          ctx.beginPath();
-          ctx.moveTo(-98, -18 + j * 12);
-          ctx.lineTo(90, -15 + j * 12);
-          ctx.stroke();
-        }
-        ctx.restore();
-      }
-    } else if (color === 'yellow') {
-      ctx.save();
-      ctx.rotate(0.55);
-      ctx.strokeRect(-17, -60, 34, 204);
-      ctx.beginPath();
-      ctx.moveTo(-55, -143);
-      ctx.lineTo(-55, -77);
-      ctx.lineTo(-16, -43);
-      ctx.lineTo(16, -43);
-      ctx.lineTo(55, -77);
-      ctx.lineTo(55, -143);
-      ctx.lineTo(23, -112);
-      ctx.lineTo(-23, -112);
-      ctx.closePath();
-      ctx.stroke();
-      ctx.restore();
-    } else {
-      ctx.strokeRect(-110, -102, 220, 204);
-      ctx.strokeRect(-26, -102, 52, 204);
-      ctx.beginPath();
-      ctx.moveTo(-110, -22);
-      ctx.lineTo(110, -22);
-      ctx.stroke();
-      ctx.font = '115px "IBM Plex Sans", Arial, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('+', 0, 79);
+      ctx.arc(x, 484, 36, 0, Math.PI * 2);
+      ctx.fill();
     }
-    ctx.restore();
-    ctx.fillStyle = '#353b32';
-    ctx.textAlign = 'center';
-    ctx.font = '52px "IBM Plex Sans", Arial, sans-serif';
-    ctx.fillText('РЕМОНТ', 256, 642);
-    ctx.font = '44px "IBM Plex Sans", Arial, sans-serif';
-    ctx.fillText(cardUses[color], 256, 702);
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(48, 530);
+    ctx.lineTo(464, 530);
+    ctx.stroke();
+    ctx.font = `48px ${sans}`;
+    ctx.fillText(color === 'wild' ? 'ЗАМЕНЯЕТ ВАГОН' : 'ЗАНЯТЬ МАРШРУТ', 256, 609);
+    ctx.font = `36px ${sans}`;
+    ctx.fillText(color === 'wild' ? 'Открытый: весь добор' : 'Карты одного цвета', 256, 675);
   });
-  texture.anisotropy = Math.max(1, Math.min(8, maxAnisotropy));
+  texture.anisotropy = Math.min(maxAnisotropy, 8);
   return texture;
 }
 
@@ -292,27 +241,29 @@ function placard(
   group.rotation.x = -Math.PI / 4;
   const detailLines = Array.isArray(subtitle) ? subtitle : subtitle ? [subtitle] : [];
   const printHeight = detailLines.length ? 240 : 144;
+  // Match canvas pixels to the physical face so narrow labels retain letter proportions.
+  const printWidth = Math.round((printHeight * (width - 0.025)) / (height - 0.025));
   const texture = textureFromCanvas(
     (ctx) => {
       ctx.fillStyle = selected ? '#d8bc78' : '#e8dfc7';
-      ctx.fillRect(0, 0, 768, printHeight);
+      ctx.fillRect(0, 0, printWidth, printHeight);
       ctx.strokeStyle = '#9c927b';
       ctx.lineWidth = 3;
-      ctx.strokeRect(8, 8, 752, printHeight - 16);
+      ctx.strokeRect(8, 8, printWidth - 16, printHeight - 16);
       ctx.fillStyle = '#263935';
       ctx.textAlign = 'center';
       let titleSize = detailLines.length ? 62 : 76;
       ctx.font = `${titleSize}px "IBM Plex Sans", Arial, sans-serif`;
-      while (titleSize > 40 && ctx.measureText(title).width > 716) {
+      while (titleSize > 40 && ctx.measureText(title).width > printWidth - 36) {
         titleSize -= 2;
         ctx.font = `${titleSize}px "IBM Plex Sans", Arial, sans-serif`;
       }
-      ctx.fillText(title, 384, detailLines.length ? 81 : 96);
+      ctx.fillText(title, printWidth / 2, detailLines.length ? 81 : 96);
       ctx.font = '44px "IBM Plex Sans", Arial, sans-serif';
       ctx.fillStyle = '#665e4b';
-      detailLines.forEach((line, index) => ctx.fillText(line, 384, 144 + index * 57));
+      detailLines.forEach((line, index) => ctx.fillText(line, printWidth / 2, 144 + index * 57));
     },
-    768,
+    printWidth,
     printHeight,
   );
   const backing = new THREE.Mesh(
@@ -396,378 +347,250 @@ export function buildBoard(
 ) {
   disposeObjects(eng.board);
   eng.board.clear();
-  eng.board.scale.set(0.74, 1, 0.74);
-  eng.board.position.set(0, 0, -1.8);
   eng.pickables = [];
-  const xs = observation.stations.map((station) => station.x),
-    zs = observation.stations.map((station) => station.z);
-  const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs), 1);
-  eng.center.set(
-    (Math.max(...xs) + Math.min(...xs)) / 2,
-    0,
-    (Math.max(...zs) + Math.min(...zs)) / 2,
+  const { box, mesh } = primitiveFactory(eng.board);
+  box([23.1, 0.45, 17.1], '#8a7751', [0, -0.95, 0]);
+  const atlas = textureFromCanvas(
+    (ctx) => {
+      const w = 2048,
+        h = 1536;
+      ctx.fillStyle = '#839aa0';
+      ctx.fillRect(0, 0, w, h);
+      const polygon = (points: [number, number][], color: string) => {
+        ctx.beginPath();
+        points.forEach(([x, z], i) => {
+          const px = ((x + 11.5) / 23) * w,
+            py = ((z + 8.5) / 17) * h;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = '#697b73';
+        ctx.lineWidth = 5;
+        ctx.stroke();
+      };
+      polygon(
+        [
+          [-7.5, -1.7],
+          [-5, -3.3],
+          [-3, -3.2],
+          [-2.6, -4.3],
+          [-1.8, -4.3],
+          [-1.4, -2.7],
+          [1.2, -3.1],
+          [1.3, -4.5],
+          [2.5, -5.1],
+          [2.8, -6.4],
+          [5.5, -7.0],
+          [11.5, -7.0],
+          [11.5, 8.5],
+          [4, 8.5],
+          [2.5, 7],
+          [2, 5.4],
+          [0.9, 3.8],
+          [-0.7, 2.8],
+          [-1.1, 4],
+          [-0.7, 5.3],
+          [0.5, 5.4],
+          [0, 6.2],
+          [-1.9, 4.8],
+          [-2.7, 2.9],
+          [-4, 3.3],
+          [-5, 5],
+          [-6.7, 5.8],
+          [-8.4, 7.4],
+          [-10.5, 6.2],
+          [-10.5, 3],
+          [-7, 0.6],
+        ],
+        '#c9c8a4',
+      );
+      polygon(
+        [
+          [-8, -6],
+          [-7, -7],
+          [-6.5, -5],
+          [-5.7, -3.1],
+          [-7, -1.7],
+          [-8, -2.4],
+          [-7.5, -4],
+        ],
+        '#c9c8a4',
+      );
+      polygon(
+        [
+          [-2.9, -8.5],
+          [0, -8.5],
+          [1, -6],
+          [0, -3.5],
+          [-1.2, -2.8],
+          [-2, -4.5],
+        ],
+        '#c9c8a4',
+      );
+      polygon(
+        [
+          [0.8, 3.3],
+          [1.4, 4],
+          [2.5, 5.5],
+          [2.3, 6.5],
+          [1.4, 5.4],
+          [0.5, 4.5],
+        ],
+        '#b5b68f',
+      );
+      ctx.strokeStyle = '#74878b';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < w; x += 128) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      for (let y = 0; y < h; y += 128) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#4c656b';
+      ctx.font = '48px "IBM Plex Mono", monospace';
+      ctx.fillText('ATLAS / EUROPE', 54, 1460);
+      ctx.font = '28px "IBM Plex Sans", sans-serif';
+      ctx.fillText('ЖЕЛЕЗНЫЕ ДОРОГИ · 1900', 56, 1508);
+    },
+    2048,
+    1536,
   );
-  eng.scale = 23 / span;
-  const point = (station: Station) =>
-    new THREE.Vector3(
-      (station.x - eng.center.x) * eng.scale,
-      station.height * 0.65,
-      (station.z - eng.center.z) * eng.scale,
-    );
-  const { box, mesh, material } = primitiveFactory(eng.board);
-  const baseGeometry = new THREE.ExtrudeGeometry(roundedShape(25, 29, 0.8), {
-    depth: 0.45,
-    bevelEnabled: true,
-    bevelThickness: 0.12,
-    bevelSize: 0.12,
-    bevelSegments: 2,
-    curveSegments: 5,
-  });
-  const base = new THREE.Mesh(baseGeometry, material('#c1b797'));
-  base.rotation.x = -Math.PI / 2;
-  base.position.y = -1.18;
-  base.receiveShadow = true;
-  base.castShadow = true;
-  eng.board.add(base);
-  box([23.7, 0.17, 27.7], '#e0d8c0', [0, -0.58, 0]);
-  for (const band of [
-    { z: -8.2, depth: 7.8, height: 1.17, color: '#c4c2a1' },
-    { z: -1.75, depth: 5.0, height: 0.8, color: '#cac7ae' },
-    { z: 4.1, depth: 6.7, height: 0.48, color: '#d3cdb7' },
-    { z: 9.9, depth: 4.9, height: 0.19, color: '#c7c1b0' },
-  ])
-    box([23.1, band.height + 0.5, band.depth], band.color, [0, (band.height - 0.5) / 2, band.z]);
-  const flooded = observation.stations.filter((station) => station.flooded);
-  const waterHeight = flooded.length
-    ? Math.max(...flooded.map((station) => station.height * 0.65)) + 0.19
-    : -0.42;
-  const water = new THREE.Mesh(
-    new THREE.BoxGeometry(24, 0.07, 28.1),
-    new THREE.MeshStandardMaterial({
-      color: '#4e8c92',
-      transparent: true,
-      opacity: flooded.length ? 0.72 : 0.45,
-      metalness: 0.1,
-      roughness: 0.33,
-      depthWrite: false,
-    }),
+  const map = new THREE.Mesh(
+    new THREE.PlaneGeometry(23, 17),
+    new THREE.MeshBasicMaterial({ map: atlas, toneMapped: false }),
   );
-  water.position.y = waterHeight;
-  eng.board.add(water);
-  box([0.5, 0.025, 26.4], '#9cafa2', [10.95, 0.11, 0]);
-  box([0.35, 0.035, 3.2], '#779da0', [-10.8, 0.19, 10.3]);
-  const tieTransforms: THREE.Matrix4[] = [];
-  const railBatches = new Map<string, THREE.Matrix4[]>();
-  const dummy = new THREE.Object3D();
+  map.rotation.x = -Math.PI / 2;
+  map.position.y = -0.7;
+  eng.board.add(map);
+  for (const side of [-1, 1]) {
+    box([23.1, 0.11, 0.08], '#c7b786', [0, -0.62, side * 8.48]);
+    box([0.08, 0.11, 17], '#c7b786', [side * 11.48, -0.62, 0]);
+  }
+  const cities = new Map(observation.cities.map((city) => [city.id, city]));
   for (const edge of observation.edges) {
-    const a = observation.stations.find((station) => station.id === edge.a),
-      b = observation.stations.find((station) => station.id === edge.b);
-    if (!a || !b) continue;
-    const pa = point(a).add(new THREE.Vector3(0, 0.18, 0)),
-      pb = point(b).add(new THREE.Vector3(0, 0.18, 0));
-    const direction = pb.clone().sub(pa),
-      distance = direction.length(),
-      side = new THREE.Vector3(-direction.z, 0, direction.x).normalize();
-    const closed = a.flooded || b.flooded,
-      selected =
-        (selection?.kind === 'edge' && selection.id === edge.id) ||
-        Boolean(
-          view?.routeStationIds.some(
-            (id, index, route) =>
-              (id === edge.a && route[index + 1] === edge.b) ||
-              (id === edge.b && route[index + 1] === edge.a),
-          ),
+    const a = cities.get(edge.a)!,
+      b = cities.get(edge.b)!;
+    const dx = b.x - a.x,
+      dz = b.z - a.z,
+      distance = Math.hypot(dx, dz);
+    const pair = edge.parallel
+      ? observation.edges.filter((other) => other.parallel === edge.parallel)
+      : [edge];
+    const lane = edge.parallel
+      ? (pair.findIndex((other) => other.id === edge.id) - (pair.length - 1) / 2) * 0.42
+      : 0;
+    const x = (a.x + b.x) / 2 - (dz / distance) * lane,
+      z = (a.z + b.z) / 2 + (dx / distance) * lane;
+    const group = new THREE.Group();
+    group.position.set(x, -0.56, z);
+    group.rotation.y = Math.atan2(dx, dz);
+    eng.board.add(group);
+    const selected = selection?.kind === 'edge' && selection.id === edge.id;
+    const color =
+      edge.owner !== null
+        ? observation.players.find((player) => player.id === edge.owner)!.color
+        : railColors[edge.color];
+    const halo = box([0.55, 0.05, Math.max(0.2, distance - 0.4)], '#e8bf67', [0, -0.06, 0], group);
+    halo.userData.highlightForTable = { kind: 'edge', id: edge.id };
+    halo.userData.selected = selected;
+    halo.visible = selected;
+    const step = Math.max(0.12, (distance - 0.48) / edge.length);
+    for (let i = 0; i < edge.length; i++) {
+      const at = (i - (edge.length - 1) / 2) * step;
+      const sleeper = box([0.28, 0.1, step * 0.8], color, [0, 0, at], group);
+      sleeper.userData.interaction = { kind: 'edge', id: edge.id };
+      sleeper.userData.enabled = true;
+      eng.pickables.push(sleeper);
+      for (const side of [-1, 1])
+        box(
+          [0.035, 0.025, step * 0.75],
+          edge.tunnel ? '#2d3737' : '#bdb796',
+          [side * 0.09, 0.064, at],
+          group,
         );
-    const color = selected
-      ? '#d6b968'
-      : closed
-        ? '#687e7b'
-        : edge.open
-          ? '#c0b7a0'
-          : railColors[edge.color];
-    const quaternion = new THREE.Quaternion().setFromUnitVectors(
-      new THREE.Vector3(0, 1, 0),
-      direction.clone().normalize(),
-    );
-    const midpoint = pa.clone().lerp(pb, 0.5),
-      transforms = railBatches.get(color) ?? [];
-    for (const sign of [-1, 1]) {
-      dummy.position.copy(midpoint).addScaledVector(side, sign * 0.11);
-      dummy.quaternion.copy(quaternion);
-      dummy.scale.set(edge.open ? 0.043 : 0.027, distance, edge.open ? 0.043 : 0.027);
-      dummy.updateMatrix();
-      transforms.push(dummy.matrix.clone());
+      if (edge.owner !== null) {
+        box([0.25, 0.17, step * 0.64], color, [0, 0.14, at], group);
+        box([0.16, 0.06, step * 0.45], '#d8c9a1', [0, 0.26, at], group);
+      } else if (i < edge.ferries) {
+        box([0.22, 0.06, step * 0.42], '#e7c260', [0, 0.1, at], group);
+        box([0.07, 0.09, step * 0.18], '#3a4643', [0, 0.18, at], group);
+      }
     }
-    railBatches.set(color, transforms);
-    const tieCount = Math.max(3, Math.floor(distance * 2.1));
-    for (let i = 0; i < tieCount; i++) {
-      if (!edge.open && i % 3 !== 0) continue;
-      dummy.position.copy(pa.clone().lerp(pb, (i + 0.5) / tieCount));
-      dummy.position.y -= 0.04;
-      dummy.rotation.set(0, -Math.atan2(direction.z, direction.x), 0);
-      dummy.scale.set(0.13, 0.065, 0.53);
-      dummy.updateMatrix();
-      tieTransforms.push(dummy.matrix.clone());
-    }
-    const hit = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.2, 0.2, distance, 5),
-      new THREE.MeshBasicMaterial({
-        transparent: true,
-        opacity: 0,
-        depthWrite: false,
-        colorWrite: false,
-      }),
-    );
-    hit.position.copy(midpoint);
-    hit.quaternion.copy(quaternion);
-    hit.userData.selection = { kind: 'edge', id: edge.id };
-    hit.userData.interaction = { kind: 'edge', id: edge.id } satisfies TableInteraction;
+    const hit = box([0.45, 0.08, Math.max(0.2, distance - 0.32)], '#ffffff', [0, 0.02, 0], group);
+    hit.material.transparent = true;
+    hit.material.opacity = 0;
+    hit.material.depthWrite = false;
+    hit.castShadow = false;
+    hit.userData.interaction = { kind: 'edge', id: edge.id };
     hit.userData.enabled = true;
-    eng.board.add(hit);
     eng.pickables.push(hit);
-    if (!edge.open && !closed) {
-      const marker = mesh('cylinder', [0.19, 0.095, 0.19], railColors[edge.color], [
-        midpoint.x,
-        midpoint.y + 0.06,
-        midpoint.z,
-      ]);
-      marker.userData.selection = { kind: 'edge', id: edge.id };
-      marker.userData.interaction = hit.userData.interaction;
-      marker.userData.enabled = true;
-      eng.pickables.push(marker);
-      for (let i = 0; i < edge.cost; i++)
-        mesh('sphere', [0.043, 0.043, 0.043], '#eee7d3', [
-          midpoint.x + (i - (edge.cost - 1) / 2) * 0.1,
-          midpoint.y + 0.145,
-          midpoint.z,
-        ]);
+    if (detailed && selected) {
+      const type = edge.tunnel ? ' · тоннель' : edge.ferries ? ` · паром ${edge.ferries}` : '';
+      const face = placard(
+        eng.board,
+        `${edge.length} вагонов${type}`,
+        [],
+        2.4,
+        0.4,
+        new THREE.Vector3(x, 0.3, z),
+        { kind: 'edge', id: edge.id },
+        true,
+      );
+      eng.pickables.push(face);
     }
   }
-  const ties = new THREE.InstancedMesh(
-    new THREE.BoxGeometry(1, 1, 1),
-    material('#5c5544'),
-    tieTransforms.length,
-  );
-  tieTransforms.forEach((transform, index) => ties.setMatrixAt(index, transform));
-  ties.castShadow = true;
-  ties.receiveShadow = true;
-  eng.board.add(ties);
-  for (const [color, transforms] of railBatches) {
-    const rails = new THREE.InstancedMesh(
-      new THREE.CylinderGeometry(1, 1, 1, 5),
-      material(color, 0.6, 0.22),
-      transforms.length,
-    );
-    transforms.forEach((transform, index) => rails.setMatrixAt(index, transform));
-    rails.castShadow = true;
-    eng.board.add(rails);
-  }
-  for (const station of observation.stations) {
-    const p = point(station),
-      level = p.y;
-    const platform = box(
-      [1.9, 0.17, 1.05],
-      station.flooded ? '#728985' : station.safe ? '#b5a16b' : '#b8af98',
-      [p.x, level + 0.14, p.z],
-    );
-    platform.userData.selection = { kind: 'station', id: station.id };
-    platform.userData.interaction = { kind: 'station', id: station.id } satisfies TableInteraction;
-    platform.userData.enabled = true;
-    eng.pickables.push(platform);
-    const target = new THREE.Mesh(
-      new THREE.BoxGeometry(2.4, 1.35, 1.8),
-      new THREE.MeshBasicMaterial({
-        transparent: true,
-        opacity: 0,
-        depthWrite: false,
-        colorWrite: false,
-      }),
-    );
-    target.position.set(p.x, level + 0.6, p.z - 0.28);
-    target.userData.selection = platform.userData.selection;
-    target.userData.interaction = platform.userData.interaction;
-    target.userData.enabled = true;
-    eng.board.add(target);
-    eng.pickables.push(target);
-    const buildingColor = station.flooded ? '#70817a' : station.safe ? '#e2d6b4' : '#d3c6a7';
-    box([0.72, 0.58, 0.63], buildingColor, [p.x - 0.35, level + 0.5, p.z - 0.54]);
-    const roof = mesh('cone', [0.59, 0.34, 0.52], station.flooded ? '#637774' : '#697268', [
-      p.x - 0.35,
-      level + 0.98,
-      p.z - 0.54,
+  for (const city of observation.cities) {
+    const selected = selection?.kind === 'station' && selection.id === city.id;
+    const marked = view?.routeStationIds.includes(city.id);
+    const pin = mesh('cylinder', [0.17, 0.16, 0.17], marked || selected ? '#d3a951' : '#635d46', [
+      city.x,
+      -0.35,
+      city.z,
     ]);
-    roof.rotation.y = Math.PI / 4;
-    box([0.13, 0.25, 0.018], '#677067', [p.x - 0.35, level + 0.42, p.z - 0.22]);
-    for (const x of [-0.22, 0.22])
-      box([0.1, 0.14, 0.02], '#8e997f', [p.x - 0.35 + x, level + 0.6, p.z - 0.22]);
-    if (station.safe) {
-      const tower = box([0.46, 0.96, 0.4], '#d4c7a5', [p.x + 0.57, level + 0.65, p.z - 0.53]);
-      const flag = box([0.3, 0.18, 0.035], '#758654', [p.x + 0.74, level + 1.49, p.z - 0.51]);
-      tower.userData.selection = platform.userData.selection;
-      eng.pickables.push(tower, flag);
-      mesh('cylinder', [0.023, 0.66, 0.023], '#756f5c', [p.x + 0.57, level + 1.39, p.z - 0.51]);
-    } else if (!station.flooded) {
-      box([0.45, 0.39, 0.48], '#b5b394', [p.x + 1.1, level + 0.31, p.z - 0.32]).rotation.y = 0.12;
-      mesh('cone', [0.37, 0.25, 0.4], '#7a7663', [p.x + 1.1, level + 0.64, p.z - 0.32]).rotation.y =
-        Math.PI / 4;
-      if (station.district === 'garden') {
-        mesh('cylinder', [0.04, 0.34, 0.04], '#84735a', [p.x + 1.25, level + 0.29, p.z + 0.75]);
-        mesh('sphere', [0.27, 0.4, 0.27], '#819068', [p.x + 1.25, level + 0.66, p.z + 0.75]);
-      }
+    pin.userData.interaction = { kind: 'station', id: city.id };
+    pin.userData.enabled = true;
+    eng.pickables.push(pin);
+    const cap = mesh('sphere', [0.16, 0.08, 0.16], '#e7d8b0', [city.x, -0.25, city.z]);
+    cap.userData.interaction = { kind: 'station', id: city.id };
+    cap.userData.enabled = true;
+    eng.pickables.push(cap);
+    const owner = observation.players.find((player) => player.stations.includes(city.id));
+    if (owner) {
+      const group = new THREE.Group();
+      group.position.set(city.x, -0.4, city.z);
+      eng.board.add(group);
+      box([0.44, 0.3, 0.34], owner.color, [0, 0.21, 0], group);
+      const roof = mesh('cone', [0.37, 0.25, 0.3], '#514d3b', [0, 0.5, 0], group);
+      roof.rotation.y = Math.PI / 4;
+      box([0.09, 0.18, 0.02], '#e3d4ae', [0, 0.18, 0.18], group);
     }
-    station.groups.forEach((group, index) => {
-      const x = p.x + 0.35 + (index % 2) * 0.25,
-        z = p.z + 0.11 + Math.floor(index / 2) * 0.3;
-      mesh('cylinder', [0.085, 0.23, 0.085], group.priority ? '#ae7139' : '#687764', [
-        x,
-        level + 0.37,
-        z,
-      ]);
-      mesh('sphere', [0.086, 0.086, 0.086], '#d4b696', [x, level + 0.56, z]);
-    });
-    const stationSelected = selection?.kind === 'station' && selection.id === station.id;
-    const stationOnRoute = view?.routeStationIds.includes(station.id) ?? false;
-    const stationInDistrict = Boolean(
-      view?.highlightedDistrict && station.district === view.highlightedDistrict,
-    );
-    const stationDetails = station.safe
-      ? ['Убежище']
-      : station.flooded
-        ? ['Затоплено · рейсы закрыты']
-        : [
-            `Ждут: ${station.groups.length} ${
-              station.groups.length === 1
-                ? 'группа'
-                : station.groups.length >= 2 && station.groups.length <= 4
-                  ? 'группы'
-                  : 'групп'
-            }`,
-            `Вода после раунда ${station.floodRound}`,
-          ];
-    const plate = placard(
+    const width = THREE.MathUtils.clamp(0.35 + city.name.length * 0.14, 1.15, 2.15);
+    // Keep the one-car Amsterdam line exposed beside the Brussels nameplate.
+    const labelX = city.x - (city.id === 'bruxelles' ? 0.78 : 0);
+    const face = placard(
       eng.board,
-      station.name,
-      detailed ? stationDetails : '',
-      4.0,
-      detailed ? 1.25 : 0.7,
-      new THREE.Vector3(p.x, level + (detailed ? 0.67 : 0.55), p.z + 1.26),
-      platform.userData.interaction as TableInteraction,
-      stationSelected || stationInDistrict,
+      city.name,
+      [],
+      width,
+      detailed ? 0.56 : 0.47,
+      new THREE.Vector3(labelX, 0.12, city.z - (city.id === 'smolensk' ? 0.66 : 0.4)),
+      { kind: 'station', id: city.id },
+      !!(selected || marked),
     );
-    eng.pickables.push(plate);
-    {
-      const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(1.15, 0.045, 5, 42),
-        new THREE.MeshBasicMaterial({
-          color: stationInDistrict ? '#93af7b' : stationOnRoute ? '#ebba4b' : '#c89940',
-        }),
-      );
-      ring.rotation.x = Math.PI / 2;
-      ring.position.set(p.x, level + 0.28, p.z);
-      ring.userData.highlightForTable = platform.userData.interaction;
-      ring.userData.selected = stationSelected || stationOnRoute || stationInDistrict;
-      ring.visible = stationSelected || stationOnRoute || stationInDistrict;
-      eng.board.add(ring);
-    }
-    if (!station.safe) {
-      mesh('cylinder', [0.025, 0.57, 0.025], '#7c7764', [p.x - 1, level + 0.45, p.z + 0.2]);
-      box([0.28, 0.2, 0.045], station.flooded ? '#59777c' : '#b5844f', [
-        p.x - 1,
-        level + 0.67,
-        p.z + 0.2,
-      ]);
-    }
-  }
-  for (const train of observation.trains) {
-    const station = observation.stations.find((item) => item.id === train.stationId);
-    if (!station) continue;
-    const p = point(station),
-      peers = observation.trains.filter((item) => item.stationId === station.id),
-      index = peers.findIndex((item) => item.id === train.id);
-    const rowSize = Math.min(4, peers.length);
-    const x = p.x + ((index % 4) - (rowSize - 1) / 2) * 1.15,
-      z = p.z + 0.7 + Math.floor(index / 4) * 1.35,
-      y = p.y + 0.31;
-    const color = train.disabled
-      ? '#6a807b'
-      : (observation.players.find((player) => player.id === train.playerId)?.color ?? '#ddd7bb');
-    const own = train.playerId === observation.self.id;
-    const trainGroup = new THREE.Group();
-    trainGroup.position.set(x, y, z);
-    trainGroup.scale.setScalar(own ? 2.2 : 1.65);
-    eng.board.add(trainGroup);
-    const body = box([0.33, 0.26, 0.64], color, [0, 0.2, 0], trainGroup);
-    box([0.29, 0.27, 0.22], color, [0, 0.36, -0.15], trainGroup);
-    box([0.22, 0.12, 0.018], '#3e5252', [0, 0.4, -0.27], trainGroup);
-    mesh('cylinder', [0.035, 0.14, 0.035], '#354344', [0, 0.43, 0.14], trainGroup);
-    for (const side of [-1, 1])
-      for (const dz of [-0.18, 0.18])
-        mesh(
-          'cylinder',
-          [0.08, 0.06, 0.08],
-          '#354344',
-          [side * 0.185, 0.08, dz],
-          trainGroup,
-        ).rotation.z = Math.PI / 2;
-    train.cargo.forEach((group, cargoIndex) =>
-      box(
-        [0.115, 0.1, 0.11],
-        group.priority ? '#d6a657' : '#d4c6a0',
-        [(cargoIndex - 0.5) * 0.13, 0.39, 0.15],
-        trainGroup,
-      ),
-    );
-    const trainInteraction: TableInteraction = { kind: 'train', id: train.id };
-    body.userData.interaction = trainInteraction;
-    body.userData.enabled = true;
-    eng.pickables.push(body);
-    const trainHit = new THREE.Mesh(
-      new THREE.BoxGeometry(0.53, 0.7, 0.84),
-      new THREE.MeshBasicMaterial({
-        transparent: true,
-        opacity: 0,
-        depthWrite: false,
-        colorWrite: false,
-      }),
-    );
-    trainHit.position.y = 0.29;
-    trainHit.userData.interaction = trainInteraction;
-    trainHit.userData.enabled = true;
-    trainGroup.add(trainHit);
-    eng.pickables.push(trainHit);
-    const halo = new THREE.Mesh(
-      new THREE.TorusGeometry(0.43, 0.045, 5, 24),
-      new THREE.MeshBasicMaterial({ color: '#ecc566' }),
-    );
-    halo.rotation.x = Math.PI / 2;
-    halo.position.y = 0.07;
-    halo.userData.highlightForTable = trainInteraction;
-    halo.userData.selected = view?.selectedTrainId === train.id;
-    halo.visible = Boolean(halo.userData.selected);
-    trainGroup.add(halo);
-    if (own) {
-      const tag = placard(
-        trainGroup,
-        train.id.split('-').at(-1)?.toUpperCase() ?? train.id,
-        `${train.cargo.length}/2`,
-        0.8,
-        0.38,
-        new THREE.Vector3(0, 0.93, 0),
-        trainInteraction,
-        view?.selectedTrainId === train.id,
-      );
-      eng.pickables.push(tag);
-    }
-    trainGroup.traverse((object) => {
-      if (object instanceof THREE.Mesh && object !== halo) {
-        object.userData.interaction = trainInteraction;
-        object.userData.enabled = true;
-      }
-    });
+    eng.pickables.push(face);
   }
 }
 
-export function buildHand(eng: Engine, observation: Observation) {
+export function buildHand(eng: Engine, observation: Observation, selectedCardIds: string[] = []) {
   disposeObjects(eng.hand);
   eng.hand.clear();
   eng.cardPickables = [];
@@ -807,8 +630,13 @@ export function buildHand(eng: Engine, observation: Observation) {
       const centered = i - (count - 1) / 2,
         group = new THREE.Group();
       group.position.set(centered * spacing, -3.75 - Math.abs(centered) * 0.03, centered * 0.045);
-      group.rotation.z = -centered * 0.045;
-      const body = new THREE.Mesh(cardGeometry, sideMaterial);
+      group.rotation.z = -centered * Math.min(0.045, 0.8 / Math.max(count, 1));
+      const body = new THREE.Mesh(
+        cardGeometry,
+        selectedCardIds.includes(card.id)
+          ? new THREE.MeshBasicMaterial({ color: '#e8bc62' })
+          : sideMaterial,
+      );
       body.castShadow = true;
       body.receiveShadow = true;
       group.add(body);
@@ -857,7 +685,7 @@ export function buildHand(eng: Engine, observation: Observation) {
       ctx.font = '44px "IBM Plex Sans", Arial, sans-serif';
       ctx.fillText('РУКА', 256, 112);
       ctx.font = '62px "IBM Plex Sans", Arial, sans-serif';
-      ctx.fillText('Материалов', 256, 347);
+      ctx.fillText('Вагонов', 256, 347);
       ctx.fillText('нет', 256, 425);
       ctx.font = '44px "IBM Plex Sans", Arial, sans-serif';
       ctx.fillText('Возьмите карты', 256, 608);

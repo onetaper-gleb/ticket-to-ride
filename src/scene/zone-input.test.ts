@@ -73,13 +73,11 @@ describe('table regions and relative selection', () => {
       detailLines: [],
       controls: [],
       goals: [],
-      selectedTrainId: null,
       routeStationIds: [],
       enabledMarketIndices: [1, 4],
       deckEnabled: true,
-      discardEnabled: false,
       enabledEdgeIds: [],
-      enabledTrainIds: [],
+      selectedCardIds: [],
     };
     const layouts = buildZoneLayouts(observation, view);
     expect(layouts.deck).toHaveLength(6);

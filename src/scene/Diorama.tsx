@@ -40,11 +40,15 @@ interface Props {
   guidance?: { key: string; target: TableInteraction };
 }
 const materialNames = {
-  red: 'Красный материал',
-  blue: 'Синий материал',
-  green: 'Зелёный материал',
-  yellow: 'Жёлтый материал',
-  wild: 'Универсальный материал',
+  red: 'Красный вагон',
+  blue: 'Синий вагон',
+  green: 'Зелёный вагон',
+  yellow: 'Жёлтый вагон',
+  orange: 'Оранжевый вагон',
+  purple: 'Розовый вагон',
+  black: 'Чёрный вагон',
+  white: 'Белый вагон',
+  wild: 'Локомотив',
 };
 type TableHit = { interaction: TableInteraction; enabled: boolean };
 const sameInteraction = (a: TableInteraction | null, b: TableInteraction | null) =>
@@ -87,7 +91,7 @@ function AccessibleObjects({
     })),
     {
       interaction: { kind: 'deck', id: 'deck' },
-      label: 'Взять материал вслепую',
+      label: 'Взять карту вслепую',
       enabled: view.deckEnabled,
     },
     ...observation.market.map((card, index) => ({
@@ -95,26 +99,19 @@ function AccessibleObjects({
       label: `Открытая карта ${index + 1}: ${materialNames[card.color]}`,
       enabled: view.enabledMarketIndices.includes(index),
     })),
-    ...observation.trains
-      .filter((train) => train.playerId === observation.self.id)
-      .map((train) => ({
-        interaction: { kind: 'train' as const, id: train.id },
-        label: `Поезд ${train.id}. ${train.disabled ? 'Потерян' : `${train.cargo.length} групп на борту`}`,
-        enabled: !train.disabled,
-      })),
-    ...observation.stations.map((station) => ({
-      interaction: { kind: 'station' as const, id: station.id },
-      label: `${station.name}. ${station.safe ? 'Убежище' : station.flooded ? 'Закрыта водой' : `${station.groups.length} групп, закрытие после раунда ${station.floodRound}`}`,
+    ...observation.cities.map((city) => ({
+      interaction: { kind: 'station' as const, id: city.id },
+      label: `Город ${city.name}`,
       enabled: true,
     })),
     ...observation.edges.map((edge) => ({
       interaction: { kind: 'edge' as const, id: edge.id },
-      label: `Линия ${observation.stations.find((station) => station.id === edge.a)?.name} — ${observation.stations.find((station) => station.id === edge.b)?.name}. ${edge.open ? 'Открыта' : `${edge.cost} карт на ремонт`}`,
+      label: `Маршрут ${observation.cities.find((city) => city.id === edge.a)?.name} — ${observation.cities.find((city) => city.id === edge.b)?.name}. ${edge.length} вагонов${edge.tunnel ? '. Тоннель' : ''}${edge.ferries ? `. Паром: ${edge.ferries} локомотивов` : ''}${edge.owner !== null ? `. Занят: ${observation.players[edge.owner]?.name}` : view.enabledEdgeIds.includes(edge.id) ? '. Можно занять' : '. Свободен'}`,
       enabled: true,
     })),
     ...observation.self.hand.map((card, index) => ({
       interaction: { kind: 'card' as const, id: card.id },
-      label: `${view.discardEnabled ? 'Сбросить' : 'Осмотреть'} карту ${index + 1}: ${materialNames[card.color]}`,
+      label: `Карта в руке ${index + 1}: ${materialNames[card.color]}`,
       enabled: true,
     })),
   ];
@@ -146,14 +143,14 @@ function Fallback({
   view,
   onInteract,
 }: Pick<Props, 'observation' | 'view' | 'onInteract'>) {
-  const xs = observation.stations.map((station) => station.x),
-    zs = observation.stations.map((station) => station.z);
+  const xs = observation.cities.map((station) => station.x),
+    zs = observation.cities.map((station) => station.z);
   const minX = Math.min(...xs),
     minZ = Math.min(...zs),
     spanX = Math.max(...xs) - minX || 1,
     spanZ = Math.max(...zs) - minZ || 1;
   const xy = (id: string) => {
-    const station = observation.stations.find((item) => item.id === id)!;
+    const station = observation.cities.find((item) => item.id === id)!;
     return {
       x: 50 + ((station.x - minX) / spanX) * 700,
       y: 45 + ((station.z - minZ) / spanZ) * 430,
@@ -162,7 +159,7 @@ function Fallback({
   const activate = (kind: 'station' | 'edge', id: string) => onInteract({ kind, id });
   return (
     <div className="map-fallback tabletop-fallback">
-      <span className="fallback-note">Схема города · 3D недоступен в этом браузере</span>
+      <span className="fallback-note">Карта Европы · 3D недоступен в этом браузере</span>
       <h2>{view.headline}</h2>
       <p>{view.notice}</p>
       {view.detailLines.map((line, index) => (
@@ -172,6 +169,20 @@ function Fallback({
         {observation.edges.map((edge) => {
           const a = xy(edge.a),
             b = xy(edge.b);
+          if (edge.parallel) {
+            const siblings = observation.edges.filter((item) => item.parallel === edge.parallel);
+            const lane =
+              (siblings.findIndex((item) => item.id === edge.id) - (siblings.length - 1) / 2) * 12;
+            const dx = b.x - a.x,
+              dy = b.y - a.y,
+              length = Math.hypot(dx, dy);
+            const ox = (-dy / length) * lane,
+              oy = (dx / length) * lane;
+            a.x += ox;
+            b.x += ox;
+            a.y += oy;
+            b.y += oy;
+          }
           return (
             <g
               key={edge.id}
@@ -191,15 +202,19 @@ function Fallback({
                 y1={a.y}
                 x2={b.x}
                 y2={b.y}
-                stroke={railColors[edge.color]}
-                strokeWidth={edge.open ? 5 : 3}
-                strokeDasharray={edge.open ? '' : '8 6'}
+                stroke={
+                  edge.owner !== null
+                    ? observation.players.find((player) => player.id === edge.owner)?.color
+                    : railColors[edge.color]
+                }
+                strokeWidth={edge.owner !== null ? 5 : 3}
+                strokeDasharray={edge.owner !== null ? '' : '8 6'}
               />
-              <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent" strokeWidth="22" />
+              <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent" strokeWidth="10" />
             </g>
           );
         })}
-        {observation.stations.map((station) => {
+        {observation.cities.map((station) => {
           const p = xy(station.id);
           return (
             <g
@@ -215,17 +230,9 @@ function Fallback({
               }}
               aria-label={station.name}
             >
-              <circle
-                cx={p.x}
-                cy={p.y}
-                r={15}
-                fill={station.flooded ? '#738989' : station.safe ? '#b6a578' : '#d7cfb4'}
-              />
+              <circle cx={p.x} cy={p.y} r={15} fill="#d7cfb4" />
               <text x={p.x} y={p.y + 30} textAnchor="middle" fill="#eee6d2" fontSize="12">
                 {station.name}
-              </text>
-              <text x={p.x} y={p.y + 4} textAnchor="middle" fill="#283d3e" fontSize="11">
-                {station.groups.length}
               </text>
             </g>
           );
@@ -263,6 +270,7 @@ export default function Diorama({
   const focusZone = useRef<FocusZone>('neutral');
   const memories = useRef<Partial<Record<OptionZone, ZoneOption>>>({});
   const focusObject = useRef<(interaction: TableInteraction | null) => void>(() => {});
+  const resetBoardView = useRef<() => void>(() => {});
   const keyboardObject = useRef<TableInteraction | null>(null);
   const previousReset = useRef(reset);
   const [fallback, setFallback] = useState(false);
@@ -386,9 +394,14 @@ export default function Diorama({
         mode: 'seated' | 'board';
         zone: FocusZone;
       } | null = null;
-    const boardMode = () => topViewRef.current && !viewRef.current.discardEnabled;
-    const activeZone = (): FocusZone =>
-      viewRef.current.discardEnabled ? 'hand' : focusZone.current;
+    const boardMode = () => topViewRef.current;
+    let boardZoom = 1;
+    const boardPan = new THREE.Vector3();
+    resetBoardView.current = () => {
+      boardZoom = 1;
+      boardPan.set(0, 0, 0);
+    };
+    const activeZone = (): FocusZone => focusZone.current;
     const selectedOption = (): ZoneOption | null => {
       const zone = activeZone();
       if (zone === 'neutral') return null;
@@ -410,8 +423,8 @@ export default function Diorama({
       el.style.cursor = renderer.domElement.style.cursor = mode === 'board' ? 'crosshair' : 'none';
     };
     const changeBoardMode = (active: boolean) => {
-      if (viewRef.current.discardEnabled && active) return;
       topViewRef.current = active;
+      resetBoardView.current();
       focusZone.current = 'neutral';
       keyboardObject.current = null;
       movement = emptyMovement();
@@ -460,7 +473,7 @@ export default function Diorama({
           sameInteraction(item.interaction, interaction),
         );
         if (option) memories.current[zone] = option;
-      } else if (!viewRef.current.discardEnabled) {
+      } else {
         if (!boardMode()) changeBoardMode(true);
       }
       keyboardObject.current = interaction;
@@ -484,11 +497,7 @@ export default function Diorama({
         const enabled = zone
           ? layoutsRef.current[zone].find((item) => sameInteraction(item.interaction, interaction))
               ?.enabled === true
-          : interaction.kind === 'train'
-            ? observationRef.current.trains.some(
-                (train) => train.id === interaction.id && !train.disabled,
-              )
-            : true;
+          : true;
         return { interaction, enabled };
       }
       if (!boardMode()) {
@@ -523,15 +532,26 @@ export default function Diorama({
     };
     const pointerMove = (event: PointerEvent) => {
       setPointer(event);
+      if (boardMode() && down && lastPointer) {
+        const bounds = renderer.domElement.getBoundingClientRect();
+        boardPan.x = THREE.MathUtils.clamp(
+          boardPan.x - ((event.clientX - lastPointer.x) / bounds.width) * 24 * boardZoom,
+          -7,
+          7,
+        );
+        boardPan.z = THREE.MathUtils.clamp(
+          boardPan.z - ((event.clientY - lastPointer.y) / bounds.height) * 18 * boardZoom,
+          -6,
+          6,
+        );
+      }
       pointerInside = true;
       keyboardObject.current = null;
       if (down && Math.hypot(down.x - event.clientX, down.y - event.clientY) > 6)
         down.dragged = true;
       if (!boardMode()) {
         const previous = activeZone();
-        const zone = viewRef.current.discardEnabled
-          ? 'hand'
-          : pointerZone((pointer.x + 1) / 2, (1 - pointer.y) / 2, previous);
+        const zone = pointerZone((pointer.x + 1) / 2, (1 - pointer.y) / 2, previous);
         focusZone.current = zone;
         if (zone !== previous || !lastPointer) movement = emptyMovement();
         else if (zone !== 'neutral') {
@@ -600,7 +620,7 @@ export default function Diorama({
         else onInteractRef.current({ kind: 'control', id: 'menu' });
       } else if (event.key === ' ' || event.code === 'Space') {
         event.preventDefault();
-        if (!event.repeat && !viewRef.current.discardEnabled) changeBoardMode(!boardMode());
+        if (!event.repeat) changeBoardMode(!boardMode());
       } else if (!boardMode() && /^Arrow(Left|Right|Up|Down)$/.test(event.key)) {
         event.preventDefault();
         navigate(event.key.slice(5).toLowerCase() as Direction);
@@ -615,6 +635,16 @@ export default function Diorama({
         if (hit?.enabled) onInteractRef.current(hit.interaction);
       }
     };
+    const wheel = (event: WheelEvent) => {
+      if (!boardMode()) return;
+      event.preventDefault();
+      const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? el.clientHeight : 1;
+      boardZoom = THREE.MathUtils.clamp(
+        boardZoom * Math.exp(event.deltaY * unit * 0.001),
+        0.62,
+        1.15,
+      );
+    };
     const lostContext = (event: Event) => {
       event.preventDefault();
       setFallback(true);
@@ -625,6 +655,7 @@ export default function Diorama({
     renderer.domElement.addEventListener('pointerup', pointerUp);
     renderer.domElement.addEventListener('pointercancel', pointerCancel);
     renderer.domElement.addEventListener('webglcontextlost', lostContext);
+    renderer.domElement.addEventListener('wheel', wheel, { passive: false });
     window.addEventListener('keydown', keyDown);
     const resizeScene = () => {
       const width = el.clientWidth,
@@ -648,8 +679,10 @@ export default function Diorama({
         zone = activeZone();
       if (plan) {
         // The city, rather than the whole table, occupies the close planning view.
-        cameraGoal.set(0, 25, 11);
-        targetGoal.set(0, 0.7, -1.8);
+        cameraGoal.set(0, 22, 7);
+        targetGoal.set(0, 0, 0);
+        cameraGoal.multiplyScalar(boardZoom).add(boardPan);
+        targetGoal.add(boardPan);
       } else if (zone === 'deck') {
         cameraGoal.set(-13.25, 19.5, 13);
         targetGoal.set(-13.25, 0, 2.75);
@@ -669,8 +702,12 @@ export default function Diorama({
         cameraGoal.set(0, 28.5, 34);
         targetGoal.set(0, 0.7, 0.7);
       }
+      if (plan || zone === 'goals') {
+        const fit = Math.max(1, 1.35 / camera.aspect);
+        cameraGoal.sub(targetGoal).multiplyScalar(fit).add(targetGoal);
+      }
       const blend = reducedMotion ? 1 : 0.085;
-      if (!down) {
+      if (!down || plan) {
         camera.position.lerp(cameraGoal, blend);
         controls.target.lerp(targetGoal, blend);
         camera.lookAt(controls.target);
@@ -684,7 +721,8 @@ export default function Diorama({
       eng.hand.scale.setScalar(zone === 'hand' ? 1.16 : 1);
       for (const card of eng.cards) {
         const hover = card.cardId === eng.hoveredCard && zone === 'hand',
-          y = card.baseY + (hover ? 0.5 : 0),
+          selected = viewRef.current.selectedCardIds.includes(card.cardId),
+          y = card.baseY + (hover ? 0.65 : selected ? 0.25 : 0),
           z = card.baseZ + (hover ? 1 : 0);
         card.group.position.y = reducedMotion
           ? y
@@ -726,6 +764,7 @@ export default function Diorama({
       renderer.domElement.removeEventListener('pointerup', pointerUp);
       renderer.domElement.removeEventListener('pointercancel', pointerCancel);
       renderer.domElement.removeEventListener('webglcontextlost', lostContext);
+      renderer.domElement.removeEventListener('wheel', wheel);
       window.removeEventListener('keydown', keyDown);
       disposeObjects(scene);
       disposeObjects(foreground);
@@ -734,39 +773,37 @@ export default function Diorama({
       renderer.domElement.remove();
       engine.current = null;
       focusObject.current = () => {};
+      resetBoardView.current = () => {};
     };
   }, [fallback]);
   useEffect(() => {
     const eng = engine.current;
     if (!eng) return;
     buildEnvironment(eng, observation);
-    buildBoard(eng, observation, selection, view, topView);
-    buildHand(eng, observation);
-    buildTableInterface(eng, observation, view);
-  }, [observation, selection, view, ready, fontRevision, topView]);
-  useEffect(() => {
-    if (view.discardEnabled) {
-      focusZone.current = 'hand';
-      keyboardObject.current = null;
-      if (topView) onBoardModeChangeRef.current(false);
-    }
-  }, [view.discardEnabled, topView]);
+  }, [observation, ready, fontRevision]);
   useEffect(() => {
     const eng = engine.current;
     if (!eng) return;
+    buildBoard(eng, observation, selection, view, topView);
+    buildHand(eng, observation, view.selectedCardIds);
+    buildTableInterface(eng, observation, view);
+  }, [observation, selection, view, ready, fontRevision, topView]);
+  useEffect(() => {
+    const eng = engine.current;
+    if (!eng) return;
+    resetBoardView.current();
     const resetChanged = previousReset.current !== reset;
     previousReset.current = reset;
     if (
       resetChanged ||
-      (!topView && ['station', 'edge', 'train'].includes(keyboardObject.current?.kind ?? ''))
+      (!topView && ['station', 'edge'].includes(keyboardObject.current?.kind ?? ''))
     )
       keyboardObject.current = null;
-    if (viewRef.current.discardEnabled) focusZone.current = 'hand';
-    else if (!keyboardObject.current) focusZone.current = 'neutral';
+    if (!keyboardObject.current) focusZone.current = 'neutral';
     eng.hoveredInteraction = null;
     eng.hoveredCard = null;
     if (eng.reducedMotion) {
-      const plan = topView && !viewRef.current.discardEnabled;
+      const plan = topView;
       eng.camera.position.set(0, plan ? 25 : 28.5, plan ? 11 : 34);
       eng.controls.target.set(0, 0.7, plan ? -1.8 : 0.7);
       eng.camera.lookAt(eng.controls.target);
@@ -779,12 +816,12 @@ export default function Diorama({
   return (
     <div
       ref={host}
-      className={`diorama tabletop-diorama${topView && !view.discardEnabled ? ' board-mode' : ''}`}
-      style={{ cursor: topView && !view.discardEnabled ? 'crosshair' : 'none' }}
-      data-input-mode={topView && !view.discardEnabled ? 'board' : 'seated'}
+      className={`diorama tabletop-diorama${topView ? ' board-mode' : ''}`}
+      style={{ cursor: topView ? 'crosshair' : 'none' }}
+      data-input-mode={topView ? 'board' : 'seated'}
       data-focus-zone={focusZone.current}
       role="group"
-      aria-label="Диспетчерский стол. Наведите мышь в область материалов слева, заявок снизу слева, руки снизу, листа справа или управления снизу справа. Двигайте мышь на одну опцию в нужную сторону. Нажатие на пустом столе или пробел приближает поле и показывает курсор; пробел или Escape возвращает к столу. Tab выбирает предметы, стрелки меняют опцию, Enter действует."
+      aria-label="Железнодорожный стол. Наведите мышь в область вагонов слева, билетов снизу слева, руки снизу, листа справа или управления снизу справа. Двигайте мышь на одну опцию в нужную сторону. Нажатие на пустом столе или пробел приближает поле и показывает курсор; пробел или Escape возвращает к столу. На поле колесо меняет масштаб, перетаскивание двигает карту. Tab выбирает предметы, стрелки меняют опцию, Enter действует."
     >
       <AccessibleObjects
         observation={observation}

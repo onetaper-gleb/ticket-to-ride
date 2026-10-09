@@ -1,149 +1,135 @@
 import { describe, expect, it } from 'vitest';
-import { applyCommand, createGame, getLegalCommands, getObservation } from '../core';
-import type { GameCommand, GameState, TrainOrder } from '../shared/types';
 import { getTutorialLesson, tutorialCommandAllowed } from './tutorial';
+import type { GameCommand, Observation } from '../shared/types';
 
-const firstOrder: TrainOrder = {
-  mode: 'evacuate',
-  destination: 'market',
-  returnTo: 'hill',
-  repeat: false,
-};
-
-function accept(state: GameState, command: GameCommand): GameState {
-  const transition = applyCommand(state, command);
-  expect(transition.error, JSON.stringify(command)).toBeUndefined();
-  return transition.state;
+function observation(patch: Partial<Observation> = {}): Observation {
+  return {
+    schemaVersion: 2,
+    rulesVersion: 'europe-classic',
+    revision: 1,
+    turn: 1,
+    round: 1,
+    playerCount: 2,
+    activePlayer: 0,
+    phase: 'setup',
+    drawsRemaining: 0,
+    cities: [
+      { id: 'a', name: 'Париж', x: 0, z: 0 },
+      { id: 'b', name: 'Берлин', x: 1, z: 1 },
+    ],
+    edges: [
+      {
+        id: 'a-b',
+        a: 'a',
+        b: 'b',
+        color: 'red',
+        length: 2,
+        tunnel: false,
+        ferries: 0,
+        parallel: null,
+        owner: null,
+      },
+    ],
+    players: [
+      {
+        id: 0,
+        name: 'Вы',
+        color: '#fff',
+        handCount: 0,
+        ticketCount: 0,
+        trainsRemaining: 45,
+        stationsRemaining: 3,
+        stations: [],
+        score: 0,
+      },
+      {
+        id: 1,
+        name: 'Бот',
+        color: '#000',
+        handCount: 4,
+        ticketCount: 2,
+        trainsRemaining: 45,
+        stationsRemaining: 3,
+        stations: [],
+        score: 0,
+      },
+    ],
+    self: {
+      id: 0,
+      name: 'Вы',
+      color: '#fff',
+      hand: [],
+      tickets: [],
+      ticketOptions: [{ id: 't1', a: 'a', b: 'b', points: 8, long: false }],
+      trainsRemaining: 45,
+      stationsRemaining: 3,
+      stations: [],
+      score: 0,
+    },
+    market: [],
+    deckCount: 20,
+    discardCount: 0,
+    ticketDeckCount: 20,
+    pendingTunnel: null,
+    finalTurnsRemaining: null,
+    finalRoundTrigger: null,
+    events: [],
+    ...patch,
+  };
 }
 
-function instructorToHuman(state: GameState): GameState {
-  let current = state;
-  for (let attempts = 0; current.activePlayer !== 0 && attempts < 8; attempts++) {
-    const observation = getObservation(current, current.activePlayer);
-    const command: GameCommand =
-      current.phase === 'setup'
-        ? getLegalCommands(observation)[0]!
-        : current.phase === 'action'
-          ? { type: 'pass' }
-          : { type: 'endTurn' };
-    current = accept(current, command);
-  }
-  expect(current.activePlayer).toBe(0);
-  return current;
-}
-
-function acceptHuman(state: GameState, command: GameCommand): GameState {
-  expect(tutorialCommandAllowed(getObservation(state, 0), command)).toBe(true);
-  return accept(state, command);
-}
-
-function ready(): GameState {
-  const state = createGame({ seed: 'first-rescue-v1', playerCount: 2 });
-  return instructorToHuman(
-    acceptHuman(state, {
-      type: 'chooseObjectives',
-      districts: state.players[0]!.objectiveOptions.slice(0, 2),
-    }),
-  );
-}
-
-describe('first rescue tutorial', () => {
-  it('teaches with real commands and finishes only after the first delivery', () => {
-    let state = createGame({ seed: 'first-rescue-v1', playerCount: 2 });
-    expect(getTutorialLesson(getObservation(state, 0)).id).toBe('objectives');
-    state = instructorToHuman(
-      acceptHuman(state, {
-        type: 'chooseObjectives',
-        districts: state.players[0]!.objectiveOptions.slice(0, 2),
-      }),
-    );
-    expect(getTutorialLesson(getObservation(state, 0)).id).toBe('first-material');
-    const initialHand = state.players[0]!.hand.length;
-    state = acceptHuman(state, { type: 'draw', source: 'deck' });
-    expect(getTutorialLesson(getObservation(state, 0)).id).toBe('second-material');
-    state = acceptHuman(state, { type: 'draw', source: 'deck' });
-    expect(state.players[0]!.hand).toHaveLength(initialHand + 2);
-    expect(getTutorialLesson(getObservation(state, 0)).id).toBe('first-order');
-
-    state = acceptHuman(state, { type: 'order', trainId: 'p0-t1', order: firstOrder });
-    expect(getTutorialLesson(getObservation(state, 0)).id).toBe('first-departure');
-    expect(state.trains.find((train) => train.id === 'p0-t1')!.stationId).toBe('hill');
-    state = instructorToHuman(acceptHuman(state, { type: 'endTurn' }));
-    expect(state.round).toBe(2);
-    expect(state.players[0]!.delivered).toHaveLength(0);
-    expect(state.players[0]!.score).toBe(0);
-    expect(state.trains.find((train) => train.id === 'p0-t1')!.cargo).toHaveLength(2);
-    expect(getTutorialLesson(getObservation(state, 0)).id).toBe('loaded');
-    expect(getTutorialLesson(getObservation(state, 0)).complete).toBe(false);
-
-    state = acceptHuman(state, { type: 'pass' });
-    expect(getTutorialLesson(getObservation(state, 0)).id).toBe('return-home');
-    state = instructorToHuman(acceptHuman(state, { type: 'endTurn' }));
-    expect(state.round).toBe(3);
-    expect(state.players[0]!.delivered).toHaveLength(2);
-    expect(state.trains.find((train) => train.id === 'p0-t1')!.stationId).toBe('hill');
-    const lesson = getTutorialLesson(getObservation(state, 0));
-    expect(lesson.complete).toBe(true);
-    expect(lesson.step).toBe(lesson.total);
-    expect(lesson.text).toContain(`Ваш счёт — ${state.players[0]!.score}`);
-    expect(tutorialCommandAllowed(getObservation(state, 0), { type: 'pass' })).toBe(false);
+describe('Europe tutorial', () => {
+  it('explains starting tickets and preserves the mandatory second draw', () => {
+    expect(getTutorialLesson(observation()).id).toBe('choose-starting-tickets');
+    const drawing = observation({ phase: 'draw', drawsRemaining: 1 });
+    expect(getTutorialLesson(drawing).id).toBe('second-train-card');
+    expect(getTutorialLesson(drawing).complete).toBe(false);
+    expect(getTutorialLesson(drawing).action).toContain('вторую');
   });
-
-  it('rejects distractions and incomplete orders without blocking the intended route', () => {
-    let state = ready();
-    let observation = getObservation(state, 0);
-    expect(tutorialCommandAllowed(observation, { type: 'draw', source: 0 })).toBe(false);
-    expect(tutorialCommandAllowed(observation, { type: 'pass' })).toBe(false);
-    expect(tutorialCommandAllowed(observation, { type: 'repair', edgeId: 'hill-orchard' })).toBe(
-      false,
+  it('finishes only when the accepted board contains a route owned by the player', () => {
+    const state = observation({ phase: 'action' });
+    expect(getTutorialLesson(state).complete).toBe(false);
+    const otherRoute = { ...state, edges: [{ ...state.edges[0]!, owner: 1 }] };
+    expect(getTutorialLesson(otherRoute).complete).toBe(false);
+    const acceptedRoute = { ...state, edges: [{ ...state.edges[0]!, owner: 0 }] };
+    expect(getTutorialLesson(acceptedRoute).complete).toBe(true);
+    expect(getTutorialLesson(JSON.parse(JSON.stringify(acceptedRoute)) as Observation)).toEqual(
+      getTutorialLesson(acceptedRoute),
     );
-    expect(tutorialCommandAllowed(observation, { type: 'express', trainId: 'p0-t1' })).toBe(false);
-    state = acceptHuman(state, { type: 'draw', source: 'deck' });
-    state = acceptHuman(state, { type: 'draw', source: 'deck' });
-    observation = getObservation(state, 0);
-    expect(tutorialCommandAllowed(observation, { type: 'endTurn' })).toBe(false);
-    for (const order of [
-      { ...firstOrder, returnTo: 'upper' },
-      { ...firstOrder, destination: 'school' },
-      { ...firstOrder, repeat: true },
-      { ...firstOrder, confirmRisk: true },
-      { ...firstOrder, mode: 'position' as const },
-    ])
-      expect(tutorialCommandAllowed(observation, { type: 'order', trainId: 'p0-t1', order })).toBe(
-        false,
-      );
-    expect(
-      tutorialCommandAllowed(observation, { type: 'order', trainId: 'p0-t2', order: firstOrder }),
-    ).toBe(false);
-    state = acceptHuman(state, { type: 'order', trainId: 'p0-t1', order: firstOrder });
-    observation = getObservation(state, 0);
-    expect(tutorialCommandAllowed(observation, { type: 'endTurn' })).toBe(true);
-    expect(
-      tutorialCommandAllowed(observation, { type: 'order', trainId: 'p0-t1', order: firstOrder }),
-    ).toBe(false);
   });
-
-  it('restores the correct lesson from accepted state, including the second draw', () => {
-    let state = ready();
-    state = acceptHuman(state, { type: 'draw', source: 'deck' });
-    const restored = JSON.parse(JSON.stringify(state)) as GameState;
-    expect(getTutorialLesson(getObservation(restored, 0))).toEqual(
-      getTutorialLesson(getObservation(state, 0)),
-    );
-    expect(getTutorialLesson(getObservation(restored, 0)).id).toBe('second-material');
-    const next = acceptHuman(restored, { type: 'draw', source: 'deck' });
-    expect(getTutorialLesson(getObservation(next, 0)).id).toBe('first-order');
-  });
-
-  it('never enables human commands during instructor turns', () => {
-    const state = createGame({ seed: 'first-rescue-v1', playerCount: 2 });
-    const instructor = acceptHuman(state, {
-      type: 'chooseObjectives',
-      districts: state.players[0]!.objectiveOptions.slice(0, 2),
+  it('keeps a tunnel decision visible and never treats an unfinished attempt as a claimed route', () => {
+    const state = observation({
+      phase: 'tunnel',
+      pendingTunnel: {
+        edgeId: 'a-b',
+        color: 'red',
+        baseCards: [
+          { id: 'r1', color: 'red' },
+          { id: 'r2', color: 'red' },
+        ],
+        revealed: [
+          { id: 'r3', color: 'red' },
+          { id: 'b1', color: 'blue' },
+          { id: 'w1', color: 'wild' },
+        ],
+        extraCost: 2,
+      },
     });
-    const observation = getObservation(instructor, 0);
-    expect(getTutorialLesson(observation).id).toBe('instructor-setup-empty');
-    expect(tutorialCommandAllowed(observation, { type: 'pass' })).toBe(false);
-    expect(tutorialCommandAllowed(observation, { type: 'draw', source: 'deck' })).toBe(false);
+    expect(getTutorialLesson(state).id).toBe('tunnel-surcharge');
+    expect(getTutorialLesson(state).text).toContain('2');
+    expect(getTutorialLesson(state).complete).toBe(false);
+  });
+  it('teaches the current accepted phase without adding tutorial rules', () => {
+    const state = observation({ activePlayer: 1 });
+    expect(getTutorialLesson(state).id).toBe('waiting-setup');
+    const commands: GameCommand[] = [
+      { type: 'draw', source: 0 },
+      { type: 'drawTickets' },
+      { type: 'buildStation', cityId: 'a', cardIds: ['r1'] },
+      { type: 'claim', edgeId: 'a-b', cardIds: ['r1', 'r2'] },
+      { type: 'resolveTunnel', pay: false },
+    ];
+    for (const command of commands) expect(tutorialCommandAllowed(state, command)).toBe(true);
+    expect(getTutorialLesson(observation({ phase: 'finished' })).complete).toBe(false);
   });
 });

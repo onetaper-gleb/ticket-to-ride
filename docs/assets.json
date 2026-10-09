@@ -1,12 +1,12 @@
 {
-  "version": 5,
+  "version": 6,
   "assets": [
     {
-      "name": "3D dispatcher table, miniature railway, three original faceted brigades, physical stock, hand, chalkboard and papers",
-      "source": "src/scene/Diorama.tsx + src/scene/interaction.ts + src/scene/tabletop.ts + src/scene/world-ui.ts + src/scene/characters.ts",
-      "license": "project original",
-      "transformations": "Original procedural Three.js meshes and faceted section lofts, static surfaces merged by material, instanced rails and ties, larger canvas printing and physical selection rims, names-only seated placards with detailed board view, local IBM Plex typography; Sjø used only as a visual reference, no imported assets",
-      "hash": "0abd45921ba062368b37c006e45af45f713c62b6db172ad33b14eee5e9e60a5b",
+      "name": "Europe 3D railway table, original schematic atlas, train pieces, stations, wagon cards, destination tickets, faceted characters, chalkboard and papers",
+      "source": "src/scene/Diorama.tsx + src/scene/interaction.ts + src/scene/tabletop.ts + src/scene/world-ui.ts + src/scene/characters.ts + src/scene/zone-input.ts + src/data/europe.ts",
+      "license": "project original procedural geometry and artwork; classic Europe graph and ticket facts transcribed with sources in docs/europe-rules.md",
+      "transformations": "Original procedural Three.js meshes, schematic coastline polygons drawn on canvas, 47 city labels with adaptive width and proportional typography, 101 route slots with owned train pieces and ferry/tunnel markings, original wagon-card and destination-ticket printing, relative-mouse tabletop zones and visible-pointer board zoom/pan, faceted character lofts with identical opponent card backs, self-hosted IBM Plex typography; no publisher scans, artwork or logos imported; Sjø used only as a visual reference",
+      "hash": "2b98245abfedeba9efa4d69d78f2d6f3d1f0163dab52b13db49816a7fcac090c",
       "hashKind": "sha256 of ordered file name + LF + file bytes + LF for each source"
     }
   ],

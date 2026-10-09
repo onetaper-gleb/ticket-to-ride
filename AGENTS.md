@@ -1,11 +1,34 @@
-# Last Train project
+# Europe: контракты проекта
 
-Read docs/concept.md and docs/architecture.md before game changes. This is a playable solo MVP first; the network milestone is separate. Keep all player-facing text Russian.
+Текущая игра реализует классический набор Ticket to Ride: Europe 2019. Перед правками читайте docs/europe-rules.md, docs/concept.md и docs/architecture.md. Правила эвакуации, районные бонусы, приказы, вода и лимит руки больше не действуют.
 
-Project skills are under .agents/skills. Select and read the relevant SKILL.md: lt-core for rules/data; lt-bots for decisions; lt-ui for panels/scene; lt-network for future server; lt-review for independent verification; lt-release for build/publish; lt-orchestrate for task ownership and integration. Use these files explicitly; no global skill installation is needed.
+Текущий объём: соло, один человек и 1–4 бота, 2–5 мест. Онлайн — отдельный этап; не описывайте его как готовый. Игровые тексты и текущая документация — по-русски.
 
-Ownership: root integrator owns src/shared, src/session, src/main.tsx, package/config files and release. Core agent owns src/core and src/data. UI agent owns src/ui and src/scene. Bot agent owns src/bots and scripts/simulate.ts. Architect owns docs/development.md, docs/architecture.md and .agents/skills. Review reads all code; fixes need explicit file ownership transfer. Do not edit another active agent's files.
+## Владение
 
-src/shared/types.ts is the stable interface. Request a change before editing it. The core reducer is the sole rules authority. Bots only receive Observation. UI renders Observation; root session owns GameState. Do not import graphical modules into core, or secrets into bots/UI.
+- Интегратор: src/shared/, src/session/, src/main.tsx, package/config, manifest ассетов и выпуск.
+- Агент ядра: назначенные src/core/ и src/data/.
+- Агент интерфейса: назначенные src/ui/ и src/scene/.
+- Агент ботов: src/bots/ и scripts/simulate.ts.
+- Агент документации: назначенные docs/, README и проектные навыки.
+- Проверяющий читает все модули; исправляет только явно переданные пути.
 
-Use small typed functions and data-driven rules. No speculative generic frameworks. Test meaningful invariants and phase boundaries. Format with pnpm format; run pnpm format:check, pnpm check, pnpm test and pnpm build before release; complete a human-turn browser check and a finite full-match simulation. Keep reproducible failures, not screenshots claiming playability without interaction.
+Один файл имеет одного активного владельца. Общие типы меняет интегратор после согласования. Передача пути должна быть явной.
+
+## Правила и границы
+
+src/shared/types.ts задаёт команды и наблюдение. Ядро единолично решает легальность, оплату, владение маршрутами, порядок ходов и счёт. UI отправляет намерения; сцена показывает принятое наблюдение. Бот получает только Observation, не полное состояние, чужие руки, билеты или порядок колод.
+
+Обычные игровые числа не подбираются заново: 47 городов, 101 маршрут, 110 карт, 46 билетов, 45 вагонов и 3 станции на игрока. Источники данных и редкие технические адаптации указаны в docs/europe-rules.md.
+
+Сохраняйте полный цикл: выбор минимум двух из четырёх билетов → одно действие за ход → финальные ходы → итог → новая партия/продолжение. Ход заканчивается автоматически; частичный добор и попытка тоннеля сохраняются.
+
+Europe использует schemaVersion 2, rulesVersion europe-base-v1 и отдельную базу last-train-europe-v1. Старые эвакуационные сохранения не удаляйте и не пересчитывайте.
+
+## Навыки и проверка
+
+Читайте нужный .agents/skills/…/SKILL.md: lt-core, lt-bots, lt-ui, lt-orchestrate, lt-review, lt-release или lt-network. Старые исследовательские документы и отчёты — история предыдущих выпусков; текущие правила берутся из europe-rules.md.
+
+Пишите небольшие типизированные функции и данные отдельно от алгоритмов. Проверяйте значимые инварианты и границы фаз. До выпуска нужны pnpm format:check, pnpm check, pnpm test, pnpm build, полная конечная симуляция и реальные действия через браузер. Скриншот подтверждает оформление, а не правила.
+
+Не называйте игру сбалансированной для людей по итогам партий ботов. Отделяйте проверенные правила, измеренную политику бота и незавершённые человеческие плейтесты.

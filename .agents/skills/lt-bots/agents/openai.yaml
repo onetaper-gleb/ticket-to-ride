@@ -1,4 +1,4 @@
 interface:
-  display_name: "Last Train Bots"
-  short_description: "Build fair bots from visible game information"
-  default_prompt: "Use $lt-bots to implement the assigned bot policy and test legality and information boundaries."
+  display_name: 'Europe: боты'
+  short_description: 'Честные решения и симуляции Europe на 2–5 мест'
+  default_prompt: 'Используй $lt-bots для назначенной политики Europe и проверь её легальность и доступ к информации.'

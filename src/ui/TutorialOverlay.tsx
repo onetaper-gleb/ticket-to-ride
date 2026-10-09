@@ -22,12 +22,12 @@ export default function TutorialOverlay({
       className="tutorial-coach"
       data-focus={lesson.focus ?? 'none'}
       data-lesson={lesson.id}
-      aria-label="Обучение: первый рейс"
+      aria-label="Обучение: первый маршрут"
       onPointerDown={(event) => event.stopPropagation()}
       onKeyDown={(event) => event.stopPropagation()}
     >
       <div className="tutorial-coach-heading">
-        <span className="tutorial-kicker">Первый рейс · обучение</span>
+        <span className="tutorial-kicker">Europe · первый маршрут</span>
         <span className="tutorial-step">
           {lesson.step}/{lesson.total}
         </span>
@@ -39,6 +39,7 @@ export default function TutorialOverlay({
         aria-valuemin={1}
         aria-valuemax={lesson.total}
         aria-valuenow={lesson.step}
+        style={{ gridTemplateColumns: `repeat(${lesson.total}, 1fr)` }}
       >
         {Array.from({ length: lesson.total }, (_, index) => (
           <span key={index} className={index < lesson.step ? 'passed' : ''} />
@@ -55,14 +56,14 @@ export default function TutorialOverlay({
       <div className="tutorial-coach-actions">
         {lesson.complete ? (
           <>
-            <p className="tutorial-menu-note">
-              В меню можно начать партию или продолжить сохранённую.
-            </p>
             <button className="button primary" onClick={onFinish}>
-              К обычной игре <span aria-hidden="true">→</span>
+              Продолжить партию <span aria-hidden="true">→</span>
+            </button>
+            <button className="tutorial-link" onClick={onSkip}>
+              В меню
             </button>
             <button className="tutorial-link" onClick={onRestart}>
-              Повторить урок
+              Повторить обучение
             </button>
           </>
         ) : (
@@ -82,19 +83,18 @@ export default function TutorialOverlay({
   );
 }
 
-interface TutorialWelcomeProps {
+export function TutorialWelcome({
+  onStart,
+  onDismiss,
+}: {
   onStart: () => void;
   onDismiss: () => void;
-}
-
-export function TutorialWelcome({ onStart, onDismiss }: TutorialWelcomeProps) {
+}) {
   const startButton = useRef<HTMLButtonElement>(null);
   const dismissButton = useRef<HTMLButtonElement>(null);
-
   useEffect(() => {
     startButton.current?.focus();
   }, []);
-
   return (
     <div className="tutorial-welcome-backdrop">
       <section
@@ -118,50 +118,51 @@ export function TutorialWelcome({ onStart, onDismiss }: TutorialWelcomeProps) {
           event.stopPropagation();
         }}
       >
-        <span className="tutorial-kicker">Речной · эвакуационная операция</span>
-        <h1 id="tutorial-welcome-title">Успеть до воды</h1>
+        <span className="tutorial-kicker">Ticket to Ride: Europe · классические правила</span>
+        <h1 id="tutorial-welcome-title">Соедините Европу</h1>
         <p id="tutorial-welcome-description" className="tutorial-welcome-goal">
-          Доставляйте жителей в два убежища до подъёма воды. Победит бригада с наибольшим числом
-          очков.
+          Собирайте карты вагонов, занимайте маршруты и соединяйте города из своих билетов.
+          Побеждает игрок с наибольшим числом очков.
         </p>
         <p className="tutorial-welcome-city">
-          Спасённые всеми бригадами жители — общий результат города. Партия длится до 12 раундов.
+          Выполненный билет прибавляет очки, невыполненный вычитает. Занятые маршруты принадлежат
+          игрокам.
         </p>
         <div
           className="tutorial-route"
-          aria-label="Первый рейс: Северный холм — Старый рынок — Северный холм"
+          aria-label="Карты вагонов — занять маршрут — соединить города"
         >
           <div>
             <span className="tutorial-route-icon" aria-hidden="true">
-              T1
+              ▰
             </span>
-            <strong>Северный холм</strong>
-            <small>Отправление</small>
+            <strong>Карты вагонов</strong>
+            <small>Собрать один цвет</small>
           </div>
           <span className="tutorial-route-arrow" aria-hidden="true">
             →
           </span>
           <div>
             <span className="tutorial-route-icon residents" aria-hidden="true">
-              2
+              Ⅱ
             </span>
-            <strong>Старый рынок</strong>
-            <small>Забрать жителей</small>
+            <strong>Маршрут</strong>
+            <small>Занять участок</small>
           </div>
           <span className="tutorial-route-arrow" aria-hidden="true">
             →
           </span>
           <div>
             <span className="tutorial-route-icon refuge" aria-hidden="true">
-              ⌂
+              ✓
             </span>
-            <strong>Северный холм</strong>
-            <small>Доставить · очки</small>
+            <strong>Билет</strong>
+            <small>Соединить города</small>
           </div>
         </div>
         <p className="tutorial-welcome-invitation">
-          В обучении вы выберете бонусы, возьмёте материалы и выполните этот рейс на настоящем поле.
-          Инструктор оставит жителей вам.
+          Обучение покажет управление до первого занятого маршрута. Оно проходит по обычным правилам
+          и сохраняется отдельно.
         </p>
         <div className="tutorial-welcome-actions">
           <button ref={startButton} className="button primary" onClick={onStart}>
@@ -172,7 +173,7 @@ export function TutorialWelcome({ onStart, onDismiss }: TutorialWelcomeProps) {
           </button>
         </div>
         <p className="tutorial-menu-note">
-          Обучение доступно в меню. Оно сохраняется отдельно от обычной партии.
+          Приблизить поле — пробел. За столом выбирайте предметы движением мыши и нажимайте ЛКМ.
         </p>
       </section>
     </div>

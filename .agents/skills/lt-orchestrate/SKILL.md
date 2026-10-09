@@ -1,18 +1,46 @@
 ---
 name: lt-orchestrate
-description: "Coordinate authorized Last Train subagents, contracts, ownership and development gates. Use to start a milestone, integrate modules or resolve competing game proposals."
+description: 'Координация разработки Europe несколькими агентами: источник правил, владение файлами, стабильные контракты, интеграция и проверяемая приёмка.'
 ---
 
-# Last Train orchestration
+# Координация Europe
 
-Read [development](../../../docs/development.md), [architecture](../../../docs/architecture.md), the current concept and root `AGENTS.md`. Respect the available concurrency limit. Use subagents only when delegation is authorized.
+Применяй скилл для планирования и интеграции работы нескольких агентов. Прочитай `AGENTS.md`, `docs/concept.md`, `docs/architecture.md`, `docs/europe-rules.md` и `docs/development.md`.
 
-Pick the next complete player scenario and its acceptance gate. Resolve missing game rules before dependent code: a generator proposes options, a critic supplies counterexamples, a realist estimates implementation cost, and the integrator selects and records one rule. Skip this loop when the rule is already settled.
+## Цель и доказательства
 
-The integrator owns `src/shared/types.ts`, composition, package scripts and local session. Assign core/data, bots and UI/scene to separate owners. Each delegation names writable paths, contract, exports and concrete verification. No two active agents edit the same file. Transfer ownership explicitly when needed.
+Текущий контракт — классическая Ticket to Ride: Europe по официальной книге 2019, `europe-base-v1`. Сохраняй числа и механику настолки, отдельную авторскую 3D сцену и управление зонами. Europe 1912, новый вариант правил 2026, сеть и произвольный баланс не входят в этот этап.
 
-Freeze the shared command and observation shape before parallel implementation. Route contract requests through the integrator. Require limited bot observations and core-owned rule queries. Never unblock integration by giving a bot full state or calculating rules inside UI.
+По спорному правилу сверяй первичный источник. Различай подтверждённые правила, транскрипцию данных и технические исключения. Граф проверен по официальной карте; полный индекс 46 билетов сверен по независимым спискам и не получил полной проверки официальными сканами каждой карты.
 
-Integrate one vertical scenario at a time. After code handoffs, resolve imports/types, run relevant tests, then exercise the browser. Request independent review of meaningful boundaries and send reproductions to owners. Release only after the current gate passes.
+## Делегирование
 
-Keep solo MVP first. Online, new scenarios and decorative assets do not delay a complete basic match. Notify the user when that verified milestone exists, with a working URL, startup commands and limits. Do not replace implementation with plans or claim future features are complete.
+Назначай каждому агенту конкретные writable paths и критерии сдачи. Интегратор владеет общими типами и соединением модулей. Разделяй данные, чистое ядро, ботов, UI/сцену и независимую проверку. Агент, проверяющий правила, читает реализацию без изменения проверяемых файлов.
+
+Зафиксируй публичные типы и экспорты до параллельной реализации. Перед изменением контракта сообщи всем потребителям и дождись согласования зависимостей. Не раздавай один файл двум пишущим агентам.
+
+Попроси каждого агента передать изменённые файлы, проверки, обнаруженные ограничения и нужные действия интегратора. Сообщения должны содержать воспроизведение ошибки, а не только оценку результата.
+
+## Порядок интеграции
+
+1. Подтверди карту, колоды и источник правил. Замени устаревшие контракты эвакуации.
+2. Соедини ядро, наблюдение и очередь сессии. Проверь стартовую раздачу и полный обычный ход.
+3. Введи ручную оплату, паромы, тоннели, билеты, станции и последние ходы.
+4. Подключи честных ботов и симуляции на 2–5 игроков.
+5. Проверь предметы стола, читаемость, зоны ввода и видимый курсор на приближённом поле.
+6. Пройди контекстное обучение до первой линии и восстановление незавершённых действий.
+7. Выполни независимое ревью правил и расчёта итогов. Устрани найденные ошибки до публикации.
+
+## Сохранения и приватность
+
+Europe использует schemaVersion 2 и отдельную базу `last-train-europe-v1`. Ключи `current` и `tutorial` независимы; старую базу оставь. Смена сессии сбрасывает выбор интерфейса и отменяет запоздалые ответы ботов.
+
+Один человек и 1–4 бота дают 2–5 игроков. Доступ к скрытой информации закрывает `Observation`. Сетевой этап требует отдельной реализации сервера и персональных наблюдений; работающий соло не подтверждает мультиплеер.
+
+## Приёмка и отчёт
+
+Выполни проверки проекта, точные тесты правил и сохранений, симуляции всех размеров партии и браузерные сценарии. Для длиннейшего пути используй независимый перебор малых графов. Для станций проверь одно общее назначение на весь набор билетов.
+
+Смотри на фактические результаты текущей версии. Старые документы `docs/validation/` относятся к прошлым релизам. Не называй игру сбалансированной для человека по матчам одних ботов и не заявляй производительность без измерения.
+
+До передачи пользователю проверь сборку, ассеты, текст правил и возможность начать, продолжить и закончить партию. Публикуй в пределах разрешённой задачи; отдельное неразрешённое внешнее действие согласуй после подготовки проверяемого результата. Итог указывает выполненное, проверки и оставшиеся ограничения.

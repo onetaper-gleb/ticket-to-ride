@@ -1,124 +1,125 @@
-import type { PublicBoard, RoutePreview, Station, Train, TrainOrder } from '../shared/types';
-import { LAST_ROUND } from '../data/scenario';
+import type { Edge, PublicBoard, Ticket, TicketProgress } from '../shared/types';
 
-interface Journey {
-  path: string[];
-  arrival: number;
-}
-const remainsOpen = (station: Station, round: number) =>
-  !station.flooded && (station.floodRound === null || station.floodRound > round);
-
-/** Each state describes arrival during movement; two current-round steps may cross a closing intermediate node. */
-function findJourney(
-  board: PublicBoard,
-  start: string,
-  goal: string,
-  round: number,
-  budget: number,
-  safe: boolean,
-): Journey | null {
-  const stations = new Map(board.stations.map((station) => [station.id, station]));
-  const startStation = stations.get(start),
-    goalStation = stations.get(goal);
-  if (!startStation || !goalStation || startStation.flooded || goalStation.flooded) return null;
-  if (start === goal)
-    return !safe || (round <= LAST_ROUND && remainsOpen(goalStation, round))
-      ? { path: [start], arrival: round }
-      : null;
-  const neighbors = new Map<string, string[]>();
-  for (const edge of board.edges) {
-    if (!edge.open || stations.get(edge.a)?.flooded || stations.get(edge.b)?.flooded) continue;
-    neighbors.set(edge.a, [...(neighbors.get(edge.a) ?? []), edge.b]);
-    neighbors.set(edge.b, [...(neighbors.get(edge.b) ?? []), edge.a]);
-  }
-  const queue = [{ at: start, round, used: 0, path: [start] }];
-  const seen = new Set<string>([`${start}:${round}:0`]);
-  for (let index = 0; index < queue.length; index++) {
-    const current = queue[index]!;
-    const currentBudget = current.round === round ? budget : 1;
-    const moveRound = current.used < currentBudget ? current.round : current.round + 1;
-    const used = moveRound === current.round ? current.used + 1 : 1;
-    if (safe && moveRound > LAST_ROUND) continue;
-    for (const next of neighbors.get(current.at) ?? []) {
-      const station = stations.get(next)!;
-      const path = [...current.path, next];
-      const endOfMovement = used >= (moveRound === round ? budget : 1);
-      if (safe && (next === goal || endOfMovement) && !remainsOpen(station, moveRound)) continue;
-      // An intermediate node may already be under water in a future round even when another express step follows.
-      if (safe && station.floodRound !== null && station.floodRound < moveRound) continue;
-      if (next === goal) return { path, arrival: moveRound };
-      const key = `${next}:${moveRound}:${used}`;
-      if (!seen.has(key) && path.length <= board.stations.length + 2) {
-        seen.add(key);
-        queue.push({ at: next, round: moveRound, used, path });
+function connected(edges: Edge[], start: string, end: string): boolean {
+  const seen = new Set([start]);
+  const queue = [start];
+  for (let i = 0; i < queue.length; i++) {
+    const city = queue[i]!;
+    if (city === end) return true;
+    for (const edge of edges) {
+      const next = edge.a === city ? edge.b : edge.b === city ? edge.a : null;
+      if (next && !seen.has(next)) {
+        seen.add(next);
+        queue.push(next);
       }
     }
   }
-  return null;
+  return false;
 }
 
-export function orderTarget(train: Train, order = train.order): string | null {
-  if (order.mode === 'idle') return null;
-  if (train.cargo.length > 0 || order.mode === 'return') return order.returnTo ?? order.destination;
-  return order.destination;
-}
-
-export function routeForTrain(
+/** One shared station assignment serves every ticket, including during previews. */
+export function getTicketProgress(
   board: PublicBoard,
-  train: Train,
-  order: TrainOrder,
-  initialBudget = train.expressRound === board.round ? 2 : 1,
-): RoutePreview {
-  const unavailable: RoutePreview = {
-    path: [],
-    arrivalRound: null,
-    pickupRound: null,
-    deliveryRound: null,
-    safe: false,
-    reason: 'Путь пока закрыт — поезд ждёт ремонта.',
-  };
-  if (train.disabled)
-    return { ...unavailable, reason: 'Поезд затоплен и больше не участвует в партии.' };
-  const target = orderTarget(train, order);
-  if (!target || order.mode === 'idle')
-    return {
-      path: [train.stationId],
-      arrivalRound: null,
-      pickupRound: null,
-      deliveryRound: null,
-      safe: true,
-      reason: null,
-    };
-  const evacuation = train.cargo.length === 0 && order.mode === 'evacuate';
-  function evaluate(safe: boolean): RoutePreview | null {
-    const outbound = findJourney(board, train.stationId, target!, board.round, initialBudget, safe);
-    if (!outbound) return null;
-    if (!evacuation)
-      return {
-        path: outbound.path,
-        arrivalRound: outbound.arrival,
-        pickupRound: null,
-        deliveryRound: train.cargo.length > 0 ? outbound.arrival : null,
-        safe,
-        reason: safe ? null : 'Поезд не успевает до закрытия станции или конца операции.',
-      };
-    const returnTo = order.returnTo;
-    if (!returnTo) return null;
-    // Loading is a service stop: departure occurs in the following round, even after express arrival.
-    const inbound = findJourney(board, target!, returnTo, outbound.arrival + 1, 1, safe);
-    if (!inbound) return null;
-    return {
-      path: [...outbound.path, ...inbound.path.slice(1)],
-      arrivalRound: outbound.arrival,
-      pickupRound: outbound.arrival,
-      deliveryRound: inbound.arrival,
-      safe,
-      reason: safe ? null : 'Рейс опасен: погрузка или обратный путь пересекают срок закрытия.',
-    };
+  playerId: number,
+  tickets: Ticket[],
+): TicketProgress[] {
+  const own = board.edges.filter((edge) => edge.owner === playerId);
+  const stations = board.players.find((player) => player.id === playerId)?.stations ?? [];
+  const choices = stations.map((city) => [
+    null,
+    ...board.edges.filter(
+      (edge) =>
+        edge.owner !== null && edge.owner !== playerId && (edge.a === city || edge.b === city),
+    ),
+  ]);
+  let best: TicketProgress[] = [];
+  let bestPoints = -Infinity;
+  let bestCount = -1;
+  function evaluate(index: number, borrowed: Edge[]): void {
+    if (index < choices.length) {
+      for (const edge of choices[index]!)
+        evaluate(index + 1, edge ? [...borrowed, edge] : borrowed);
+      return;
+    }
+    const ids = [...new Set(borrowed.map((edge) => edge.id))];
+    const combined = [...own, ...borrowed];
+    const progress = tickets.map((ticket) => ({
+      ticket,
+      complete: connected(combined, ticket.a, ticket.b),
+      stationRoutes: ids,
+    }));
+    const points = progress.reduce(
+      (total, item) => total + (item.complete ? item.ticket.points : -item.ticket.points),
+      0,
+    );
+    const count = progress.filter((item) => item.complete).length;
+    if (points > bestPoints || (points === bestPoints && count > bestCount)) {
+      best = progress;
+      bestPoints = points;
+      bestCount = count;
+    }
   }
-  return evaluate(true) ?? evaluate(false) ?? unavailable;
+  evaluate(0, []);
+  return best;
 }
 
-export function previewOrder(board: PublicBoard, train: Train, order: TrainOrder): RoutePreview {
-  return routeForTrain(board, train, order);
+/** Exact edge trail: loops and revisited cities are allowed, reused train cars are not. */
+export function getLongestRouteLength(board: PublicBoard, playerId: number): number {
+  const edges = board.edges.filter((edge) => edge.owner === playerId);
+  if (!edges.length) return 0;
+  const cities = [...new Set(edges.flatMap((edge) => [edge.a, edge.b]))];
+  const adjacency = new Map(cities.map((city) => [city, [] as number[]]));
+  edges.forEach((edge, i) => {
+    adjacency.get(edge.a)!.push(i);
+    adjacency.get(edge.b)!.push(i);
+  });
+  const memo = new Map<string, number>();
+  function search(at: string, used: bigint): number {
+    const key = `${at}:${used}`;
+    const previous = memo.get(key);
+    if (previous !== undefined) return previous;
+    // An Euler trail consumes all reachable remaining edges; avoid enumerating its permutations.
+    const reachable = new Set([at]);
+    const queue = [at];
+    const available = new Set<number>();
+    for (let q = 0; q < queue.length; q++) {
+      for (const i of adjacency.get(queue[q]!) ?? []) {
+        if (used & (1n << BigInt(i))) continue;
+        available.add(i);
+        const edge = edges[i]!;
+        const next = edge.a === queue[q] ? edge.b : edge.a;
+        if (!reachable.has(next)) {
+          reachable.add(next);
+          queue.push(next);
+        }
+      }
+    }
+    const degrees = new Map<string, number>();
+    let total = 0;
+    for (const i of available) {
+      const edge = edges[i]!;
+      degrees.set(edge.a, (degrees.get(edge.a) ?? 0) + 1);
+      degrees.set(edge.b, (degrees.get(edge.b) ?? 0) + 1);
+      total += edge.length;
+    }
+    const odd = [...degrees].filter(([, degree]) => degree % 2).map(([city]) => city);
+    if (odd.length === 0 || (odd.length === 2 && odd.includes(at))) {
+      memo.set(key, total);
+      return total;
+    }
+    let longest = 0;
+    for (const i of adjacency.get(at) ?? []) {
+      const bit = 1n << BigInt(i);
+      if (used & bit) continue;
+      const edge = edges[i]!;
+      longest = Math.max(
+        longest,
+        edge.length + search(edge.a === at ? edge.b : edge.a, used | bit),
+      );
+      if (longest === total) break;
+    }
+    memo.set(key, longest);
+    return longest;
+  }
+  return Math.max(...cities.map((city) => search(city, 0n)));
 }

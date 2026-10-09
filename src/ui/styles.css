@@ -2168,3 +2168,31 @@ input[type='checkbox'] {
 .world-only .fallback-actions button {
   padding: 10px;
 }
+
+.europe-rules {
+  width: min(900px, calc(100vw - 40px));
+}
+.europe-rules-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px 28px;
+  margin: 24px 0;
+}
+.europe-rules-grid h3 {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+.europe-rules-grid ul {
+  padding-left: 18px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.europe-rules-grid li + li {
+  margin-top: 6px;
+}
+@media (max-width: 700px) {
+  .europe-rules-grid {
+    grid-template-columns: 1fr;
+  }
+}

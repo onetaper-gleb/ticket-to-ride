@@ -1,4 +1,4 @@
 interface:
-  display_name: "Last Train Interface"
-  short_description: "Build readable panels and a 3D city diorama"
-  default_prompt: "Use $lt-ui to implement the assigned player flow with core previews and verify it in the browser."
+  display_name: 'Europe: интерфейс'
+  short_description: 'Зоны 3D стола, оплата и обучение Europe'
+  default_prompt: 'Используй $lt-ui для назначенного сценария Europe, запросов ядра и проверки действий в браузере.'

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getGameResult } from '../core';
 import type { Observation } from '../shared/types';
 import type { TableControl, TableInteraction, TableView } from './interaction';
 import {
@@ -144,7 +145,7 @@ function buildStock(eng: Engine, observation: Observation, view: TableView) {
     shelf,
     7.8,
     0.82,
-    caption(`СКЛАД · КОЛОДА ${observation.deckCount}`, true),
+    caption(`ВАГОНЫ · КОЛОДА ${observation.deckCount}`, true),
     '#766b52',
   );
   title.group.rotation.x = -Math.PI / 2;
@@ -202,6 +203,7 @@ function buildStock(eng: Engine, observation: Observation, view: TableView) {
 }
 
 function buildChalkboard(eng: Engine, observation: Observation) {
+  const result = observation.phase === 'finished' ? getGameResult(observation) : null;
   const texture = textureFromCanvas(
     (ctx) => {
       ctx.fillStyle = '#25382f';
@@ -211,72 +213,72 @@ function buildChalkboard(eng: Engine, observation: Observation) {
       ctx.strokeRect(29, 29, 966, 710);
       ctx.fillStyle = '#e2dec4';
       ctx.font = `64px ${mono}`;
-      ctx.fillText(`РАУНД ${observation.round} / 12`, 60, 112);
-      ctx.font = `43px ${sans}`;
+      ctx.fillText(`EUROPE · ХОД ${observation.turn}`, 60, 112);
       const active = observation.players.find((player) => player.id === observation.activePlayer);
-      ctx.fillText(active ? `Ход: ${active.name}` : 'Диспетчерская', 60, 181, 890);
-      ctx.strokeStyle = '#748474';
-      ctx.beginPath();
-      ctx.moveTo(60, 213);
-      ctx.lineTo(963, 213);
-      ctx.stroke();
-      ctx.textAlign = 'right';
-      ctx.font = `32px ${sans}`;
-      ctx.fillText('ОЧКИ', 928, 249);
-      ctx.textAlign = 'left';
+      ctx.font = `40px ${sans}`;
+      ctx.fillText(
+        observation.phase === 'finished' ? 'Партия завершена' : `Ход: ${active?.name ?? ''}`,
+        60,
+        181,
+        890,
+      );
+      ctx.font = `30px ${sans}`;
+      ctx.fillText(observation.phase === 'finished' ? 'ИТОГ' : 'ОЧКИ ПУТЕЙ', 765, 235, 210);
       observation.players.forEach((player, index) => {
-        const y = 302 + index * 80;
+        const y = 294 + index * 64;
         ctx.fillStyle = player.color;
-        ctx.fillRect(61, y - 30, 23, 23);
+        ctx.fillRect(61, y - 27, 22, 22);
         ctx.fillStyle = '#e1dfc9';
-        ctx.font = `46px ${sans}`;
-        ctx.fillText(player.name, 108, y, 560);
-        ctx.font = `52px ${mono}`;
+        ctx.font = `40px ${sans}`;
+        ctx.fillText(player.name, 105, y, 450);
+        ctx.font = `29px ${mono}`;
+        ctx.fillText(
+          `${player.trainsRemaining} ваг. / ${player.stationsRemaining} ст.`,
+          568,
+          y,
+          205,
+        );
+        ctx.font = `44px ${mono}`;
         ctx.textAlign = 'right';
-        ctx.fillText(String(player.score), 928, y);
+        ctx.fillText(
+          String(
+            result?.standings.find((item) => item.playerId === player.id)?.score ?? player.score,
+          ),
+          928,
+          y,
+        );
         ctx.textAlign = 'left';
       });
-      const delivered = observation.players.reduce(
-        (sum, player) => sum + player.delivered.length,
-        0,
-      );
-      ctx.fillStyle = '#e1dfc9';
+      ctx.fillStyle = '#ddd4af';
       ctx.font = `38px ${sans}`;
-      ctx.fillText(`Город: спасено ${delivered} / ${observation.totalGroups} групп`, 60, 602);
-      const nextFlood = Math.min(
-        ...observation.stations
-          .filter((station) => !station.flooded && station.floodRound !== null)
-          .map((station) => station.floodRound!),
-      );
-      ctx.fillStyle = '#bdbb9b';
-      ctx.font = `40px ${mono}`;
       ctx.fillText(
-        Number.isFinite(nextFlood) ? `ВОЛНА ПОСЛЕ РАУНДА ${nextFlood}` : 'ВЫСОКИЕ ПУТИ ОСТАЛИСЬ',
+        observation.finalTurnsRemaining !== null
+          ? `ПОСЛЕДНИХ ХОДОВ: ${observation.finalTurnsRemaining}`
+          : 'ОСТАЛОСЬ ≤2 ВАГОНА → ПОСЛЕДНИЙ КРУГ',
         60,
-        655,
+        651,
         904,
       );
-      const phaseNames = {
-        setup: 'ВЫБОР ЗАДАНИЙ',
-        action: 'МАТЕРИАЛЫ И РЕМОНТ',
-        draw: `ДОБОР: ${observation.drawsRemaining}`,
-        discard: 'СБРОС ЛИШНЕЙ КАРТЫ',
-        orders: 'ПРИКАЗЫ ПОЕЗДАМ',
-        finished: 'ОПЕРАЦИЯ ЗАВЕРШЕНА',
+      ctx.fillStyle = '#bdc2a9';
+      ctx.font = `34px ${mono}`;
+      const names = {
+        setup: 'ВЫБОР БИЛЕТОВ',
+        action: 'ОДНО ДЕЙСТВИЕ ЗА ХОД',
+        draw: 'ДОБЕРИТЕ ВТОРУЮ КАРТУ',
+        tickets: 'ОСТАВЬТЕ ХОТЯ БЫ ОДИН БИЛЕТ',
+        tunnel: 'ПРОВЕРКА ТОННЕЛЯ',
+        finished: 'БИЛЕТЫ + СТАНЦИИ + ЭКСПРЕСС',
       };
-      ctx.fillStyle = '#ddd4af';
-      ctx.font = `38px ${mono}`;
-      ctx.fillText(phaseNames[observation.phase], 60, 711, 904);
+      ctx.fillText(names[observation.phase], 60, 711, 904);
     },
     1024,
     768,
   );
-  const board = page(eng.furniture, 9.0, 6.3, texture, '#504836');
+  const board = page(eng.furniture, 9, 6.3, texture, '#504836');
   board.group.position.set(-13.4, 2.15, -7.75);
   board.group.rotation.x = -0.38;
   const { box } = primitiveFactory(board.group);
-  box([0.17, 7.1, 0.24], '#594831', [-3.7, -1.53, -0.16]);
-  box([0.17, 7.1, 0.24], '#594831', [3.7, -1.53, -0.16]);
+  for (const side of [-1, 1]) box([0.17, 7.1, 0.24], '#594831', [side * 3.7, -1.53, -0.16]);
   box([9.5, 0.15, 0.66], '#675b40', [0, -3.21, 0.08]);
   box([0.5, 0.07, 0.09], '#ddd7ba', [2.6, -3.09, 0.31]);
 }
@@ -295,7 +297,7 @@ function buildPaper(eng: Engine, view: TableView) {
       ctx.strokeRect(30, 30, 964, 1348);
       ctx.fillStyle = '#807c66';
       ctx.font = `34px ${mono}`;
-      ctx.fillText('РЕЧНОЙ / ЛИСТ ОПЕРАЦИИ', 59, 98);
+      ctx.fillText('EUROPE / ЖЕЛЕЗНОДОРОЖНЫЙ ЛИСТ', 59, 98);
       ctx.fillStyle = ink;
       ctx.font = `66px ${sans}`;
       let y = printLines(ctx, view.headline, 59, 205, 906, 75);
@@ -366,50 +368,71 @@ function buildPaper(eng: Engine, view: TableView) {
 
 function buildGoals(eng: Engine, observation: Observation, view: TableView) {
   const goals = view.goals;
+  const spacing = Math.min(2.9, 9 / Math.max(1, goals.length - 1));
   goals.forEach((goal, index) => {
     const texture = textureFromCanvas(
       (ctx) => {
         ctx.fillStyle = goal.completed ? '#d5dcc1' : goal.selected ? '#ded2a5' : '#e6ddc7';
-        ctx.fillRect(0, 0, 512, 704);
+        ctx.fillRect(0, 0, 640, 880);
         ctx.strokeStyle = '#91846a';
         ctx.lineWidth = 3;
-        ctx.strokeRect(15, 15, 482, 674);
+        ctx.strokeRect(18, 18, 604, 844);
         ctx.fillStyle = '#6d6755';
-        ctx.font = `43px ${sans}`;
-        ctx.fillText('ЛИЧНЫЙ БОНУС', 33, 79);
+        ctx.font = `46px ${sans}`;
+        ctx.fillText(goal.long ? 'ДЛИННЫЙ БИЛЕТ' : 'БИЛЕТ', 40, 92);
         ctx.fillStyle = ink;
         ctx.font = `68px ${sans}`;
-        printLines(ctx, goal.label, 33, 177, 445, 75);
-        ctx.font = `42px ${sans}`;
+        printLines(ctx, goal.label.replace(' → ', ' — '), 40, 199, 550, 79);
+        ctx.fillStyle = '#476148';
+        ctx.font = `74px ${mono}`;
+        ctx.fillText(`+${goal.points}`, 40, 560);
+        ctx.fillStyle = '#89543d';
+        ctx.font = `49px ${mono}`;
+        ctx.fillText(`−${goal.points} без соединения`, 40, 633, 557);
         ctx.fillStyle = '#514c3d';
-        ctx.fillText('Доставьте 2 группы', 33, 340);
-        ctx.fillText('из этого района', 33, 393);
-        ctx.fillStyle = '#374d37';
-        ctx.font = `64px ${sans}`;
-        ctx.fillText('+3 очка', 33, 487);
-        ctx.font = `46px ${sans}`;
-        ctx.fillStyle = '#514c3d';
-        const progress = observation.phase === 'setup' ? 'Выберите 2 бонуса' : goal.progress;
-        ctx.fillText(progress, 33, 570);
+        ctx.font = `44px ${sans}`;
+        printLines(ctx, goal.progress, 40, 720, 557, 49);
         ctx.fillStyle = goal.completed ? '#374d37' : goal.selected ? '#536a4d' : '#887b5c';
-        ctx.font = `42px ${sans}`;
-        ctx.fillText(goal.completed ? 'ВЫПОЛНЕНО' : goal.selected ? 'ВЫБРАНО' : 'ВЫБРАТЬ', 33, 651);
+        ctx.font = `43px ${sans}`;
+        ctx.fillText(
+          goal.completed
+            ? 'СОЕДИНЁН'
+            : observation.phase === 'setup' || observation.phase === 'tickets'
+              ? goal.selected
+                ? 'ОСТАВИТЬ'
+                : 'ВЫБРАТЬ'
+              : 'БИЛЕТ ПРИНЯТ',
+          40,
+          833,
+        );
       },
-      512,
-      704,
+      640,
+      880,
     );
     const card = page(eng.furniture, 2.72, 3.75, texture);
-    card.group.position.set(-16.5 + index * 2.95, -1.16, 12.5);
+    card.group.position.set(
+      -13.6 + (index - (goals.length - 1) / 2) * spacing,
+      -1.16 + index * 0.012,
+      12.5,
+    );
     card.group.rotation.x = -Math.PI / 2;
-    card.group.rotation.z = (index - 1) * 0.025;
+    card.group.rotation.z = (index - (goals.length - 1) / 2) * 0.015;
     register(
       eng,
       card.group,
       [card.face, card.back],
       { kind: 'objective', id: goal.id },
       goal.enabled,
-      0.24,
+      0.4,
     );
+  });
+}
+
+function buildRevealed(eng: Engine, view: TableView) {
+  view.revealedCards?.forEach((card, index) => {
+    const item = page(eng.furniture, 2.1, 3.2, cardPrint(card.color));
+    item.group.rotation.x = -Math.PI / 2;
+    item.group.position.set((index - 1) * 2.35, -1.16, 11.7);
   });
 }
 
@@ -471,6 +494,7 @@ export function buildTableInterface(eng: Engine, observation: Observation, view:
   buildChalkboard(eng, observation);
   buildPaper(eng, view);
   buildGoals(eng, observation, view);
+  buildRevealed(eng, view);
   view.controls
     .filter((control) => control.placement === 'dock')
     .forEach((control, index) => buildDockControl(eng, control, index));

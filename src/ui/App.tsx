@@ -1,20 +1,30 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getLegalCommands, previewOrder } from '../core';
+import {
+  getClaimOptions,
+  getLegalCommands,
+  getStationOptions,
+  getTicketProgress,
+  getTunnelPaymentOptions,
+  isRouteAvailable,
+} from '../core';
 import type {
   AppProps,
   BotDifficulty,
+  Card,
   CardColor,
-  District,
   GameCommand,
-  TrainOrder,
+  Observation,
+  Ticket,
 } from '../shared/types';
 import Diorama, { type MapSelection } from '../scene/Diorama';
 import type { TableControl, TableInteraction, TableView } from '../scene/interaction';
-import './styles.css';
 import TutorialOverlay, { TutorialWelcome } from './TutorialOverlay';
-import { getTutorialLesson, tutorialCommandAllowed } from './tutorial';
+import { getTutorialLesson } from './tutorial';
+import { paymentMatches } from './payment';
+import { ROUTE_POINTS } from '../data/europe';
+import './styles.css';
 
-const welcomeKey = 'last-train-onboarding-v1';
+const welcomeKey = 'europe-onboarding-v1';
 function firstLaunch() {
   try {
     return !localStorage.getItem(welcomeKey);
@@ -26,114 +36,137 @@ function rememberWelcome(value: 'seen' | 'complete') {
   try {
     localStorage.setItem(welcomeKey, value);
   } catch {
-    /* The lesson also works without browser storage. */
+    /* Browser storage is optional. */
   }
 }
-
-const districtNames: Record<District, string> = {
-  harbor: 'Порт',
-  'old-town': 'Старый город',
-  industrial: 'Промзона',
-  garden: 'Сады',
-};
-const districtIcons: Record<District, string> = {
-  harbor: '01',
-  'old-town': '02',
-  industrial: '03',
-  garden: '04',
-};
 const colorNames: Record<CardColor | 'gray', string> = {
-  red: 'Красные',
-  blue: 'Синие',
-  green: 'Зелёные',
-  yellow: 'Жёлтые',
-  wild: 'Универсальные',
+  red: 'Красный',
+  blue: 'Синий',
+  yellow: 'Жёлтый',
+  green: 'Зелёный',
+  orange: 'Оранжевый',
+  purple: 'Розовый',
+  black: 'Чёрный',
+  white: 'Белый',
+  wild: 'Локомотив',
   gray: 'Любой один цвет',
 };
 const colorSymbols: Record<CardColor | 'gray', string> = {
   red: '◆',
   blue: '●',
-  green: '▲',
   yellow: '■',
+  green: '▲',
+  orange: '⬟',
+  purple: '✿',
+  black: '♠',
+  white: '□',
   wild: '✦',
   gray: '◇',
 };
 const phaseNames = {
-  setup: 'Выберите задания',
-  action: 'Основное действие',
-  draw: 'Второй материал',
-  discard: 'Сбросьте излишек',
-  orders: 'Назначьте рейсы',
-  finished: 'Операция завершена',
+  setup: 'Выберите билеты',
+  action: 'Ваш ход',
+  draw: 'Возьмите вторую карту',
+  tickets: 'Оставьте новые билеты',
+  tunnel: 'Доплата за тоннель',
+  finished: 'Итоги партии',
 };
-const Waves = [6, 8, 10, 12];
-const trainNumber = (id: string) => id.match(/t(\d+)$/)?.[1] ?? id;
-const isSame = (a: GameCommand, b: GameCommand) => JSON.stringify(a) === JSON.stringify(b);
+const rulesPages = [
+  {
+    title: 'Цель и ход',
+    lines: [
+      'Соединяйте города из своих билетов своей сетью.',
+      'За ход: взять карты, занять маршрут, взять билеты или построить станцию.',
+      'Выполненный билет даёт его очки, невыполненный вычитает.',
+      'Ход заканчивается сразу после выбранного действия.',
+    ],
+  },
+  {
+    title: 'Карты вагонов',
+    lines: [
+      'В начале: 4 карты, 45 вагонов и 3 станции.',
+      'Добор: две открытые или закрытые карты в любой комбинации.',
+      'Открытый локомотив занимает весь добор; вторым его брать нельзя.',
+      'Локомотив вслепую — обычный выбор. Лимита руки нет.',
+      'Если открыты 3 локомотива, все 5 карт рынка заменяются.',
+    ],
+  },
+  {
+    title: 'Занять маршрут',
+    lines: [
+      'Цена: по карте на клетку, одним цветом линии.',
+      'Серую линию оплачивают любым одним цветом; локомотив заменяет цвет.',
+      'Очки за длину 1/2/3/4/6/8: 1/2/4/7/15/21.',
+      'В 2–3 игрока доступна одна из двойных линий. Свою пару занимать нельзя.',
+    ],
+  },
+  {
+    title: 'Тоннели и паромы',
+    lines: [
+      'Для парома нужны локомотивы: столько, сколько значков на линии.',
+      'Тоннель: после базовой оплаты открываются 3 карты.',
+      'Каждый совпавший цвет или локомотив добавляет 1 к цене.',
+      'Доплатите тем же цветом или откажитесь: карты вернутся, ход потрачен.',
+    ],
+  },
+  {
+    title: 'Билеты и станции',
+    lines: [
+      'В начале оставьте не меньше 2 билетов из 4.',
+      'Позже: взять до 3 билетов и оставить не меньше 1.',
+      'Станции стоят 1, затем 2, затем 3 карты одного цвета.',
+      'Станция использует 1 чужой участок для билетов. Неиспользованная станция: +4.',
+    ],
+  },
+  {
+    title: 'Конец и управление',
+    lines: [
+      'Когда у игрока остаётся 0–2 вагона, каждый получает последний ход.',
+      'Самый длинный непрерывный путь: +10. Чужие линии сюда не входят.',
+      'Пробел: приблизить поле с курсором; повторный пробел: вернуться.',
+      'За столом двигайте мышь в зону и между предметами. ЛКМ выбирает.',
+    ],
+  },
+];
 
 function Rules({ onClose }: { onClose: () => void }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <section
-        className="rules-dialog"
+        className="rules-dialog europe-rules"
         role="dialog"
         aria-modal="true"
         aria-labelledby="rules-title"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
       >
         <div className="section-heading">
-          <span className="eyebrow">Памятка диспетчера</span>
+          <span className="eyebrow">Классическая Europe</span>
           <button className="icon-button" onClick={onClose} aria-label="Закрыть правила">
             ×
           </button>
         </div>
-        <h2 id="rules-title">Памятка диспетчера</h2>
+        <h2 id="rules-title">Ticket to Ride: Europe</h2>
         <p>
-          Речной уходит под воду. Восстанавливайте железную дорогу и доставляйте группы жителей в
-          два убежища. Побеждает бригада с наибольшим числом очков. Операция длится до 12 раундов.
-          Спасённые всеми бригадами жители — общий результат города.
+          Собирайте карты вагонов и занимайте маршруты. Побеждает игрок с наибольшим числом очков
+          после подсчёта билетов.
         </p>
-        <ol className="rules-steps">
-          <li>
-            <b>Одно действие за ход.</b> Возьмите две карты, восстановите одну линию, купите
-            экспресс за любые две карты или пропустите.
-          </li>
-          <li>
-            <b>Затем отдайте приказы.</b> Для каждого поезда выберите станцию и убежище. Приказы
-            бесплатны. Нажмите «Закончить ход».
-          </li>
-          <li>
-            <b>Поезда едут после всех ходов.</b> Один участок за раунд, два у экспресса. Погрузка и
-            выгрузка завершают движение. Вместимость — две группы.
-          </li>
-          <li>
-            <b>Волна приходит в конце раунда.</b> После 6, 8, 10 и 12 закрываются отмеченные
-            станции. Поезд на затопленной станции потерян до конца партии. После погрузки нельзя
-            сразу уехать: следите за прогнозом.
-          </li>
-        </ol>
-        <div className="rules-score">
-          <span>
-            <b>2</b> за группу
-          </span>
-          <span>
-            <b>3</b> за приоритетную
-          </span>
-          <span>
-            <b>+3</b> за задание района
-          </span>
-          <span>
-            <b>+1</b> за полезный ремонт*
-          </span>
+        <div className="europe-rules-grid">
+          {rulesPages.map((page) => (
+            <section key={page.title}>
+              <h3>{page.title}</h3>
+              <ul>
+                {page.lines.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </section>
+          ))}
         </div>
         <p className="muted">
-          * После доставки по восстановленной вами линии; максимум 4 очка за ремонт. Задание:
-          доставить две группы из указанного района. При равных очках важны количество доставленных
-          и приоритетных групп.
-        </p>
-        <p className="muted">
-          Открытая универсальная карта заменяет весь добор. Универсальная вслепую — обычная карта.
-          Не больше 10 карт в руке. Рискованный рейс требует подтверждения; очередь жителей не
-          резервируется.
+          Станция учитывает один выбранный чужой участок одинаково для всех ваших билетов. Она не
+          приносит очки за чужой участок и не удлиняет ваш путь. При равном счёте выигрывает игрок с
+          большим числом выполненных билетов, затем сохранённых станций, затем обладатель European
+          Express.
         </p>
         <button className="button primary full" onClick={onClose}>
           Вернуться к игре <span>→</span>
@@ -144,9 +177,9 @@ function Rules({ onClose }: { onClose: () => void }) {
 }
 
 function Menu(props: AppProps & { onRules: () => void }) {
-  const [playerCount, setPlayerCount] = useState<2 | 3 | 4>(3);
+  const [playerCount, setPlayerCount] = useState<2 | 3 | 4 | 5>(3);
   const [difficulty, setDifficulty] = useState<BotDifficulty>(props.difficulty);
-  const [name, setName] = useState('Ваша бригада');
+  const [name, setName] = useState('Вы');
   const [seed, setSeed] = useState('');
   return (
     <main className="menu">
@@ -155,7 +188,7 @@ function Menu(props: AppProps & { onRules: () => void }) {
           <span className="brand-mark" aria-hidden="true">
             Ⅱ
           </span>
-          Последний рейс
+          Ticket to Ride: Europe
         </span>
         <button className="quiet-button" onClick={props.onRules}>
           Правила
@@ -163,18 +196,18 @@ function Menu(props: AppProps & { onRules: () => void }) {
       </header>
       <div className="menu-content">
         <section className="menu-intro">
-          <span className="eyebrow">Речной / Диспетчерская</span>
-          <h1>Последний рейс</h1>
+          <span className="eyebrow">Европа / Железные дороги</span>
+          <h1>Соедините Европу</h1>
           <p>
-            Доставляйте жителей в убежища до подъёма воды. Побеждает бригада с наибольшим числом
-            очков.
+            Занимайте маршруты и соединяйте города из своих билетов. Соперники могут занять нужную
+            вам дорогу первыми.
           </p>
           <div className="menu-board" aria-hidden="true">
             <div className="menu-board-paper">
               <span className="board-stamp">
-                РЕЧНОЙ
+                EUROPE
                 <br />
-                <small>ЖЕЛЕЗНОДОРОЖНАЯ СХЕМА</small>
+                <small>ЖЕЛЕЗНОДОРОЖНАЯ КАРТА</small>
               </span>
               <div className="board-rail rail-one" />
               <div className="board-rail rail-two" />
@@ -193,17 +226,17 @@ function Menu(props: AppProps & { onRules: () => void }) {
               </div>
             </div>
             <div className="menu-paper-card card-back-one">
-              Ⅱ<small>МАТЕРИАЛЫ</small>
+              Ⅱ<small>ВАГОНЫ</small>
             </div>
             <div className="menu-paper-card card-back-two">
-              ◆<small>РЕМОНТ</small>
+              ◆<small>БИЛЕТЫ</small>
             </div>
-            <span className="board-caption">Два поезда. Общая железная дорога.</span>
+            <span className="board-caption">Ваши линии. Ваши билеты. Общая карта.</span>
           </div>
           <div className="menu-features">
-            <span>2–4 бригады</span>
-            <span>До 12 раундов</span>
-            <span>4 волны</span>
+            <span>2–5 игроков</span>
+            <span>45 вагонов</span>
+            <span>Тоннели и паромы</span>
           </div>
         </section>
         <section className="start-panel">
@@ -211,34 +244,38 @@ function Menu(props: AppProps & { onRules: () => void }) {
             <span className="eyebrow">Новая партия</span>
             <span className="muted">Соло с ботами</span>
           </div>
-          <h2>Ваша бригада</h2>
-          <label className="field-label" htmlFor="brigade-name">
-            Название
+          <h2>Ваше место за столом</h2>
+          <label className="field-label" htmlFor="player-name">
+            Имя
           </label>
           <input
-            id="brigade-name"
+            id="player-name"
             maxLength={24}
             value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Ваша бригада"
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Вы"
           />
-          <label className="field-label">Всего бригад</label>
-          <div className="segmented">
-            {([2, 3, 4] as const).map((n) => (
+          <span className="field-label" id="players-label">
+            Всего игроков
+          </span>
+          <div className="segmented" role="group" aria-labelledby="players-label">
+            {([2, 3, 4, 5] as const).map((count) => (
               <button
-                key={n}
-                className={playerCount === n ? 'active' : ''}
-                onClick={() => setPlayerCount(n)}
+                key={count}
+                className={playerCount === count ? 'active' : ''}
+                onClick={() => setPlayerCount(count)}
               >
-                {n}
+                {count}
                 <small>
-                  {n - 1} {n === 2 ? 'бот' : 'бота'}
+                  {count - 1} {count === 2 ? 'бот' : 'бота'}
                 </small>
               </button>
             ))}
           </div>
-          <label className="field-label">Соперники</label>
-          <div className="segmented two">
+          <span className="field-label" id="difficulty-label">
+            Соперники
+          </span>
+          <div className="segmented two" role="group" aria-labelledby="difficulty-label">
             <button
               className={difficulty === 'easy' ? 'active' : ''}
               onClick={() => setDifficulty('easy')}
@@ -249,7 +286,7 @@ function Menu(props: AppProps & { onRules: () => void }) {
               className={difficulty === 'normal' ? 'active' : ''}
               onClick={() => setDifficulty('normal')}
             >
-              Обычные<small>Планируют рейсы</small>
+              Обычные<small>Строят сеть по билетам</small>
             </button>
           </div>
           <details className="seed-detail">
@@ -259,13 +296,12 @@ function Menu(props: AppProps & { onRules: () => void }) {
             <input
               aria-label="Код партии"
               value={seed}
-              onChange={(e) => setSeed(e.target.value)}
+              onChange={(event) => setSeed(event.target.value)}
               placeholder="Одинаковый код — одинаковая раздача"
               maxLength={64}
             />
             <p className="muted">
-              Пустой код — новая случайная раздача. Карта города и четыре вида бонусов остаются теми
-              же.
+              Пустой код — новая случайная раздача карт и билетов. Карта Европы остаётся той же.
             </p>
           </details>
           <button
@@ -274,14 +310,14 @@ function Menu(props: AppProps & { onRules: () => void }) {
               props.onStart(
                 {
                   playerCount,
-                  playerName: name.trim() || 'Ваша бригада',
+                  playerName: name.trim() || 'Вы',
                   ...(seed.trim() ? { seed: seed.trim() } : {}),
                 },
                 difficulty,
               )
             }
           >
-            Начать эвакуацию <span>→</span>
+            Начать партию <span>→</span>
           </button>
           <button
             className="button secondary full"
@@ -290,7 +326,7 @@ function Menu(props: AppProps & { onRules: () => void }) {
             {props.canContinueTutorial ? 'Продолжить обучение' : 'Пройти обучение'} <span>→</span>
           </button>
           <p className="muted">
-            Покажем управление и довезём первых жителей. Сохранённая партия останется на месте.
+            Выберем билеты и займём первый маршрут. Обычная партия сохраняется отдельно.
           </p>
           {props.canContinue && (
             <button className="button secondary full" onClick={props.onContinue}>
@@ -304,8 +340,8 @@ function Menu(props: AppProps & { onRules: () => void }) {
         </section>
       </div>
       <footer className="menu-footer">
-        <span>Речной, железнодорожная эвакуационная служба</span>
-        <span>Настольная стратегия</span>
+        <span>Классическая карта Europe</span>
+        <span>Настольная стратегия · соло</span>
       </footer>
       {props.error && (
         <div className="toast" role="alert">
@@ -319,56 +355,79 @@ function Menu(props: AppProps & { onRules: () => void }) {
   );
 }
 
+function paymentLabel(cardIds: string[], hand: Card[]) {
+  const counts = new Map<CardColor, number>();
+  for (const id of cardIds) {
+    const card = hand.find((item) => item.id === id);
+    if (card) counts.set(card.color, (counts.get(card.color) ?? 0) + 1);
+  }
+  return (
+    [...counts].map(([color, count]) => `${colorNames[color]} × ${count}`).join(' + ') ||
+    'Карты не выбраны'
+  );
+}
+function cityName(observation: Observation, id: string) {
+  return observation.cities.find((city) => city.id === id)?.name ?? id;
+}
+function ticketName(observation: Observation, ticket: Ticket) {
+  return `${cityName(observation, ticket.a)} — ${cityName(observation, ticket.b)}`;
+}
+
 export default function App(props: AppProps) {
   const observation = props.observation;
   const [rules, setRules] = useState(false);
   const [rulesPage, setRulesPage] = useState(0);
   const [selection, setSelection] = useState<MapSelection>(null);
   const [topView, setTopView] = useState(false);
-  const [reset, setReset] = useState(0);
-  const [objectives, setObjectives] = useState<District[]>([]);
-  const [selectedTrainId, setSelectedTrainId] = useState<string | null>(null);
-  const [draft, setDraft] = useState<TrainOrder | null>(null);
-  const [orderStep, setOrderStep] = useState<'pickup' | 'refuge' | 'ready'>('pickup');
-  const [riskAccepted, setRiskAccepted] = useState(false);
+  const [ticketIds, setTicketIds] = useState<string[]>([]);
+  const [inspectedTicket, setInspectedTicket] = useState<string | null>(null);
+  const [inspectedCard, setInspectedCard] = useState<CardColor | null>(null);
+  const [optionIndex, setOptionIndex] = useState(0);
+  const [manualPayment, setManualPayment] = useState<string[] | null>(null);
   const [feedback, setFeedback] = useState('');
   const [welcome, setWelcome] = useState(firstLaunch);
-  const [inspectedDistrict, setInspectedDistrict] = useState<District | null>(null);
-  const [inspectedMaterial, setInspectedMaterial] = useState<CardColor | null>(null);
+  const [tutorialHidden, setTutorialHidden] = useState(false);
   const [cueRequest, setCueRequest] = useState({ key: '', nonce: 0 });
-  const lessonBase = props.tutorial && observation ? getTutorialLesson(observation) : null;
   const legal = useMemo(() => (observation ? getLegalCommands(observation) : []), [observation]);
+  const progress = useMemo(
+    () =>
+      observation
+        ? getTicketProgress(observation, observation.self.id, observation.self.tickets)
+        : [],
+    [observation],
+  );
   const ownTurn = !!observation && observation.activePlayer === observation.self.id && !props.busy;
   const can = (command: GameCommand) =>
-    ownTurn &&
-    legal.some((c) => isSame(c, command)) &&
-    (!props.tutorial || tutorialCommandAllowed(observation!, command));
+    ownTurn && legal.some((item) => JSON.stringify(item) === JSON.stringify(command));
+  const lessonBase =
+    props.tutorial && observation && !tutorialHidden ? getTutorialLesson(observation) : null;
   useEffect(() => {
     if (lessonBase?.complete) rememberWelcome('complete');
   }, [lessonBase?.complete]);
   useEffect(() => {
     setSelection(null);
-    setSelectedTrainId(null);
-    setDraft(null);
-    setRiskAccepted(false);
+    setTicketIds([]);
+    setInspectedTicket(null);
+    setInspectedCard(null);
+    setOptionIndex(0);
+    setManualPayment(null);
     setFeedback('');
-    setObjectives([]);
-    setInspectedDistrict(null);
-    setInspectedMaterial(null);
     setRules(false);
-    if (!observation || observation.revision === 0) setTopView(false);
-  }, [props.sessionId, !!observation, observation?.activePlayer, observation?.revision === 0]);
-  useEffect(() => {
+    setRulesPage(0);
     setTopView(false);
+    setTutorialHidden(false);
     setCueRequest({ key: '', nonce: 0 });
   }, [props.sessionId]);
   useEffect(() => {
-    if (observation?.phase === 'action') {
-      setSelection(null);
-      setSelectedTrainId(null);
-      setDraft(null);
-      setRiskAccepted(false);
-    }
+    setSelection(null);
+    setInspectedCard(null);
+    setManualPayment(null);
+    setOptionIndex(0);
+    setFeedback('');
+  }, [observation?.activePlayer, observation?.turn]);
+  useEffect(() => {
+    setTicketIds([]);
+    if (['draw', 'tickets', 'tunnel'].includes(observation?.phase ?? '')) setRules(false);
   }, [observation?.phase]);
   if (!observation)
     return (
@@ -390,312 +449,258 @@ export default function App(props: AppProps) {
         )}
       </>
     );
+
   const phase = observation.phase;
-  const train = observation.trains.find(
-    (t) => t.id === selectedTrainId && t.playerId === observation.self.id,
-  );
+  const choosingTickets =
+    (phase === 'setup' || phase === 'tickets') && observation.self.ticketOptions.length > 0;
   const edge =
-    selection?.kind === 'edge' ? observation.edges.find((e) => e.id === selection.id) : null;
-  const station =
-    selection?.kind === 'station' ? observation.stations.find((s) => s.id === selection.id) : null;
-  const stationName = (id: string | null) =>
-    observation.stations.find((s) => s.id === id)?.name ?? '—';
-  const preview = train && draft ? previewOrder(observation, train, draft) : null;
-  const risky = !!preview && preview.path.length > 0 && !preview.safe;
-  const orderReady =
-    !!train &&
-    !train.disabled &&
-    !!draft &&
-    orderStep === 'ready' &&
-    (draft.mode === 'position'
-      ? !!draft.destination
-      : !!draft.returnTo && (!!draft.destination || train.cargo.length > 0));
+    selection?.kind === 'edge' ? observation.edges.find((item) => item.id === selection.id) : null;
+  const city =
+    selection?.kind === 'station'
+      ? observation.cities.find((item) => item.id === selection.id)
+      : null;
+  const paymentOptions =
+    phase === 'tunnel'
+      ? getTunnelPaymentOptions(observation)
+      : edge
+        ? getClaimOptions(observation, edge.id)
+        : city
+          ? getStationOptions(observation, city.id)
+          : [];
+  const option = paymentOptions[optionIndex % Math.max(1, paymentOptions.length)];
+  const paying = ownTurn && (phase === 'tunnel' || (phase === 'action' && !!(edge || city)));
+  const paymentIds = paying ? (manualPayment ?? option?.cardIds ?? []) : [];
+  const paymentValid = paying && paymentMatches(paymentIds, paymentOptions, observation.self.hand);
   const clear = () => {
     setSelection(null);
-    setSelectedTrainId(null);
-    setDraft(null);
-    setRiskAccepted(false);
+    setInspectedTicket(null);
+    setInspectedCard(null);
+    setOptionIndex(0);
+    setManualPayment(null);
     setFeedback('');
-    setInspectedDistrict(null);
-    setInspectedMaterial(null);
   };
   const send = (command: GameCommand) => {
+    if (!ownTurn) return;
     setFeedback('');
     props.onClearError();
     props.onCommand(command);
-  };
-  const commitOrder = () => {
-    if (!ownTurn || phase !== 'orders' || !orderReady || !train || !draft) return;
-    if (risky && !riskAccepted) {
-      setFeedback('Красная печать подтверждает риск этого рейса.');
-      return;
-    }
-    if (
-      props.tutorial &&
-      !tutorialCommandAllowed(observation, { type: 'order', trainId: train.id, order: draft })
-    ) {
-      setFeedback('В учебном рейсе выберите Старый рынок, затем Северный холм.');
-      return;
-    }
-    send({
-      type: 'order',
-      trainId: train.id,
-      order: { ...draft, confirmRisk: risky && riskAccepted },
-    });
-    clear();
-    setFeedback('Приказ принят. Поезд поедет после ходов всех бригад.');
   };
   const controls: TableControl[] = [];
   let headline = phaseNames[phase];
   let notice = '';
   let detailLines: string[] = [];
+  let highlightedCities: string[] = [];
+  const addPaymentControls = (confirmId: string, confirmLabel: string) => {
+    if (paymentOptions.length > 1)
+      controls.push({ id: 'paymentOption', label: 'Другая оплата', enabled: ownTurn });
+    if (manualPayment !== null)
+      controls.push({ id: 'autoPayment', label: 'Автооплата', enabled: ownTurn });
+    controls.push({ id: confirmId, label: confirmLabel, enabled: paymentValid });
+  };
   if (!ownTurn && phase !== 'finished') {
     headline =
-      observation.players.find((p) => p.id === observation.activePlayer)?.name ?? 'Другая бригада';
-    notice = 'Соперник планирует. Можно осмотреть поле.';
-    detailLines = [observation.events.at(-1)?.message ?? 'Ожидаем приказ.'];
-  } else if (phase === 'setup') {
-    notice = `Выберите два личных бонуса слева внизу. Отмечено ${objectives.length}/2.`;
+      observation.players.find((player) => player.id === observation.activePlayer)?.name ??
+      'Соперник';
+    notice = 'Сейчас ходит соперник. Можно осмотреть поле и билеты.';
     detailLines = [
-      'Две доставленные группы из района дают +3 очка.',
-      'Спасать можно из любого района. Бонус — за доставку, не погрузку.',
+      observation.events.at(-1)?.message ?? 'Ожидаем ход.',
+      `У вас ${observation.self.trainsRemaining} вагонов и ${observation.self.hand.length} карт.`,
+    ];
+  } else if (choosingTickets) {
+    const minimum = phase === 'setup' ? 2 : 1;
+    notice = `Оставьте не меньше ${minimum} билетов. Выбрано ${ticketIds.length}.`;
+    detailLines = [
+      'Билет: соединить оба города своей сетью к концу партии.',
+      'Выполнен: +очки. Не выполнен: −очки.',
+      phase === 'setup'
+        ? 'Можно оставить все четыре. Отклонённые билеты уходят из партии.'
+        : 'Можно оставить все три. Остальные уйдут вниз колоды.',
     ];
     controls.push({
-      id: 'acceptObjectives',
-      label: 'Принять задания',
-      enabled: objectives.length === 2,
+      id: 'acceptTickets',
+      label: 'Оставить билеты',
+      enabled: ticketIds.length >= minimum && ownTurn,
+    });
+  } else if (phase === 'draw') {
+    notice = 'Возьмите вторую карту вагонов слева.';
+    detailLines = [
+      'Подходит открытая цветная карта или закрытая колода.',
+      'Второй открытый локомотив брать нельзя.',
+      'После добора ход автоматически перейдёт сопернику.',
+    ];
+  } else if (phase === 'tunnel') {
+    const tunnel = observation.pendingTunnel;
+    headline = tunnel
+      ? `Тоннель: ${cityName(observation, observation.edges.find((item) => item.id === tunnel.edgeId)?.a ?? '')} — ${cityName(observation, observation.edges.find((item) => item.id === tunnel.edgeId)?.b ?? '')}`
+      : 'Доплата за тоннель';
+    notice = `Доплата: ${tunnel?.extraCost ?? 0} карт. ${manualPayment !== null && !paymentValid ? 'Выбранные карты не подходят.' : `Выбрано: ${paymentLabel(paymentIds, observation.self.hand)}.`}`;
+    detailLines = [
+      `Открыты: ${tunnel?.revealed.map((card) => `${colorNames[card.color]} ${colorSymbols[card.color]}`).join(', ') ?? '—'}.`,
+      `Оплата тем же цветом: ${colorNames[tunnel?.color ?? 'wild']}.`,
+      'Отказ вернёт базовые карты, но завершит ход.',
+    ];
+    addPaymentControls('payTunnel', 'Доплатить');
+    controls.push({
+      id: 'declineTunnel',
+      label: 'Отказаться',
+      enabled: can({ type: 'resolveTunnel', pay: false }),
     });
   } else if (phase === 'action' && edge) {
-    headline = `${stationName(edge.a)} — ${stationName(edge.b)}`;
-    const available = can({ type: 'repair', edgeId: edge.id });
-    notice = edge.open
-      ? 'Этот участок уже открыт.'
-      : available
-        ? 'Нажмите этот участок ещё раз — ремонт.'
-        : 'Материалов для ремонта не хватает или путь закрыт водой.';
-    detailLines = [
-      `Цена: ${edge.cost} · ${colorNames[edge.color]}`,
-      'Открытой дорогой пользуются все бригады.',
-    ];
-  } else if (phase === 'action' && train) {
-    headline = `Поезд ${trainNumber(train.id)}`;
-    notice = can({ type: 'express', trainId: train.id })
-      ? 'Нажмите поезд ещё раз — экспресс за 2 карты.'
-      : 'Экспресс для этого поезда сейчас недоступен.';
-    detailLines = [
-      stationName(train.stationId),
-      `На борту: ${train.cargo.length}/2`,
-      'Экспресс проходит до двух участков за раунд.',
-      'Погрузка или выгрузка завершает движение.',
-    ];
-  } else if (phase === 'action') {
-    notice = 'Сначала одно действие: материалы, ремонт или экспресс. Затем приказы поездам.';
-    detailLines = [
-      'Материалы слева: две карты или одна открытая универсальная.',
-      'Пробел — поле. Открытые линии уже пригодны для рейса.',
-      ...observation.events
-        .filter(
-          (e) =>
-            e.round === observation.round - 1 &&
-            e.playerId === observation.self.id &&
-            ['load', 'deliver', 'loss'].includes(e.kind),
+    headline = `${cityName(observation, edge.a)} — ${cityName(observation, edge.b)}`;
+    const owner = observation.players.find((player) => player.id === edge.owner);
+    const otherParallel = edge.parallel
+      ? observation.edges.find(
+          (item) => item.id !== edge.id && item.parallel === edge.parallel && item.owner !== null,
         )
-        .slice(-2)
-        .map((e) => e.message),
-      ...(observation.events.some((e) => e.round === observation.round - 1 && e.kind === 'flood')
-        ? [
-            `Вода закрыла: ${observation.stations
-              .filter((s) => s.floodRound === observation.round - 1)
-              .map((s) => s.name)
-              .join(', ')}.`,
-          ]
-        : []),
-      ...(observation.round === 1 ? ['Жители спасены только после возвращения в убежище.'] : []),
-    ];
-  } else if (phase === 'draw') {
-    notice = 'Возьмите вторую карту со стола или из колоды.';
-    detailLines = ['Открытая универсальная недоступна.', 'Выбор дороги не прерывает добор.'];
-  } else if (phase === 'discard') {
-    notice = `Сбросьте лишние карты из руки: ${Math.max(0, observation.self.hand.length - 10)}.`;
-    detailLines = [
-      'В руке можно оставить не больше 10 карт.',
-      'Рука поднята, пока обязательный сброс не закончен.',
-    ];
-  } else if (phase === 'orders' && train && draft) {
-    headline = `Приказ поезду ${trainNumber(train.id)}`;
+      : null;
+    const reason = owner
+      ? `Маршрут принадлежит: ${owner.name}.`
+      : !isRouteAvailable(observation, edge.id)
+        ? otherParallel?.owner === observation.self.id
+          ? 'Вы уже заняли парную линию. Обе линии одному игроку занимать нельзя.'
+          : 'Парная линия занята. В партии 2–3 игроков вторая линия закрыта.'
+        : observation.self.trainsRemaining < edge.length
+          ? `Не хватает вагонов: нужно ${edge.length}, осталось ${observation.self.trainsRemaining}.`
+          : observation.self.hand.filter((card) => card.color === 'wild').length < edge.ferries
+            ? `Для парома нужно не меньше ${edge.ferries} локомотивов.`
+            : 'Не хватает карт одного цвета для полной оплаты.';
     notice =
-      orderStep === 'pickup'
-        ? draft.mode === 'position'
-          ? 'Выберите станцию позиции на макете.'
-          : 'Выберите станцию, где забрать жителей.'
-        : orderStep === 'refuge'
-          ? 'Теперь выберите убежище на макете.'
-          : risky && !riskAccepted
-            ? 'Рейс опасен. Нужна красная печать согласия.'
-            : 'Нажмите конечную станцию ещё раз — приказ.';
+      owner || !paymentOptions.length
+        ? reason
+        : manualPayment !== null && !paymentValid
+          ? `Этот набор не подходит. Выберите ${edge.length} карт нужного цвета или верните автооплату.`
+          : `Оплата: ${paymentLabel(paymentIds, observation.self.hand)}.`;
     detailLines = [
-      `Откуда: ${stationName(train.stationId)} · груз ${train.cargo.length}/2`,
-      draft.mode === 'position'
-        ? `Позиция: ${stationName(draft.destination)}`
-        : `Забрать: ${stationName(draft.destination)}`,
-      ...(draft.mode !== 'position' ? [`Убежище: ${stationName(draft.returnTo)}`] : []),
+      `${colorNames[edge.color]} ${colorSymbols[edge.color]} · ${edge.length} карт и вагонов · ${ROUTE_POINTS[edge.length] ?? edge.length} очков.`,
+      edge.tunnel
+        ? 'Тоннель: после оплаты возможна доплата 0–3 карты.'
+        : edge.ferries
+          ? `Паром: в оплате не меньше ${edge.ferries} локомотивов.`
+          : 'Обычный маршрут: оплата завершит ход.',
+      'Нижняя зона: выбирайте карты вручную. Локомотив заменяет цвет.',
+      `Осталось вагонов: ${observation.self.trainsRemaining}.`,
     ];
-    if (orderReady) {
-      if (preview?.pickupRound !== null && preview?.pickupRound !== undefined)
-        detailLines.push(`Погрузка: раунд ${preview.pickupRound}`);
-      if (preview?.deliveryRound !== null && preview?.deliveryRound !== undefined)
-        detailLines.push(`Доставка: раунд ${preview.deliveryRound}`);
-      else if (preview?.arrivalRound !== null && preview?.arrivalRound !== undefined)
-        detailLines.push(`Прибытие: раунд ${preview.arrivalRound}`);
-      if (preview?.path.length === 0) detailLines.push('Путь закрыт: поезд будет ждать ремонта.');
-      else if (risky) detailLines.push(preview?.reason ?? 'Поезд не успевает до закрытия.');
-      else if (preview) detailLines.push('Открытый путь безопасен. Очередь не закреплена.');
-    }
-    if (!train.cargo.length && !props.tutorial)
-      controls.push({
-        id: 'position',
-        label: draft.mode === 'position' ? 'Режим: позиция' : 'Режим: эвакуация',
-        enabled: true,
-      });
-    if (!train.cargo.length && draft.mode === 'evacuate' && !props.tutorial)
-      controls.push({
-        id: 'repeat',
-        label: draft.repeat ? 'Повтор рейса: да' : 'Повтор рейса: нет',
-        enabled: true,
-      });
-    if (risky)
-      controls.push({
-        id: 'risk',
-        label: riskAccepted ? 'Риск подтверждён' : 'Подтвердить риск',
-        enabled: !riskAccepted,
-        danger: true,
-      });
-    controls.push({ id: 'cancel', label: 'Отменить выбор', enabled: true });
-    if (!train.cargo.length && train.order.mode !== 'idle' && !props.tutorial)
-      controls.push({ id: 'stopTrain', label: 'Остановить поезд', enabled: true });
-  } else if (phase === 'orders') {
-    notice = 'Выберите свой поезд, затем станцию и убежище на макете.';
+    highlightedCities = [edge.a, edge.b];
+    if (!owner)
+      addPaymentControls('claimRoute', edge.tunnel ? 'Попытка тоннеля' : 'Занять маршрут');
+    controls.push({ id: 'cancel', label: 'Закрыть маршрут', enabled: true });
+  } else if (phase === 'action' && city) {
+    headline = city.name;
+    const stationOwner = observation.players.find((player) => player.stations.includes(city.id));
+    const cost = 4 - observation.self.stationsRemaining;
+    notice = stationOwner
+      ? `Станция игрока: ${stationOwner.name}.`
+      : manualPayment !== null && !paymentValid
+        ? `Этот набор не подходит. Нужны ${cost} карт одного цвета или локомотивы.`
+        : `Станция стоит ${cost} карт одного цвета.`;
     detailLines = [
-      'Приказы бесплатны. Старые рейсы продолжаются.',
-      'Звонок завершит ход. Поезда едут после всех бригад.',
-      ...observation.trains
-        .filter((t) => t.playerId === observation.self.id)
-        .map(
-          (t) =>
-            `Т${trainNumber(t.id)} · ${t.disabled ? 'Потерян' : `${stationName(t.stationId)} · ${t.cargo.length}/2 в поезде · ${t.order.mode === 'idle' ? 'без приказа' : t.cargo.length ? 'возвращается' : 'рейс назначен'}`}`,
-        ),
+      'Станция позволяет использовать 1 соседний чужой участок для билетов.',
+      'Свой путь и очки за маршруты она не увеличивает.',
+      `Каждая сохранённая станция: +4 в конце. Осталось: ${observation.self.stationsRemaining}.`,
+      paymentOptions.length
+        ? `Оплата: ${paymentLabel(paymentIds, observation.self.hand)}.`
+        : 'Для станции нужны свободный город и карты одного цвета.',
+    ];
+    if (!stationOwner && observation.self.stationsRemaining > 0)
+      addPaymentControls('buildStation', 'Построить станцию');
+    controls.push({ id: 'cancel', label: 'Закрыть город', enabled: true });
+  } else if (phase === 'action') {
+    notice = 'За ход выберите одно действие.';
+    detailLines = [
+      'Слева: взять две карты вагонов или один открытый локомотив.',
+      'Пробел: поле. Колесо: масштаб. Перетаскивание: сдвиг карты.',
+      'Новые билеты: взять три и оставить не меньше одного.',
+      `У вас ${observation.self.trainsRemaining} вагонов. Билетов: ${observation.self.tickets.length}.`,
     ];
   } else if (phase === 'finished') {
-    headline =
-      props.result?.cityOutcome === 'failure' ? 'Вода оказалась быстрее' : 'Операция завершена';
-    const result = props.result;
-    notice = result ? `Спасены ${result.saved}/${result.total} групп.` : 'Последний раунд окончен.';
-    detailLines = result
+    const standings = props.result?.standings ?? [];
+    const self = standings.find((standing) => standing.playerId === observation.self.id);
+    headline = self?.winner ? 'Вы победили' : 'Партия завершена';
+    notice = standings
+      .map((standing) => `${standing.winner ? 'Победа · ' : ''}${standing.name}: ${standing.score}`)
+      .join(' / ');
+    detailLines = self
       ? [
-          `Отрезаны водой: ${result.lost} · не доставлены: ${result.stranded}`,
-          ...result.standings.map(
-            (p) =>
-              `${p.winner ? 'Победа · ' : ''}${p.name}: ${p.score} очков / ${p.delivered} групп`,
-          ),
+          `Ваши маршруты: ${self.routeScore} · билеты: ${self.ticketScore}.`,
+          `Станции: +${self.stationScore} · European Express: +${self.expressScore}.`,
+          `Выполнено билетов: ${self.completedTickets}/${self.totalTickets}.`,
+          `Самый длинный путь: ${self.longestPath} вагонов.`,
         ]
       : [];
-    controls.push({ id: 'newGame', label: 'Новая операция', enabled: true });
+    controls.push({ id: 'newGame', label: 'Новая партия', enabled: true });
+  }
+  const ticket = observation.self.tickets.find((item) => item.id === inspectedTicket);
+  if (!rules && ticket && !['setup', 'tickets', 'draw', 'tunnel'].includes(phase)) {
+    const complete = progress.find((item) => item.ticket.id === ticket.id)?.complete ?? false;
+    headline = ticketName(observation, ticket);
+    notice = complete
+      ? `Билет соединён: +${ticket.points} в конце партии.`
+      : `Соедините города. В конце: +${ticket.points} или −${ticket.points}.`;
+    detailLines = [
+      'Оба города должны соединяться вашей непрерывной сетью.',
+      'Станция может добавить один чужой участок для билетов.',
+      'Выбранный билет нельзя вернуть. Очки за него считаются в конце.',
+    ];
+    highlightedCities = [ticket.a, ticket.b];
+    controls.length = 0;
+    controls.push({ id: 'cancel', label: 'Закрыть билет', enabled: true });
+    if (phase === 'finished')
+      controls.push({ id: 'newGame', label: 'Новая партия', enabled: true });
   }
   if (
-    station &&
-    !train &&
-    phase !== 'setup' &&
-    phase !== 'finished' &&
-    phase !== 'draw' &&
-    phase !== 'discard'
+    !rules &&
+    inspectedCard &&
+    !['setup', 'tickets', 'draw', 'tunnel', 'finished'].includes(phase) &&
+    !edge &&
+    !city
   ) {
-    headline = station.name;
+    headline = `${colorNames[inspectedCard]} ${colorSymbols[inspectedCard]}`;
+    notice =
+      inspectedCard === 'wild'
+        ? 'Локомотив заменяет карту любого цвета.'
+        : 'Карта оплачивает одну клетку маршрута своего цвета.';
     detailLines = [
-      station.safe
-        ? 'Убежище: жители в безопасности.'
-        : station.flooded
-          ? 'Станция закрыта водой.'
-          : `Ждут: ${station.groups.length} групп. Вода после раунда ${station.floodRound}.`,
-      station.safe
-        ? 'Возвращайте сюда поезд с грузом: доставка приносит очки.'
-        : 'В поезде два места. Погрузка завершает движение раунда.',
-      ...detailLines.slice(0, 2),
+      'Серую линию оплачивают любым одним цветом.',
+      'Весь маршрут занимают за один ход и одну оплату.',
+      'В руке можно хранить любое число карт.',
     ];
+    controls.push({ id: 'cancel', label: 'Закрыть карту', enabled: true });
   }
   if (rules) {
-    headline = 'Памятка диспетчера';
-    notice = `Лист ${rulesPage + 1}/3. Спасайте жителей. Победит бригада с наибольшим числом очков.`;
-    detailLines = [
-      'Добор: две карты или одна открытая универсальная.',
-      'Ремонт: нажмите рельс дважды.',
-      'Экспресс: нажмите свой поезд дважды, цена 2 карты.',
-      'Рейс: поезд → станция → убежище → ещё раз убежище.',
-      'Груз: 2 группы. Один участок за раунд.',
-      'Волны после 6, 8, 10, 12. Погрузка — остановка.',
-      'Очки: 2 за группу, 3 за приоритетную, +3 за задание.',
-      'Риск подтвердите печатью; сброс — по картам в руке.',
-      'Районный бонус: доставьте 2 группы из этого района.',
-      'Погрузка не даёт очков: верните поезд в убежище.',
-      'Операция длится до 12 раундов; город спасают все.',
-      'Для практики откройте обучение: оно сохранится отдельно.',
-    ].slice(rulesPage * 4, rulesPage * 4 + 4);
+    const page = rulesPages[rulesPage]!;
+    headline = page.title;
+    notice = `Памятка · лист ${rulesPage + 1}/${rulesPages.length}`;
+    detailLines = page.lines;
     controls.length = 0;
     controls.push({
       id: 'rulesPage',
-      label: rulesPage === 2 ? 'Первый лист' : 'Следующий лист',
+      label: rulesPage === rulesPages.length - 1 ? 'Первый лист' : 'Следующий лист',
       enabled: true,
     });
     if (!props.tutorial) controls.push({ id: 'tutorial', label: 'Пройти обучение', enabled: true });
   }
-  if (!rules && inspectedDistrict && !['setup', 'draw', 'discard', 'finished'].includes(phase)) {
-    const delivered = observation.self.delivered.filter(
-      (g) => g.district === inspectedDistrict,
-    ).length;
-    headline = `Личный бонус · ${districtNames[inspectedDistrict]}`;
-    notice =
-      delivered >= 2
-        ? 'Выполнено: +3 очка уже включены в счёт.'
-        : `Доставьте 2 группы из этого района. Сейчас ${delivered}/2.`;
-    detailLines = [
-      'Можно спасать жителей из любого района.',
-      'Засчитывается доставка в убежище, не погрузка.',
-      ...observation.stations
-        .filter((s) => s.district === inspectedDistrict)
-        .map((s) => `${s.name}: ${s.flooded ? 'затоплена' : `${s.groups.length} групп ждут`}`),
-    ];
-    controls.push({ id: 'cancel', label: 'Закрыть карточку', enabled: true });
-  }
-  if (!rules && inspectedMaterial && !['setup', 'draw', 'discard', 'finished'].includes(phase)) {
-    headline = `${colorNames[inspectedMaterial]} материалы ${colorSymbols[inspectedMaterial]}`;
-    notice =
-      inspectedMaterial === 'wild'
-        ? 'Эта карта заменяет одну карту любого цвета.'
-        : 'Одна карта оплачивает единицу ремонта линии того же цвета.';
-    detailLines = [
-      'Цена ремонта указана на закрытой линии.',
-      'На серой линии нужен один цвет на всю цену.',
-      'Экспресс для своего поезда стоит любые две карты.',
-      'Выбирайте ремонт и ускорение на приближённом поле.',
-    ];
-    controls.push({ id: 'cancel', label: 'Закрыть карточку', enabled: true });
-  }
-  if (feedback) notice = feedback;
-  if (props.error) notice = props.error;
-  if (ownTurn && phase === 'action')
+  if (!rules && ownTurn && phase === 'action') {
     controls.push({
-      id: 'pass',
-      label: 'Пропустить действие',
-      enabled: can({ type: 'pass' }),
+      id: 'drawTickets',
+      label: 'Взять билеты',
+      enabled: can({ type: 'drawTickets' }),
       placement: 'bell',
     });
-  if (ownTurn && phase === 'orders')
-    controls.push({
-      id: 'endTurn',
-      label: 'Закончить ход',
-      enabled: can({ type: 'endTurn' }),
-      placement: 'bell',
-    });
-  if (props.error) controls.push({ id: 'clearError', label: 'Понятно', enabled: true });
+    if (can({ type: 'pass' }))
+      controls.push({
+        id: 'pass',
+        label: 'Нет ходов: пропустить',
+        enabled: true,
+        placement: 'bell',
+      });
+  }
+  if (feedback && !['draw', 'tickets', 'setup', 'tunnel'].includes(phase)) notice = feedback;
+  if (props.error) {
+    notice = props.error;
+    controls.push({ id: 'clearError', label: 'Понятно', enabled: true });
+  }
+  if (observation.finalTurnsRemaining !== null && phase !== 'finished' && detailLines.length < 5)
+    detailLines.push(`Последние ходы: ${observation.finalTurnsRemaining}.`);
   controls.push(
     {
       id: 'plan',
@@ -703,82 +708,65 @@ export default function App(props: AppProps) {
       enabled: true,
       placement: 'dock',
     },
-    { id: 'rules', label: rules ? 'Закрыть памятку' : 'Памятка', enabled: true, placement: 'dock' },
+    {
+      id: 'rules',
+      label: rules ? 'Закрыть памятку' : 'Памятка',
+      enabled: !ownTurn || !['draw', 'tickets', 'tunnel'].includes(phase),
+      placement: 'dock',
+    },
     { id: 'menu', label: 'Меню · Esc', enabled: true, placement: 'dock' },
   );
+  const shownTickets = choosingTickets ? observation.self.ticketOptions : observation.self.tickets;
   const view: TableView = {
     headline,
     notice,
     detailLines,
     controls,
-    goals: (phase === 'setup'
-      ? observation.self.objectiveOptions
-      : observation.self.objectives
-    ).map((id) => ({
-      id,
-      label: districtNames[id],
-      progress:
-        phase === 'setup'
-          ? 'Доставить 2 группы · +3'
-          : `${Math.min(2, observation.self.delivered.filter((g) => g.district === id).length)}/2 доставлено`,
-      selected: phase === 'setup' ? objectives.includes(id) : true,
-      enabled: phase === 'setup' ? ownTurn : !props.tutorial,
-      completed: observation.self.delivered.filter((g) => g.district === id).length >= 2,
+    goals: shownTickets.map((item) => ({
+      id: item.id,
+      label: ticketName(observation, item),
+      progress: choosingTickets
+        ? `${item.long ? 'Длинный · ' : ''}В конце +${item.points} / −${item.points}`
+        : progress.find((value) => value.ticket.id === item.id)?.complete
+          ? `Соединён · +${item.points} в конце`
+          : `Соединить · +${item.points} / −${item.points}`,
+      selected: choosingTickets ? ticketIds.includes(item.id) : inspectedTicket === item.id,
+      enabled: choosingTickets ? ownTurn : true,
+      completed:
+        !choosingTickets && progress.find((value) => value.ticket.id === item.id)?.complete,
+      points: item.points,
+      long: item.long,
     })),
-    selectedTrainId,
-    routeStationIds: preview?.path ?? [],
-    enabledMarketIndices: observation.market.flatMap((_, i) =>
-      can({ type: 'draw', source: i }) ? [i] : [],
+    routeStationIds: highlightedCities,
+    enabledMarketIndices: observation.market.flatMap((_, index) =>
+      can({ type: 'draw', source: index }) ? [index] : [],
     ),
     deckEnabled: can({ type: 'draw', source: 'deck' }),
-    discardEnabled: ownTurn && phase === 'discard',
-    enabledEdgeIds: legal.flatMap((c) => (ownTurn && c.type === 'repair' ? [c.edgeId] : [])),
-    enabledTrainIds: observation.trains
-      .filter((t) => t.playerId === observation.self.id && !t.disabled)
-      .map((t) => t.id),
-    highlightedDistrict: inspectedDistrict,
+    enabledEdgeIds: [
+      ...new Set(
+        legal.flatMap((command) => (ownTurn && command.type === 'claim' ? [command.edgeId] : [])),
+      ),
+    ],
+    selectedCardIds: paymentIds,
+    revealedCards: observation.pendingTunnel?.revealed,
   };
   const interact = (intent: TableInteraction) => {
-    if (['train', 'station', 'edge', 'deck', 'market'].includes(intent.kind)) {
-      setInspectedDistrict(null);
-      setInspectedMaterial(null);
-    }
-    if (
-      props.tutorial &&
-      intent.kind !== 'control' &&
-      intent.kind !== 'objective' &&
-      intent.kind !== 'deck'
-    ) {
-      const intended =
-        (phase === 'discard' && intent.kind === 'card') ||
-        (phase === 'orders' &&
-          observation.round === 1 &&
-          ((intent.kind === 'train' && intent.id === 'p0-t1') ||
-            (intent.kind === 'station' &&
-              !!draft &&
-              (draft.destination ? intent.id === 'hill' : intent.id === 'market'))));
-      if (!intended) {
-        setFeedback(lessonBase?.action ?? 'Следуйте подсказке учебного рейса.');
-        return;
-      }
-    }
     if (intent.kind !== 'control') setRules(false);
     if (intent.kind === 'control') {
-      if (!view.controls.some((c) => c.id === intent.id && c.enabled)) return;
+      if (!view.controls.some((control) => control.id === intent.id && control.enabled)) return;
       switch (intent.id) {
         case 'menu':
           props.onMenu();
           return;
         case 'plan':
-          setTopView(!topView);
-          setReset((n) => n + 1);
+          setTopView((value) => !value);
           return;
         case 'rules':
-          setRules(!rules);
+          setRules((value) => !value);
           setRulesPage(0);
           return;
         case 'rulesPage':
-          setRulesPage((page) => (page + 1) % 3);
+          setRulesPage((value) => (value + 1) % rulesPages.length);
           return;
         case 'tutorial':
           props.onStartTutorial();
@@ -789,231 +777,145 @@ export default function App(props: AppProps) {
         case 'newGame':
           props.onStart(
             {
-              playerCount: observation.playerCount as 2 | 3 | 4,
+              playerCount: observation.playerCount as 2 | 3 | 4 | 5,
               playerName: observation.self.name,
             },
             props.difficulty,
           );
           clear();
           return;
-        case 'acceptObjectives': {
-          const districts = observation.self.objectiveOptions.filter((d) => objectives.includes(d));
-          const command: GameCommand = { type: 'chooseObjectives', districts };
-          if (can(command)) send(command);
-          return;
-        }
-        case 'pass':
-          if (can({ type: 'pass' })) {
-            send({ type: 'pass' });
-            clear();
-          }
-          return;
-        case 'endTurn':
-          if (can({ type: 'endTurn' })) {
-            send({ type: 'endTurn' });
-            clear();
-          }
-          return;
         case 'cancel':
           clear();
           return;
-        case 'risk':
-          setRiskAccepted(true);
-          setFeedback('');
+        case 'paymentOption':
+          setOptionIndex((value) => value + 1);
+          setManualPayment(null);
           return;
-        case 'position':
-          if (draft) {
-            setDraft({
-              ...draft,
-              mode: draft.mode === 'position' ? 'evacuate' : 'position',
-              destination: null,
-              repeat: false,
-            });
-            setOrderStep('pickup');
-            setRiskAccepted(false);
-            setFeedback('');
+        case 'autoPayment':
+          setManualPayment(null);
+          return;
+        case 'acceptTickets': {
+          const ids = observation.self.ticketOptions
+            .filter((item) => ticketIds.includes(item.id))
+            .map((item) => item.id);
+          send({ type: 'chooseTickets', ticketIds: ids });
+          setTicketIds([]);
+          return;
+        }
+        case 'drawTickets':
+          if (can({ type: 'drawTickets' })) {
+            clear();
+            send({ type: 'drawTickets' });
           }
           return;
-        case 'repeat':
-          if (draft) {
-            setDraft({ ...draft, repeat: !draft.repeat });
-            setRiskAccepted(false);
-            setFeedback('');
+        case 'pass':
+          if (can({ type: 'pass' })) {
+            clear();
+            send({ type: 'pass' });
           }
           return;
-        case 'stopTrain':
-          if (train && ownTurn && phase === 'orders') {
-            send({
-              type: 'order',
-              trainId: train.id,
-              order: { mode: 'idle', destination: null, returnTo: null, repeat: false },
-            });
+        case 'claimRoute':
+          if (edge && paymentValid) {
+            send({ type: 'claim', edgeId: edge.id, cardIds: paymentIds });
             clear();
           }
+          return;
+        case 'buildStation':
+          if (city && paymentValid) {
+            send({ type: 'buildStation', cityId: city.id, cardIds: paymentIds });
+            clear();
+          }
+          return;
+        case 'payTunnel':
+          if (paymentValid) {
+            send({ type: 'resolveTunnel', pay: true, cardIds: paymentIds });
+            clear();
+          }
+          return;
+        case 'declineTunnel':
+          send({ type: 'resolveTunnel', pay: false });
+          clear();
           return;
       }
       return;
     }
     if (intent.kind === 'objective') {
-      const district = observation.self.objectiveOptions.find((d) => d === intent.id);
-      if (!district) return;
-      if (phase !== 'setup') {
+      if (choosingTickets && ownTurn) {
+        if (!observation.self.ticketOptions.some((item) => item.id === intent.id)) return;
+        setTicketIds((current) =>
+          current.includes(intent.id)
+            ? current.filter((id) => id !== intent.id)
+            : [...current, intent.id],
+        );
+      } else if (observation.self.tickets.some((item) => item.id === intent.id)) {
         clear();
-        setInspectedDistrict(district);
-        return;
+        setInspectedTicket(intent.id);
       }
-      if (!ownTurn) return;
-      setObjectives((current) =>
-        current.includes(district)
-          ? current.filter((d) => d !== district)
-          : current.length < 2
-            ? [...current, district]
-            : current,
-      );
       return;
     }
-    if (intent.kind === 'market' || intent.kind === 'deck') {
-      const source = intent.kind === 'deck' ? 'deck' : Number(intent.id);
-      const command: GameCommand = { type: 'draw', source };
+    if (intent.kind === 'deck' || intent.kind === 'market') {
+      const command: GameCommand = {
+        type: 'draw',
+        source: intent.kind === 'deck' ? 'deck' : Number(intent.id),
+      };
       if (can(command)) {
-        send(command);
         clear();
+        send(command);
       }
       return;
     }
     if (intent.kind === 'card') {
-      const command: GameCommand = { type: 'discard', cardId: intent.id };
-      if (can(command)) send(command);
-      else {
-        const card = observation.self.hand.find((c) => c.id === intent.id);
-        if (card) {
-          clear();
-          setInspectedMaterial(card.color);
-        }
-      }
-      return;
-    }
-    if (intent.kind === 'edge') {
-      if (
-        selection?.kind === 'edge' &&
-        selection.id === intent.id &&
-        can({ type: 'repair', edgeId: intent.id })
-      ) {
-        send({ type: 'repair', edgeId: intent.id });
-        clear();
-        return;
-      }
-      setSelection({ kind: 'edge', id: intent.id });
-      setFeedback('');
-      // Inspecting rails during draw never replaces the second-card instruction.
-      if (phase === 'action') {
-        setSelectedTrainId(null);
-        setDraft(null);
-        setRiskAccepted(false);
-      }
-      return;
-    }
-    if (intent.kind === 'train') {
-      const selected = observation.trains.find(
-        (t) => t.id === intent.id && t.playerId === observation.self.id,
-      );
-      if (!selected || selected.disabled) {
-        setFeedback('Это поезд другой бригады или он закрыт водой.');
-        return;
-      }
-      if (selectedTrainId === selected.id && can({ type: 'express', trainId: selected.id })) {
-        send({ type: 'express', trainId: selected.id });
-        clear();
-        return;
-      }
-      setSelectedTrainId(selected.id);
-      setSelection(null);
-      setFeedback('');
-      setRiskAccepted(false);
-      if (phase === 'orders' && ownTurn) {
-        setDraft({
-          mode: selected.cargo.length ? 'return' : 'evacuate',
-          destination: selected.cargo.length ? selected.order.destination : null,
-          returnTo: null,
-          repeat: selected.order.repeat,
+      const card = observation.self.hand.find((item) => item.id === intent.id);
+      if (!card) return;
+      if (paying) {
+        setInspectedCard(null);
+        setManualPayment((current) => {
+          const ids = current ?? option?.cardIds ?? [];
+          return ids.includes(card.id) ? ids.filter((id) => id !== card.id) : [...ids, card.id];
         });
-        setOrderStep(selected.cargo.length ? 'refuge' : 'pickup');
+      } else if (!['setup', 'tickets', 'draw', 'tunnel'].includes(phase)) {
+        clear();
+        setInspectedCard(card.color);
       }
       return;
     }
-    if (intent.kind === 'station') {
-      const target = observation.stations.find((s) => s.id === intent.id);
-      if (!target) return;
-      setSelection({ kind: 'station', id: target.id });
+    if (intent.kind === 'edge' || intent.kind === 'station') {
+      setSelection({ kind: intent.kind, id: intent.id });
+      setInspectedTicket(null);
+      setInspectedCard(null);
+      setOptionIndex(0);
+      setManualPayment(null);
       setFeedback('');
-      if (!ownTurn || phase !== 'orders' || !train || !draft || target.flooded) return;
-      const destination = draft.mode === 'position' ? draft.destination : draft.returnTo;
-      if (orderStep === 'ready' && destination === target.id) {
-        commitOrder();
-        return;
-      }
-      setRiskAccepted(false);
-      if (draft.mode === 'position') {
-        setDraft({ ...draft, destination: target.id });
-        setOrderStep('ready');
-      } else if (target.safe) {
-        setDraft({ ...draft, returnTo: target.id });
-        setOrderStep(draft.destination || train.cargo.length ? 'ready' : 'pickup');
-      } else if (!train.cargo.length) {
-        setDraft({ ...draft, destination: target.id, returnTo: null });
-        setOrderStep('refuge');
-      }
+      return;
     }
   };
   let lesson = lessonBase;
-  if (lesson?.id === 'first-order' && topView && !train) {
+  if (lesson && choosingTickets && ticketIds.length >= (phase === 'setup' ? 2 : 1))
     lesson = {
       ...lesson,
-      action:
-        'Поле приближено, курсор виден. Нажмите оранжевый поезд T1 у Северного холма (слева вверху).',
+      action: 'Билеты отмечены. Нажмите «Оставить билеты» на листе справа.',
+      focus: 'paper',
+      target: { kind: 'control', id: 'acceptTickets' },
     };
-  }
-  if (lesson?.id === 'loaded') {
+  if (lesson?.id === 'claim-first-route' && edge && ownTurn && phase === 'action')
     lesson = {
       ...lesson,
       action: topView
-        ? 'Жители ещё в поезде на Старом рынке. Нажмите пробел, чтобы вернуться к столу, затем выберите звонок «Пропустить действие» в правой нижней зоне.'
-        : 'В правой нижней зоне выберите звонок «Пропустить действие». Приказ сохранён: поезд сам вернётся в убежище после окончания раунда.',
-    };
-  }
-  if (lesson && ownTurn && phase === 'setup' && objectives.length === 2) {
-    lesson = {
-      ...lesson,
-      action: 'Оба бонуса выбраны. Нажмите печать «Принять задания» на листе справа.',
+        ? 'Маршрут выбран. Нажмите пробел к столу. На листе справа проверьте оплату и подтвердите маршрут.'
+        : paymentOptions.length
+          ? 'На листе справа нажмите «Занять маршрут» или «Попытка тоннеля». Выделенные карты уйдут в оплату.'
+          : 'На выбранный участок карт не хватает. Выберите другой участок или доберите карты.',
       focus: 'paper',
-      target: { kind: 'control', id: 'acceptObjectives' },
+      target: { kind: 'control', id: 'claimRoute' },
     };
-  }
-  if (lesson && ownTurn && phase === 'orders' && observation.round === 1 && train && draft) {
-    lesson = {
-      ...lesson,
-      action: !draft.destination
-        ? 'Нажмите «Старый рынок»: там ждут жители.'
-        : !draft.returnTo
-          ? 'Нажмите «Северный холм»: это убежище для обратного рейса.'
-          : 'Нажмите «Северный холм» ещё раз. Так вы подтверждаете приказ.',
-      target: { kind: 'station', id: draft.destination ? 'hill' : 'market' },
-    };
-  }
   const lessonKey = lesson
     ? `${props.sessionId}:${lesson.id}:${lesson.target?.kind}:${lesson.target?.id}`
     : '';
   const requested = cueRequest.key === lessonKey;
   const guidance =
-    lesson?.target &&
-    (lesson.focus !== 'board' || lesson.id !== 'first-order' || topView || requested)
+    lesson?.target && (lesson.focus !== 'board' || topView || requested)
       ? { key: `${lessonKey}:${requested ? cueRequest.nonce : 0}`, target: lesson.target }
       : undefined;
-  if (lesson && !rules) {
-    view.headline = `Обучение · ${lesson.title}`;
-    view.notice = lesson.action;
-    if (!train || !draft) view.detailLines = [lesson.text];
-  }
   return (
     <main className={`game-shell world-only phase-${phase}`}>
       <div className="table-scene">
@@ -1024,7 +926,7 @@ export default function App(props: AppProps) {
           onInteract={interact}
           topView={topView}
           onBoardModeChange={setTopView}
-          reset={reset}
+          reset={props.sessionId}
           guidance={guidance}
         />
       </div>
@@ -1039,7 +941,7 @@ export default function App(props: AppProps) {
             setCueRequest({ key: lessonKey, nonce: cueRequest.nonce + 1 });
           }}
           onSkip={props.onMenu}
-          onFinish={props.onMenu}
+          onFinish={() => setTutorialHidden(true)}
           onRestart={props.onStartTutorial}
         />
       )}

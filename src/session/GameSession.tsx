@@ -4,7 +4,6 @@ import { applyCommand, createGame, getGameResult, getLegalCommands, getObservati
 import { chooseBotCommand } from '../bots';
 import type { BotDifficulty, GameCommand, GameOptions, GameState } from '../shared/types';
 import { loadMatch, saveMatch, type Save } from './storage';
-import { tutorialCommandAllowed } from '../ui/tutorial';
 
 export default function GameSession() {
   const [state, setState] = useState<GameState | null>(null);
@@ -44,7 +43,7 @@ export default function GameSession() {
   }, []);
   useEffect(() => {
     if (!state) return;
-    const save: Save = { schemaVersion: 1, savedAt: new Date().toISOString(), difficulty, state };
+    const save: Save = { schemaVersion: 2, savedAt: new Date().toISOString(), difficulty, state };
     if (tutorial) setTutorialSave(save);
     else setSaved(save);
     saveMatch(state, difficulty, tutorial ? 'tutorial' : 'current').catch(() =>
@@ -62,16 +61,6 @@ export default function GameSession() {
         (expected.epoch !== sessionEpoch.current || expected.revision !== previous.revision)
       )
         return;
-      if (
-        tutorialMode.current &&
-        previous.activePlayer === 0 &&
-        !tutorialCommandAllowed(getObservation(previous, 0), command)
-      ) {
-        setError(
-          'В учебном рейсе выполните действие из подсказки. Обычная партия доступна из меню.',
-        );
-        return false;
-      }
       const transition = applyCommand(previous, command);
       if (transition.error) {
         setError(transition.error);
@@ -97,25 +86,24 @@ export default function GameSession() {
         const observation = getObservation(state, state.activePlayer);
         let command: GameCommand;
         try {
-          command = tutorial
-            ? getLegalCommands(observation).find(
-                (c) => c.type === 'chooseObjectives' || c.type === 'pass' || c.type === 'endTurn',
-              )!
-            : chooseBotCommand(observation, difficulty);
+          command = chooseBotCommand(observation, difficulty);
         } catch {
-          command = getLegalCommands(observation).find((c) => c.type !== 'order') ?? {
-            type: 'endTurn',
-          };
+          const fallback = getLegalCommands(observation)[0];
+          if (!fallback) {
+            setError('Нет доступного хода. Вернитесь в меню и продолжите сохранение.');
+            return;
+          }
+          command = fallback;
         }
         const ok = commit(command, expected);
         if (!ok) {
           botFailures.current++;
-          const fallback = getLegalCommands(observation).find((c) => c.type !== 'order');
+          const fallback = getLegalCommands(observation)[0];
           if (fallback) commit(fallback, expected);
           else setError('Бот не смог завершить ход. Вернитесь в меню и продолжите сохранение.');
         } else botFailures.current = 0;
       },
-      tutorial ? 850 : state.phase === 'action' ? 360 : 100,
+      tutorial ? 550 : state.phase === 'action' ? 360 : 100,
     );
     return () => window.clearTimeout(timer);
   }, [state, difficulty, commit, tutorial]);
@@ -124,7 +112,7 @@ export default function GameSession() {
     tutorialMode.current = false;
     setTutorial(false);
     const seed =
-      options.seed?.trim() || `river-${crypto.getRandomValues(new Uint32Array(2)).join('-')}`;
+      options.seed?.trim() || `europe-${crypto.getRandomValues(new Uint32Array(2)).join('-')}`;
     const next = createGame({ ...options, seed });
     current.current = next;
     setDifficulty(nextDifficulty);
@@ -148,7 +136,11 @@ export default function GameSession() {
     const next =
       savedLesson && tutorialSave
         ? tutorialSave.state
-        : createGame({ seed: 'first-rescue-v1', playerCount: 2, playerName: 'Учебная бригада' });
+        : createGame({
+            seed: 'europe-first-route-v1',
+            playerCount: 2,
+            playerName: 'Ваша компания',
+          });
     current.current = next;
     setState(next);
     setDifficulty('easy');
@@ -164,7 +156,7 @@ export default function GameSession() {
       canContinue={!!saved}
       difficulty={difficulty}
       tutorial={tutorial}
-      canContinueTutorial={!!tutorialSave && tutorialSave.state.players[0]!.delivered.length === 0}
+      canContinueTutorial={!!tutorialSave && tutorialSave.state.phase !== 'finished'}
       onStartTutorial={() => startTutorial()}
       onContinueTutorial={() => startTutorial(true)}
       onStart={start}

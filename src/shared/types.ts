@@ -1,64 +1,45 @@
-export type CardColor = 'red' | 'blue' | 'yellow' | 'green' | 'wild';
-export type District = 'harbor' | 'old-town' | 'industrial' | 'garden';
-export type Phase = 'setup' | 'action' | 'draw' | 'discard' | 'orders' | 'finished';
+export type TrainColor =
+  'red' | 'blue' | 'yellow' | 'green' | 'orange' | 'purple' | 'black' | 'white';
+export type CardColor = TrainColor | 'wild';
+export type Phase = 'setup' | 'action' | 'draw' | 'tickets' | 'tunnel' | 'finished';
 export interface Card {
   id: string;
   color: CardColor;
 }
-export interface Group {
-  id: string;
-  district: District;
-  priority: boolean;
-}
-export interface Station {
+export interface City {
   id: string;
   name: string;
   x: number;
   z: number;
-  height: number;
-  floodRound: number | null;
-  district: District | null;
-  safe: boolean;
-  flooded: boolean;
-  groups: Group[];
 }
 export interface Edge {
   id: string;
   a: string;
   b: string;
-  color: Exclude<CardColor, 'wild'> | 'gray';
-  cost: number;
-  open: boolean;
-  initialOpen: boolean;
-  builder: number | null;
-  credited: boolean;
+  color: TrainColor | 'gray';
+  length: number;
+  tunnel: boolean;
+  ferries: number;
+  parallel: string | null;
+  owner: number | null;
 }
-export interface TrainOrder {
-  mode: 'idle' | 'evacuate' | 'position' | 'return';
-  destination: string | null;
-  returnTo: string | null;
-  repeat: boolean;
-  confirmRisk?: boolean;
-}
-export interface Train {
+export interface Ticket {
   id: string;
-  playerId: number;
-  stationId: string;
-  cargo: Group[];
-  cargoEdges: string[];
-  order: TrainOrder;
-  disabled: boolean;
-  expressRound: number | null;
+  a: string;
+  b: string;
+  points: number;
+  long: boolean;
 }
 export interface Player {
   id: number;
   name: string;
   color: string;
   hand: Card[];
-  objectiveOptions: District[];
-  objectives: District[];
-  delivered: Group[];
-  repairScore: number;
+  tickets: Ticket[];
+  ticketOptions: Ticket[];
+  trainsRemaining: number;
+  stationsRemaining: number;
+  stations: string[];
   score: number;
 }
 export interface PublicPlayer {
@@ -66,139 +47,129 @@ export interface PublicPlayer {
   name: string;
   color: string;
   handCount: number;
-  delivered: Group[];
-  repairScore: number;
+  ticketCount: number;
+  trainsRemaining: number;
+  stationsRemaining: number;
+  stations: string[];
   score: number;
+  tickets?: Ticket[];
 }
 export interface GameEvent {
   id: number;
-  round: number;
-  kind:
-    | 'draw'
-    | 'repair'
-    | 'move'
-    | 'load'
-    | 'deliver'
-    | 'flood'
-    | 'loss'
-    | 'round'
-    | 'finish'
-    | 'order'
-    | 'express'
-    | 'setup'
-    | 'pass';
+  turn: number;
+  kind: 'draw' | 'claim' | 'station' | 'tickets' | 'tunnel' | 'turn' | 'finish' | 'setup' | 'pass';
   message: string;
   playerId?: number;
-  trainId?: string;
-  stationId?: string;
-  from?: string;
-  to?: string;
+  edgeId?: string;
+  cityId?: string;
+}
+export interface PendingTunnel {
+  edgeId: string;
+  color: CardColor;
+  baseCards: Card[];
+  revealed: Card[];
+  extraCost: number;
 }
 export interface GameState {
-  schemaVersion: 1;
+  schemaVersion: 2;
   rulesVersion: string;
   seed: string;
   rng: number;
   revision: number;
+  turn: number;
   round: number;
   playerCount: number;
   activePlayer: number;
   phase: Phase;
   drawsRemaining: number;
   players: Player[];
-  trains: Train[];
-  stations: Station[];
+  cities: City[];
   edges: Edge[];
   deck: Card[];
   discard: Card[];
   market: Card[];
-  lostGroups: Group[];
+  ticketDeck: Ticket[];
+  unusedTickets: Ticket[];
+  pendingTunnel: PendingTunnel | null;
+  finalTurnsRemaining: number | null;
+  finalRoundTrigger: number | null;
+  consecutivePasses: number;
   events: GameEvent[];
-  initiative: number[];
-  turnOrder: number[];
-  turnIndex: number;
-  setupIndex: number;
-  totalGroups: number;
 }
 export interface PublicBoard {
-  round: number;
-  stations: Station[];
+  cities: City[];
   edges: Edge[];
-  trains: Train[];
+  players: PublicPlayer[];
 }
 export interface Observation extends PublicBoard {
-  schemaVersion: 1;
+  schemaVersion: 2;
   rulesVersion: string;
   revision: number;
+  turn: number;
+  round: number;
   playerCount: number;
   activePlayer: number;
   phase: Phase;
   drawsRemaining: number;
-  players: PublicPlayer[];
   self: Player;
   market: Card[];
   deckCount: number;
   discardCount: number;
-  lostGroups: Group[];
+  ticketDeckCount: number;
+  pendingTunnel: PendingTunnel | null;
+  finalTurnsRemaining: number | null;
+  finalRoundTrigger: number | null;
   events: GameEvent[];
-  initiative: number[];
-  turnOrder: number[];
-  totalGroups: number;
 }
 export type GameCommand =
-  | { type: 'chooseObjectives'; districts: District[] }
+  | { type: 'chooseTickets'; ticketIds: string[] }
   | { type: 'draw'; source: 'deck' | number }
-  | { type: 'repair'; edgeId: string }
-  | { type: 'express'; trainId: string }
-  | { type: 'pass' }
-  | { type: 'discard'; cardId: string }
-  | { type: 'order'; trainId: string; order: TrainOrder }
-  | { type: 'endTurn' };
+  | { type: 'drawTickets' }
+  | { type: 'claim'; edgeId: string; cardIds: string[] }
+  | { type: 'buildStation'; cityId: string; cardIds: string[] }
+  | { type: 'resolveTunnel'; pay: boolean; cardIds?: string[] }
+  | { type: 'pass' };
 export interface Transition {
   state: GameState;
   events: GameEvent[];
   error?: string;
 }
-export interface RoutePreview {
-  path: string[];
-  arrivalRound: number | null;
-  pickupRound: number | null;
-  deliveryRound: number | null;
-  safe: boolean;
-  reason: string | null;
+export interface ClaimOption {
+  color: CardColor;
+  cardIds: string[];
+  wildCount: number;
 }
-export interface GameOptions {
-  seed?: string;
-  playerCount?: 2 | 3 | 4;
-  playerName?: string;
+export interface TicketProgress {
+  ticket: Ticket;
+  complete: boolean;
+  stationRoutes: string[];
 }
 export interface Standing {
   playerId: number;
   name: string;
   color: string;
   score: number;
-  delivered: number;
-  priority: number;
-  objectivesCompleted: number;
-  repairScore: number;
+  routeScore: number;
+  ticketScore: number;
+  stationScore: number;
+  expressScore: number;
+  completedTickets: number;
+  totalTickets: number;
+  longestPath: number;
+  stationRoutes: string[];
   winner: boolean;
+  tickets: TicketProgress[];
 }
 export interface GameResult {
   standings: Standing[];
-  saved: number;
-  lost: number;
-  stranded: number;
-  total: number;
-  cityOutcome: 'excellent' | 'partial' | 'failure';
   finished: boolean;
 }
+export interface GameOptions {
+  seed?: string;
+  playerCount?: 2 | 3 | 4 | 5;
+  playerName?: string;
+}
 export type BotDifficulty = 'easy' | 'normal';
-
-// Fixed public API: src/core/index.ts exports createGame(options), applyCommand(state,command),
-// getObservation(state,playerId), getLegalCommands(observation), previewOrder(board,train,order),
-// getGameResult(stateOrObservation). No caller duplicates legality or routing.
-// src/bots/index.ts exports chooseBotCommand(observation,difficulty='normal'):GameCommand.
-// src/ui/App.tsx default export consumes AppProps below; session integration stays with root.
 export interface AppProps {
   sessionId: number;
   observation: Observation | null;

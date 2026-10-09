@@ -1,20 +1,36 @@
 ---
 name: lt-bots
-description: "Implement fair Last Train solo bots and simulation policies in src/bots. Use for legal move selection, deadline planning, difficulty and bot evaluation."
+description: Разработка честных соло-ботов Europe и симуляций партий на 2–5 игроков без доступа к скрытому состоянию соперников.
 ---
 
-# Last Train bots
+# Боты Europe
 
-Read [architecture](../../../docs/architecture.md), the bot and timing rules in `docs/concept.md`, and `src/shared/types.ts`. Own `src/bots/**` and assigned `scripts/simulate.ts`; ask the core owner for missing public route queries.
+Применяй скилл для `src/bots/`, `scripts/simulate.ts` и назначенных тестов. Прочитай `AGENTS.md`, `docs/europe-rules.md`, `docs/architecture.md` и `docs/development.md`.
 
-Export `chooseBotCommand(observation, difficulty='normal')` from `src/bots/index.ts`. Choose deterministically from `Observation`. If randomness becomes useful, request an explicit bot-randomness contract from the integrator. Do not import or accept full game state, deck order, core PRNG state, opponents' hands or objectives. Simulation must use visible information or explicit beliefs, never a hidden copy of the real state.
+## Честное наблюдение
 
-The match runner in `scripts/simulate.ts` may hold full state to execute the core. Pass only `getObservation(state, seat)` into the decision policy. Keep runner state outside policy closures and evaluation helpers.
+Политика принимает `Observation` своего места и возвращает `GameCommand`. Ей доступны свои карты и билеты, рынок, владельцы линий, станции и публичные ресурсы. Порядок колод, seed, rng, чужие карты и скрытые билеты недоступны.
 
-Choose a valid fallback before evaluating candidates. Respect unfinished draw phases and current action rights. Score a small set of repair, draw, express and order plans by reachable groups, own objectives, delivery time, closure deadlines and visible competition. Use core legality and public route queries instead of copying rules.
+Не передавай в эвристику `GameState`, даже если симулятор хранит его для переходов. Не восстанавливай закрытую колоду через известный seed. Решение должно воспроизводиться по одному наблюдению и настройке сложности.
 
-Start with a normal heuristic. Easy difficulty shortens its planning and chooses among near-best valid plans. Preserve deadline checks. Keep computation bounded and measure it before introducing workers or deeper search. A late worker result must carry revision, turnId and controlEpoch to the session.
+## Выбор команды
 
-Verify that equal observations and equal bot randomness give equal decisions even when underlying hidden states differ. Verify legal commands and completed matches for 2, 3 and 4 brigades. Evaluate tuning on fresh seeds with seat permutations. Report completion, losses, repair use and scores; do not claim human enjoyment from bot results.
+Получай законные команды и варианты оплаты из ядра. Сначала обрабатывай обязательные фазы: стартовые билеты, второй добор, новые билеты и доплату тоннеля. Затем сравнивай действия обычного хода.
 
-Hand off the decision entrypoint, observation requirements, measured budget, seeds tested and known weak plans.
+Оценивай собственные билеты по доступным линиям и стоимости соединения. Учитывай занятую сеть, запас вагонов, цвета карт, обязательные локомотивы парома, риск тоннеля и станцию как способ воспользоваться чужой линией. Одно назначение станции должно помогать всему набору билетов, а не каждому отдельно.
+
+При доборе сравнивай открытые нужные цвета, локомотив и закрытую карту. Не предполагавай конкретную следующую карту. Для тоннеля считай риск по публичным картам и доступной доплате. Отказ остаётся законным завершением хода.
+
+Новые билеты требуют оценки вероятности завершить их оставшимися вагонами и ходами. Длиннейший путь и экономия станций входят в итоговую выгоду. Блокирование соперника можно оценивать только по публичному владению, без чтения его целей.
+
+Сложность меняет качество выбора. Цены, раздача, содержимое колод и подсчёт очков одинаковы для человека и бота. Законный запасной ход нужен при ошибке политики; он не заменяет тесты основной стратегии.
+
+## Симуляции
+
+Гоняй матчи на 2, 3, 4 и 5 мест. Для отчёта сохраняй seed, размер партии, сложности, результат, число действий и нарушение инварианта, если оно есть. Проверяй 110 карт, 46 билетов, ресурсы, легальность каждой команды и завершение.
+
+Отдельно проверяй отсутствие секретов в наблюдении и реакцию бота на одинаковые публичные данные. Для сравнения стратегий используй разные места и несколько seed; один удачный матч не подтверждает силу.
+
+При падении сохрани seed и минимальное воспроизведение, выясни причину между данными, ядром, политикой и сессией. Не меняй официальную карту или очки для исправления слабой эвристики.
+
+Симуляции подтверждают легальность и измеряют поведение этих ботов. Они не доказывают баланс против человека. Для такого вывода нужны сыгранные человеком партии и наблюдения о понятности и сложности решений.

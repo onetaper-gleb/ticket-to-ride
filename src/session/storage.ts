@@ -1,12 +1,12 @@
 import type { BotDifficulty, GameState } from '../shared/types';
 
 export interface Save {
-  schemaVersion: 1;
+  schemaVersion: 2;
   savedAt: string;
   difficulty: BotDifficulty;
   state: GameState;
 }
-const DB = 'last-train-v1';
+const DB = 'last-train-europe-v1';
 let writes: Promise<void> = Promise.resolve();
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -36,7 +36,7 @@ export function saveMatch(
   difficulty: BotDifficulty,
   slot: SaveSlot = 'current',
 ): Promise<void> {
-  const save: Save = { schemaVersion: 1, savedAt: new Date().toISOString(), difficulty, state };
+  const save: Save = { schemaVersion: 2, savedAt: new Date().toISOString(), difficulty, state };
   writes = writes.catch(() => undefined).then(() => write(save, slot));
   return writes;
 }
@@ -54,14 +54,14 @@ export async function loadMatch(
     });
     if (!save) return null;
     if (
-      save.schemaVersion !== 1 ||
-      save.state.schemaVersion !== 1 ||
+      save.schemaVersion !== 2 ||
+      save.state.schemaVersion !== 2 ||
       save.state.rulesVersion !== rulesVersion
     )
       throw new Error('Это сохранение создано другой версией правил. Начните новую партию.');
     if (
       !Array.isArray(save.state.players) ||
-      !Array.isArray(save.state.stations) ||
+      !Array.isArray(save.state.cities) ||
       !Number.isInteger(save.state.revision)
     )
       throw new Error('Сохранение повреждено. Начните новую партию.');

@@ -1,16 +1,18 @@
 ---
 name: lt-release
-description: "Prepare a verified local Last Train milestone with build, playable browser result and startup instructions. Use when reporting the solo MVP or private-online readiness."
+description: 'Проверка и выпуск соло-Europe: сборка, законченная браузерная партия, сохранения и отчёт с пределами проверки.'
 ---
 
-# Last Train release
+# Выпуск Europe
 
-Read the current gate in [development](../../../docs/development.md), `package.json`, and the latest review. Confirm the milestone scope with the integrator. Use scripts actually defined by the project.
+Прочитай [приёмку](../../../docs/development.md), `package.json` и текущий независимый отчёт. Зафиксируй с интегратором версию `europe-base-v1`, классические правила 2019 и объём соло на 2–5 игроков. Онлайн-комнаты требуют отдельного этапа.
 
-Run the production build and checks appropriate to changed behavior. Complete a browser match with a human seat, then save, reload and finish another match. Run 2/3/4-brigade simulations. Check the result screen, new game, continue, resource loading and console errors.
+Выполни действующие команды проекта: `pnpm format:check`, `pnpm check`, `pnpm test`, `pnpm build`. Проверь завершение симуляций на 2, 3, 4 и 5 мест. Сохрани seed и результаты текущей версии; старые проверки эвакуации не переноси в отчёт.
 
-Keep evidence: commands and exits, reproducible seed, tested browser, completed scenarios and known limitations. Confirm that the reported URL opens the built or running game. Open it in Codex when useful.
+В браузере начни и заверши партию с человеком. Проверь итог, новую партию, обучение и продолжение обоих сохранений. Восстанови незавершённый добор, предложенные билеты и тоннель. Проверь ассеты и ошибки консоли.
 
-Report the milestone as implemented. Solo readiness does not imply rooms, final balance, human playtesting or measured FPS. Do not describe target budgets as measurements. Leave failed checks visible and send fixes to their owners.
+Отчёт содержит команды и результаты, воспроизводимые seed, браузерные действия, проверенный URL и оставшиеся ограничения. Убедись, что URL открывает именно новую сборку, а сохранения прежней версии не удалены.
 
-Keep output artifacts under the project's deliverable directory. Include startup and test commands in the project README through its owner. User approval is not needed for local reversible verification. Publishing, hosting, paid services and external accounts remain outside this release task unless the user authorized them.
+Не заявляй готовность сети, человеческий баланс или FPS по сборке и симуляциям. Целевой бюджет кадров не является замером. Ошибку проверки передай владельцу; не скрывай её в отчёте.
+
+Локальная проверка и подготовка выпуска выполняются в разрешённом объёме. Публикация должна сохранять приватность проекта и соответствовать разрешению пользователя. Платные сервисы и внешние аккаунты не входят в эту задачу сами по себе.
