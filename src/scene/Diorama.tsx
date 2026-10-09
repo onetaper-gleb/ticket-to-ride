@@ -13,6 +13,20 @@ import {
   type MapSelection,
 } from './tabletop';
 import { buildTableInterface, updateTableHover } from './world-ui';
+import {
+  accumulateMovement,
+  buildZoneLayouts,
+  canReleasePress,
+  emptyMovement,
+  interactionKey,
+  pointerZone,
+  reconcileOption,
+  stepOption,
+  type Direction,
+  type FocusZone,
+  type OptionZone,
+  type ZoneOption,
+} from './zone-input';
 
 export type { MapSelection } from './tabletop';
 interface Props {
@@ -21,6 +35,7 @@ interface Props {
   onInteract: (interaction: TableInteraction) => void;
   view: TableView;
   topView: boolean;
+  onBoardModeChange: (active: boolean) => void;
   reset: number;
 }
 const materialNames = {
@@ -30,7 +45,6 @@ const materialNames = {
   yellow: 'Жёлтый материал',
   wild: 'Универсальный материал',
 };
-type FocusZone = 'board' | 'deck' | 'hand';
 type TableHit = { interaction: TableInteraction; enabled: boolean };
 const sameInteraction = (a: TableInteraction | null, b: TableInteraction | null) =>
   a?.kind === b?.kind && a?.id === b?.id;
@@ -112,6 +126,8 @@ function AccessibleObjects({
       {objects.map(({ interaction, label, enabled }) => (
         <button
           key={`${interaction.kind}-${interaction.id}`}
+          data-table-kind={interaction.kind}
+          data-table-id={interaction.id}
           disabled={!enabled}
           onFocus={() => onFocusObject?.(interaction)}
           onBlur={() => onFocusObject?.(null)}
@@ -225,6 +241,7 @@ export default function Diorama({
   onInteract,
   view,
   topView,
+  onBoardModeChange,
   reset,
 }: Props) {
   const host = useRef<HTMLDivElement>(null);
@@ -237,8 +254,15 @@ export default function Diorama({
   viewRef.current = view;
   const topViewRef = useRef(topView);
   topViewRef.current = topView;
-  const focusZone = useRef<FocusZone>('board');
+  const onBoardModeChangeRef = useRef(onBoardModeChange);
+  onBoardModeChangeRef.current = onBoardModeChange;
+  const layoutsRef = useRef(buildZoneLayouts(observation, view));
+  layoutsRef.current = buildZoneLayouts(observation, view);
+  const focusZone = useRef<FocusZone>('neutral');
+  const memories = useRef<Partial<Record<OptionZone, ZoneOption>>>({});
+  const focusObject = useRef<(interaction: TableInteraction | null) => void>(() => {});
   const keyboardObject = useRef<TableInteraction | null>(null);
+  const previousReset = useRef(reset);
   const [fallback, setFallback] = useState(false);
   const [ready, setReady] = useState(false);
   const [fontRevision, setFontRevision] = useState(0);
@@ -347,6 +371,9 @@ export default function Diorama({
     const raycaster = new THREE.Raycaster(),
       pointer = new THREE.Vector2();
     let pointerInside = false,
+      lastPointer: { x: number; y: number } | null = null,
+      movement = emptyMovement(),
+      displayKey = '',
       down: {
         x: number;
         y: number;
@@ -354,7 +381,93 @@ export default function Diorama({
         dragged: boolean;
         revision: number;
         enabled: boolean;
+        mode: 'seated' | 'board';
+        zone: FocusZone;
       } | null = null;
+    const boardMode = () => topViewRef.current && !viewRef.current.discardEnabled;
+    const activeZone = (): FocusZone =>
+      viewRef.current.discardEnabled ? 'hand' : focusZone.current;
+    const selectedOption = (): ZoneOption | null => {
+      const zone = activeZone();
+      if (zone === 'neutral') return null;
+      const selected = reconcileOption(layoutsRef.current[zone], memories.current[zone]);
+      if (selected) memories.current[zone] = selected;
+      return selected;
+    };
+    const publishInput = () => {
+      const mode = boardMode() ? 'board' : 'seated';
+      const zone = activeZone();
+      const selected = eng.hoveredInteraction ? interactionKey(eng.hoveredInteraction) : '';
+      const key = `${mode}/${zone}/${selected}`;
+      if (key === displayKey) return;
+      displayKey = key;
+      el.dataset.inputMode = mode;
+      el.dataset.focusZone = zone;
+      el.dataset.selectedObject = selected;
+      el.classList.toggle('board-mode', mode === 'board');
+      el.style.cursor = renderer.domElement.style.cursor = mode === 'board' ? 'crosshair' : 'none';
+    };
+    const changeBoardMode = (active: boolean) => {
+      if (viewRef.current.discardEnabled && active) return;
+      topViewRef.current = active;
+      focusZone.current = 'neutral';
+      keyboardObject.current = null;
+      movement = emptyMovement();
+      lastPointer = null;
+      down = null;
+      eng.hoveredInteraction = null;
+      eng.hoveredCard = null;
+      eng.pressedInteraction = null;
+      onBoardModeChangeRef.current(active);
+      publishInput();
+    };
+    const showLogicalSelection = () => {
+      const selected = selectedOption();
+      eng.hoveredInteraction = selected?.interaction ?? null;
+      eng.hoveredCard = selected?.interaction.kind === 'card' ? selected.interaction.id : null;
+      publishInput();
+    };
+    const navigate = (direction: Direction) => {
+      const zone = activeZone(),
+        selected = selectedOption();
+      if (zone === 'neutral' || !selected) return;
+      memories.current[zone] = stepOption(layoutsRef.current[zone], selected, direction);
+      keyboardObject.current = null;
+      showLogicalSelection();
+    };
+    const interactionZone = (interaction: TableInteraction): OptionZone | null => {
+      if (interaction.kind === 'card') return 'hand';
+      if (interaction.kind === 'market' || interaction.kind === 'deck') return 'deck';
+      if (interaction.kind === 'objective') return 'goals';
+      if (interaction.kind === 'control') {
+        const control = viewRef.current.controls.find((item) => item.id === interaction.id);
+        return control?.placement === 'dock' || control?.placement === 'bell' ? 'dock' : 'paper';
+      }
+      return null;
+    };
+    focusObject.current = (interaction) => {
+      if (!interaction) {
+        keyboardObject.current = null;
+        return;
+      }
+      const zone = interactionZone(interaction);
+      if (zone) {
+        if (boardMode()) changeBoardMode(false);
+        focusZone.current = zone;
+        const option = layoutsRef.current[zone].find((item) =>
+          sameInteraction(item.interaction, interaction),
+        );
+        if (option) memories.current[zone] = option;
+      } else if (!viewRef.current.discardEnabled) {
+        if (!boardMode()) changeBoardMode(true);
+      }
+      keyboardObject.current = interaction;
+      eng.hoveredInteraction = interaction;
+      eng.hoveredCard = interaction.kind === 'card' ? interaction.id : null;
+      movement = emptyMovement();
+      lastPointer = null;
+      publishInput();
+    };
     const setPointer = (event: PointerEvent) => {
       const bounds = renderer.domElement.getBoundingClientRect();
       pointer.set(
@@ -363,18 +476,27 @@ export default function Diorama({
       );
     };
     const currentHit = (): TableHit | null => {
-      // A lowered hand is decoration; its offscreen geometry cannot intercept board clicks.
-      if (eng.hand.visible && (viewRef.current.discardEnabled || focusZone.current === 'hand')) {
-        eng.foreground.updateMatrixWorld(true);
-        raycaster.setFromCamera(pointer, handCamera);
-        const hit = raycaster.intersectObjects(eng.cardPickables, false)[0];
-        const id = hit?.object.userData.cardId as string | undefined;
-        if (id)
-          return { interaction: { kind: 'card', id }, enabled: viewRef.current.discardEnabled };
+      if (keyboardObject.current) {
+        const interaction = keyboardObject.current;
+        const zone = interactionZone(interaction);
+        const enabled = zone
+          ? layoutsRef.current[zone].find((item) => sameInteraction(item.interaction, interaction))
+              ?.enabled === true
+          : interaction.kind === 'train'
+            ? observationRef.current.trains.some(
+                (train) => train.id === interaction.id && !train.disabled,
+              )
+            : true;
+        return { interaction, enabled };
       }
+      if (!boardMode()) {
+        const selected = selectedOption();
+        return selected ? { interaction: selected.interaction, enabled: selected.enabled } : null;
+      }
+      // A visible pointer exists only in the enlarged city. Furniture is never raycast here.
       eng.scene.updateMatrixWorld(true);
       raycaster.setFromCamera(pointer, camera);
-      const hit = raycaster.intersectObjects([...eng.uiPickables, ...eng.pickables], false)[0];
+      const hit = raycaster.intersectObjects(eng.pickables, false)[0];
       if (!hit) return null;
       const interaction = (hit.object.userData.interaction ?? hit.object.userData.selection) as
         TableInteraction | undefined;
@@ -382,6 +504,7 @@ export default function Diorama({
     };
     const pointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return;
+      keyboardObject.current = null;
       setPointer(event);
       const hit = currentHit();
       down = {
@@ -391,6 +514,8 @@ export default function Diorama({
         dragged: false,
         revision: observationRef.current.revision,
         enabled: hit?.enabled ?? false,
+        mode: boardMode() ? 'board' : 'seated',
+        zone: activeZone(),
       };
       eng.pressedInteraction = hit?.enabled ? hit.interaction : null;
     };
@@ -400,31 +525,55 @@ export default function Diorama({
       keyboardObject.current = null;
       if (down && Math.hypot(down.x - event.clientX, down.y - event.clientY) > 6)
         down.dragged = true;
-      if (event.buttons === 0) {
-        const handZone = focusZone.current === 'hand' ? pointer.y < -0.34 : pointer.y < -0.52;
-        focusZone.current = handZone ? 'hand' : pointer.x < -0.48 ? 'deck' : 'board';
+      if (!boardMode()) {
+        const previous = activeZone();
+        const zone = viewRef.current.discardEnabled
+          ? 'hand'
+          : pointerZone((pointer.x + 1) / 2, (1 - pointer.y) / 2, previous);
+        focusZone.current = zone;
+        if (zone !== previous || !lastPointer) movement = emptyMovement();
+        else if (zone !== 'neutral') {
+          const next = accumulateMovement(
+            movement,
+            event.clientX - lastPointer.x,
+            event.clientY - lastPointer.y,
+          );
+          movement = next.movement;
+          if (next.direction) navigate(next.direction);
+        }
       }
+      lastPointer = { x: event.clientX, y: event.clientY };
       const hit = currentHit();
       eng.hoveredInteraction = hit?.interaction ?? null;
       eng.hoveredCard = hit?.interaction.kind === 'card' ? hit.interaction.id : null;
+      publishInput();
     };
     const pointerLeave = () => {
       pointerInside = false;
-      focusZone.current = 'board';
+      focusZone.current = 'neutral';
+      keyboardObject.current = null;
+      lastPointer = null;
+      movement = emptyMovement();
       eng.hoveredCard = null;
       eng.hoveredInteraction = null;
       eng.pressedInteraction = null;
       down = null;
+      publishInput();
     };
     const pointerUp = (event: PointerEvent) => {
       if (event.button !== 0 || !down) return;
       const started = down;
       down = null;
       eng.pressedInteraction = null;
-      if (!started.enabled || started.revision !== observationRef.current.revision) return;
-      if (started.dragged || Math.hypot(started.x - event.clientX, started.y - event.clientY) > 6)
+      if (!canReleasePress(started, event.clientX, event.clientY, observationRef.current.revision))
         return;
+      if (started.mode !== (boardMode() ? 'board' : 'seated')) return;
       setPointer(event);
+      if (started.mode === 'seated' && started.zone === 'neutral' && activeZone() === 'neutral') {
+        changeBoardMode(true);
+        return;
+      }
+      if (!started.enabled) return;
       const hit = currentHit();
       if (hit?.enabled && sameInteraction(started.interaction, hit.interaction))
         onInteractRef.current(hit.interaction);
@@ -432,23 +581,37 @@ export default function Diorama({
     const pointerCancel = () => {
       down = null;
       eng.pressedInteraction = null;
+      movement = emptyMovement();
+      lastPointer = null;
     };
     const keyDown = (event: KeyboardEvent) => {
-      if (
-        event.defaultPrevented ||
-        event.altKey ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.key !== 'Escape'
-      )
-        return;
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
       const target = event.target;
       if (
         target instanceof HTMLElement &&
         (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
       )
         return;
-      onInteractRef.current({ kind: 'control', id: 'menu' });
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        if (boardMode()) changeBoardMode(false);
+        else onInteractRef.current({ kind: 'control', id: 'menu' });
+      } else if (event.key === ' ' || event.code === 'Space') {
+        event.preventDefault();
+        if (!event.repeat && !viewRef.current.discardEnabled) changeBoardMode(!boardMode());
+      } else if (!boardMode() && /^Arrow(Left|Right|Up|Down)$/.test(event.key)) {
+        event.preventDefault();
+        navigate(event.key.slice(5).toLowerCase() as Direction);
+      } else if (
+        event.key === 'Enter' &&
+        !event.repeat &&
+        target instanceof Node &&
+        el.contains(target)
+      ) {
+        event.preventDefault();
+        const hit = currentHit();
+        if (hit?.enabled) onInteractRef.current(hit.interaction);
+      }
     };
     const lostContext = (event: Event) => {
       event.preventDefault();
@@ -479,22 +642,30 @@ export default function Diorama({
       targetGoal = new THREE.Vector3();
     let frame = 0;
     const animate = () => {
-      const plan = topViewRef.current && !viewRef.current.discardEnabled,
-        zone = viewRef.current.discardEnabled ? 'hand' : focusZone.current;
+      const plan = boardMode(),
+        zone = activeZone();
       if (plan) {
-        cameraGoal.set(0, 44, 0.5);
+        // The city, rather than the whole table, occupies the close planning view.
+        cameraGoal.set(0, 25, 11);
         targetGoal.set(0, 0.7, -1.8);
+      } else if (zone === 'deck') {
+        cameraGoal.set(-13.25, 19.5, 13);
+        targetGoal.set(-13.25, 0, 2.75);
+      } else if (zone === 'paper') {
+        cameraGoal.set(13.5, 13.8, 18.2);
+        targetGoal.set(13.5, 2.8, 5.7);
+      } else if (zone === 'goals') {
+        cameraGoal.set(-13.6, 7.5, 19.2);
+        targetGoal.set(-13.6, -1.1, 12.5);
+      } else if (zone === 'dock') {
+        cameraGoal.set(11.5, 9.8, 22);
+        targetGoal.set(11.5, -1.1, 13.3);
+      } else if (zone === 'hand') {
+        cameraGoal.set(0, 25, 31);
+        targetGoal.set(0, 0.7, 1.8);
       } else {
-        // Seated survey with small unpressed pointer look; left focuses supplies.
-        const deckFocus = zone === 'deck',
-          lookX = pointerInside ? pointer.x : 0,
-          lookY = pointerInside ? pointer.y : 0;
-        cameraGoal.set(
-          deckFocus ? -3.2 : lookX * 1.1,
-          deckFocus ? 24 : 28.5 + lookY * 0.5,
-          deckFocus ? 32 : 34,
-        );
-        targetGoal.set(deckFocus ? -6.5 : lookX * 1.25, 0.7 + lookY * 0.6, deckFocus ? 1 : 0.7);
+        cameraGoal.set(0, 28.5, 34);
+        targetGoal.set(0, 0.7, 0.7);
       }
       const blend = reducedMotion ? 1 : 0.085;
       if (!down) {
@@ -505,9 +676,10 @@ export default function Diorama({
       eng.hand.visible = !plan;
       eng.hand.position.y = reducedMotion
         ? zone === 'hand'
-          ? 0.2
+          ? 0.65
           : -1.1
-        : THREE.MathUtils.lerp(eng.hand.position.y, zone === 'hand' ? 0.2 : -1.1, 0.16);
+        : THREE.MathUtils.lerp(eng.hand.position.y, zone === 'hand' ? 0.65 : -1.1, 0.16);
+      eng.hand.scale.setScalar(zone === 'hand' ? 1.16 : 1);
       for (const card of eng.cards) {
         const hover = card.cardId === eng.hoveredCard && zone === 'hand',
           y = card.baseY + (hover ? 0.5 : 0),
@@ -522,11 +694,14 @@ export default function Diorama({
       if (keyboardObject.current) {
         eng.hoveredInteraction = keyboardObject.current;
         eng.hoveredCard = keyboardObject.current.kind === 'card' ? keyboardObject.current.id : null;
+      } else if (!plan) {
+        showLogicalSelection();
       } else if (pointerInside && !down) {
         const hit = currentHit();
         eng.hoveredInteraction = hit?.interaction ?? null;
         eng.hoveredCard = hit?.interaction.kind === 'card' ? hit.interaction.id : null;
       }
+      publishInput();
       updateTableHover(eng, eng.pressedInteraction ?? null);
       renderer.clear();
       renderer.render(scene, camera);
@@ -534,8 +709,8 @@ export default function Diorama({
       renderer.render(foreground, handCamera);
       frame = requestAnimationFrame(animate);
     };
-    camera.position.set(0, topViewRef.current ? 44 : 28.5, topViewRef.current ? 0.5 : 34);
-    controls.target.set(0, 0.7, 0.7);
+    camera.position.set(0, boardMode() ? 25 : 28.5, boardMode() ? 11 : 34);
+    controls.target.set(0, 0.7, boardMode() ? -1.8 : 0.7);
     camera.lookAt(controls.target);
     animate();
     setReady(true);
@@ -556,6 +731,7 @@ export default function Diorama({
       renderer.dispose();
       renderer.domElement.remove();
       engine.current = null;
+      focusObject.current = () => {};
     };
   }, [fallback]);
   useEffect(() => {
@@ -567,15 +743,30 @@ export default function Diorama({
     buildTableInterface(eng, observation, view);
   }, [observation, selection, view, ready, fontRevision]);
   useEffect(() => {
+    if (view.discardEnabled) {
+      focusZone.current = 'hand';
+      keyboardObject.current = null;
+      if (topView) onBoardModeChangeRef.current(false);
+    }
+  }, [view.discardEnabled, topView]);
+  useEffect(() => {
     const eng = engine.current;
     if (!eng) return;
-    focusZone.current = 'board';
-    keyboardObject.current = null;
+    const resetChanged = previousReset.current !== reset;
+    previousReset.current = reset;
+    if (
+      resetChanged ||
+      (!topView && ['station', 'edge', 'train'].includes(keyboardObject.current?.kind ?? ''))
+    )
+      keyboardObject.current = null;
+    if (viewRef.current.discardEnabled) focusZone.current = 'hand';
+    else if (!keyboardObject.current) focusZone.current = 'neutral';
     eng.hoveredInteraction = null;
     eng.hoveredCard = null;
     if (eng.reducedMotion) {
-      eng.camera.position.set(0, topView ? 44 : 28.5, topView ? 0.5 : 34);
-      eng.controls.target.set(0, 0.7, topView ? -1.8 : 0.7);
+      const plan = topView && !viewRef.current.discardEnabled;
+      eng.camera.position.set(0, plan ? 25 : 28.5, plan ? 11 : 34);
+      eng.controls.target.set(0, 0.7, plan ? -1.8 : 0.7);
       eng.camera.lookAt(eng.controls.target);
     }
   }, [topView, reset, ready]);
@@ -583,24 +774,18 @@ export default function Diorama({
   return (
     <div
       ref={host}
-      className="diorama tabletop-diorama"
-      style={{ cursor: 'none' }}
+      className={`diorama tabletop-diorama${topView && !view.discardEnabled ? ' board-mode' : ''}`}
+      style={{ cursor: topView && !view.discardEnabled ? 'crosshair' : 'none' }}
+      data-input-mode={topView && !view.discardEnabled ? 'board' : 'seated'}
+      data-focus-zone={focusZone.current}
       role="group"
-      aria-label="Диспетчерский стол. Мышь слева приближает материалы, внизу поднимает руку, в центре показывает поле. Tab выбирает предметы, Enter действует, Escape открывает меню."
+      aria-label="Диспетчерский стол. Наведите мышь в область материалов слева, заявок снизу слева, руки снизу, листа справа или управления снизу справа. Двигайте мышь на одну опцию в нужную сторону. Нажатие на пустом столе или пробел приближает поле и показывает курсор; пробел или Escape возвращает к столу. Tab выбирает предметы, стрелки меняют опцию, Enter действует."
     >
       <AccessibleObjects
         observation={observation}
         view={view}
         onInteract={onInteract}
-        onFocusObject={(interaction) => {
-          keyboardObject.current = interaction;
-          focusZone.current =
-            interaction?.kind === 'card'
-              ? 'hand'
-              : interaction?.kind === 'deck' || interaction?.kind === 'market'
-                ? 'deck'
-                : 'board';
-        }}
+        onFocusObject={(interaction) => focusObject.current(interaction)}
       />
     </div>
   );

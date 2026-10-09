@@ -1,12 +1,12 @@
 {
-  "version": 3,
+  "version": 4,
   "assets": [
     {
-      "name": "3D dispatcher table, miniature railway, seated brigades, physical stock, hand, chalkboard and papers",
-      "source": "src/scene/Diorama.tsx + src/scene/interaction.ts + src/scene/tabletop.ts + src/scene/world-ui.ts",
+      "name": "3D dispatcher table, miniature railway, three original faceted brigades, physical stock, hand, chalkboard and papers",
+      "source": "src/scene/Diorama.tsx + src/scene/interaction.ts + src/scene/tabletop.ts + src/scene/world-ui.ts + src/scene/characters.ts",
       "license": "project original",
-      "transformations": "Original procedural Three.js meshes, instanced rails and ties, canvas printing on physical cards and world surfaces, local IBM Plex typography",
-      "hash": "2e754d5020ed1e0c6bf4fa0f6d705cf9d2757c9bf2b1e13b7d8378aaf75c82ff",
+      "transformations": "Original procedural Three.js meshes and faceted section lofts, static surfaces merged by material, instanced rails and ties, canvas printing on world objects, local IBM Plex typography; Sjø used only as a visual reference, no imported assets",
+      "hash": "4a03b7be2872ddae05fac56620fd5ea7526398ce6817bb00a8852c5a33e3bf08",
       "hashKind": "sha256 of ordered file name + LF + file bytes + LF for each source"
     }
   ],

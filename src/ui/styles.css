@@ -2135,6 +2135,10 @@ input[type='checkbox'] {
 .world-only .diorama canvas {
   cursor: none;
 }
+.world-only .diorama.board-mode,
+.world-only .diorama.board-mode canvas {
+  cursor: crosshair;
+}
 .sr-only {
   position: absolute;
   width: 1px;

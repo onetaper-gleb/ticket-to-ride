@@ -414,11 +414,12 @@ export default function App(props: AppProps) {
       'Погрузка или выгрузка завершает движение.',
     ];
   } else if (phase === 'action') {
-    notice = 'Карты — слева. Ремонт — на рельсах. Экспресс — на своём поезде.';
+    notice = 'Материалы — слева. Ремонт и экспресс — на приближённом поле.';
     detailLines = [
       'Одно основное действие за ход.',
       'Две обычные карты или одна открытая универсальная.',
-      'Наведите мышь вниз, чтобы поднять руку.',
+      'В зоне двигайте мышь к соседней карте. ЛКМ — выбрать.',
+      'Из центра: ЛКМ или пробел — поле. Esc — вернуться.',
     ];
   } else if (phase === 'draw') {
     notice = 'Возьмите вторую карту со стола или из колоды.';
@@ -559,7 +560,12 @@ export default function App(props: AppProps) {
     });
   if (props.error) controls.push({ id: 'clearError', label: 'Понятно', enabled: true });
   controls.push(
-    { id: 'plan', label: topView ? 'За стол' : 'Вид сверху', enabled: true, placement: 'dock' },
+    {
+      id: 'plan',
+      label: topView ? 'За стол · Пробел' : 'Поле · Пробел',
+      enabled: true,
+      placement: 'dock',
+    },
     { id: 'rules', label: rules ? 'Закрыть памятку' : 'Памятка', enabled: true, placement: 'dock' },
     { id: 'menu', label: 'Меню · Esc', enabled: true, placement: 'dock' },
   );
@@ -794,6 +800,7 @@ export default function App(props: AppProps) {
           view={view}
           onInteract={interact}
           topView={topView}
+          onBoardModeChange={setTopView}
           reset={reset}
         />
       </div>

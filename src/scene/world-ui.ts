@@ -266,7 +266,7 @@ function buildPaper(eng: Engine, view: TableView) {
       if (!paperControls.length) {
         ctx.fillStyle = '#9b927b';
         ctx.font = `32px ${mono}`;
-        ctx.fillText('ВЫБЕРИТЕ ПРЕДМЕТ НА СТОЛЕ', 59, 1314, 906);
+        ctx.fillText('ЛКМ / ПРОБЕЛ — ПОЛЕ · ESC — К СТОЛУ', 59, 1314, 906);
       }
     },
     1024,
@@ -275,6 +275,14 @@ function buildPaper(eng: Engine, view: TableView) {
   const clipboard = page(eng.furniture, 8.6, 11.8, texture, '#6e5c3c');
   clipboard.group.position.set(13.5, 3.2, 5.7);
   clipboard.group.rotation.x = -Math.PI / 4;
+  register(
+    eng,
+    clipboard.group,
+    [clipboard.face, clipboard.back],
+    { kind: 'control', id: 'inspectPaper' },
+    false,
+    0.045,
+  );
   const { box } = primitiveFactory(clipboard.group);
   box([2.5, 0.3, 0.18], '#6e7770', [0, 5.74, 0.11]);
   box([0.86, 0.12, 0.19], '#adb19d', [0, 5.82, 0.19]);
@@ -415,7 +423,7 @@ const same = (a: TableInteraction | null | undefined, b: TableInteraction | null
 // Only presentation state changes here: raising stock cards cannot draw or spend them.
 export function updateTableHover(eng: Engine, pressed = eng.pressedInteraction) {
   for (const item of eng.animatedProps) {
-    const hovered = item.enabled && same(eng.hoveredInteraction, item.interaction);
+    const hovered = same(eng.hoveredInteraction, item.interaction);
     const target =
       item.baseY +
       (hovered ? item.lift : 0) -

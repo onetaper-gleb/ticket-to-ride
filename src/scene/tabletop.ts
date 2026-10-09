@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import type { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import type { CardColor, Observation, PublicPlayer, Station } from '../shared/types';
+import type { CardColor, Observation, Station } from '../shared/types';
 import type { TableInteraction, TableView } from './interaction';
+import { buildDispatcher } from './characters';
 
 export const railColors: Record<string, string> = {
   red: '#a34d3c',
@@ -330,68 +331,6 @@ function placard(
   return face;
 }
 
-function buildDispatcher(
-  parent: THREE.Group,
-  player: PublicPlayer,
-  x: number,
-  z: number,
-  index: number,
-) {
-  const factory = primitiveFactory(parent);
-  const person = new THREE.Group();
-  person.position.set(x, -0.45, z);
-  person.rotation.y = Math.atan2(-x, -z);
-  parent.add(person);
-  const skin = ['#bd8f70', '#d5b296', '#896a53'][index % 3],
-    cloth = ['#39484a', '#525a43', '#4c4146'][index % 3];
-  factory.box([2.8, 2.5, 0.6], '#292d28', [0, 0.2, -0.65], person);
-  factory.mesh('sphere', [1.32, 1.7, 0.8], cloth, [0, 1, 0], person);
-  factory.box([0.7, 0.09, 0.75], player.color, [0, 2.2, 0.56], person);
-  factory.mesh('cylinder', [0.28, 0.45, 0.28], skin, [0, 2.45, 0.08], person);
-  factory.mesh('sphere', [0.75, 0.88, 0.66], skin, [0, 3.23, 0.08], person);
-  factory.mesh('sphere', [0.15, 0.17, 0.16], skin, [0, 3.25, 0.72], person);
-  for (const side of [-1, 1]) {
-    factory.mesh('sphere', [0.12, 0.23, 0.13], skin, [side * 0.74, 3.21, 0.02], person);
-    factory.box([0.07, 0.075, 0.035], '#2b2b25', [side * 0.26, 3.43, 0.68], person);
-    const arm = factory.mesh(
-      'cylinder',
-      [0.3, 1.55, 0.3],
-      cloth,
-      [side * 1.03, 0.66, 0.88],
-      person,
-    );
-    arm.rotation.x = -0.72;
-    arm.rotation.z = side * 0.27;
-    factory.mesh('sphere', [0.29, 0.15, 0.41], skin, [side * 0.81, 0.17, 1.52], person);
-    for (let finger = 0; finger < 3; finger++)
-      factory.mesh(
-        'cylinder',
-        [0.052, 0.28, 0.052],
-        skin,
-        [side * 0.8 + finger * 0.085, 0.17, 1.75],
-        person,
-      ).rotation.x = Math.PI / 2;
-  }
-  factory.box([0.42, 0.055, 0.03], '#775d4b', [0, 2.91, 0.64], person);
-  factory.mesh('cylinder', [0.85, 0.24, 0.75], cloth, [0, 4.02, 0.06], person);
-  factory.box([1.44, 0.07, 0.85], '#2a3334', [0, 3.89, 0.51], person);
-  factory.box([0.28, 0.13, 0.04], '#b6a773', [0, 4.01, 0.79], person);
-  if (player.handCount > 0) {
-    const backMaterial = new THREE.MeshStandardMaterial({
-      map: cardPrint('wild', true),
-      roughness: 1,
-    });
-    const cardGeometry = new THREE.BoxGeometry(0.64, 0.94, 0.045);
-    for (let i = 0; i < Math.min(4, player.handCount); i++) {
-      const card = new THREE.Mesh(cardGeometry, backMaterial);
-      card.position.set((i - 1.5) * 0.35, 0.63, 1.72);
-      card.rotation.set(-0.32, 0, (i - 1.5) * -0.12);
-      card.castShadow = true;
-      person.add(card);
-    }
-  }
-}
-
 export function buildEnvironment(eng: Engine, observation: Observation) {
   disposeObjects(eng.environment);
   eng.environment.clear();
@@ -428,6 +367,9 @@ export function buildEnvironment(eng: Engine, observation: Observation) {
   lamp.add(bulb);
   // Only public opponents reach this scene, and only card backs are rendered.
   const others = observation.players.filter((player) => player.id !== observation.self.id);
+  const opponentCardBack = others.some((player) => player.handCount > 0)
+    ? cardPrint('wild', true)
+    : null;
   others.forEach((player, i) =>
     buildDispatcher(
       eng.environment,
@@ -435,6 +377,7 @@ export function buildEnvironment(eng: Engine, observation: Observation) {
       others.length === 1 ? 0 : (i - (others.length - 1) / 2) * 10.5,
       -18.7,
       i,
+      opponentCardBack,
     ),
   );
   box([2.3, 0.12, 1.55], '#b2a78d', [15.5, -1.24, -11.8]);
@@ -869,6 +812,52 @@ export function buildHand(eng: Engine, observation: Observation) {
       eng.hand.add(group);
       eng.cardPickables.push(front);
       eng.cards.push({ group, cardId: card.id, baseY: group.position.y, baseZ: group.position.z });
+    });
+  } else {
+    const group = new THREE.Group();
+    group.position.set(0, -3.75, 0.12);
+    const body = new THREE.Mesh(
+      new THREE.ExtrudeGeometry(roundedShape(1.05, 1.6, 0.055), {
+        depth: 0.032,
+        bevelEnabled: false,
+        curveSegments: 3,
+      }),
+      new THREE.MeshStandardMaterial({ color: '#b6ac94', roughness: 1 }),
+    );
+    group.add(body);
+    const texture = textureFromCanvas((ctx) => {
+      ctx.fillStyle = '#ddd3bb';
+      ctx.fillRect(0, 0, 512, 768);
+      ctx.strokeStyle = '#9a927d';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(24, 24, 464, 720);
+      ctx.fillStyle = '#505b50';
+      ctx.textAlign = 'center';
+      ctx.font = '26px "IBM Plex Mono", Consolas, monospace';
+      ctx.fillText('СКЛАДСКАЯ ОПИСЬ', 256, 100);
+      ctx.font = '62px "IBM Plex Sans", Arial, sans-serif';
+      ctx.fillText('Материалов', 256, 347);
+      ctx.fillText('нет', 256, 425);
+      ctx.font = '27px "IBM Plex Sans", Arial, sans-serif';
+      ctx.fillText('Возьмите карты', 256, 608);
+      ctx.fillText('из колоды на столе', 256, 650);
+    });
+    const front = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.03, 1.58),
+      new THREE.MeshStandardMaterial({ map: texture, roughness: 1 }),
+    );
+    front.position.z = 0.04;
+    front.userData.cardId = 'empty-hand';
+    front.userData.interaction = { kind: 'card', id: 'empty-hand' } satisfies TableInteraction;
+    front.userData.enabled = false;
+    group.add(front);
+    eng.hand.add(group);
+    eng.cardPickables.push(front);
+    eng.cards.push({
+      group,
+      cardId: 'empty-hand',
+      baseY: group.position.y,
+      baseZ: group.position.z,
     });
   }
   const { mesh, box } = primitiveFactory(eng.hand);
