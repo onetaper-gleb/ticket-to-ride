@@ -1,0 +1,33 @@
+{
+  "name": "last-train",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.25.0",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "preview": "vite preview --host 127.0.0.1 --port 5173 --strictPort",
+    "build": "tsc -b && vite build",
+    "test": "vitest run",
+    "check": "tsc -b",
+    "simulate": "node --import tsx scripts/simulate.ts",
+    "format": "prettier --write src scripts *.json *.ts",
+    "format:check": "prettier --check src scripts *.json *.ts"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/three": "^0.180.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.9",
+    "vitest": "^3.2.4",
+    "tsx": "^4.20.6",
+    "prettier": "^3.6.2"
+  }
+}

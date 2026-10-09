@@ -1,0 +1,4 @@
+interface:
+  display_name: "Last Train Network"
+  short_description: "Build private rooms and recoverable server matches"
+  default_prompt: "Use $lt-network to implement the assigned online milestone and verify command recovery and privacy."

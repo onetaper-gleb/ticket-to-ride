@@ -1,0 +1,4 @@
+interface:
+  display_name: "Last Train Interface"
+  short_description: "Build readable panels and a 3D city diorama"
+  default_prompt: "Use $lt-ui to implement the assigned player flow with core previews and verify it in the browser."

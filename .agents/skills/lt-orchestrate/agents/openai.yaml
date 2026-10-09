@@ -1,0 +1,4 @@
+interface:
+  display_name: "Last Train Orchestration"
+  short_description: "Coordinate agents, contracts and playable milestones"
+  default_prompt: "Use $lt-orchestrate to delegate the next playable milestone and integrate its verified result."

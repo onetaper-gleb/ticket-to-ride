@@ -1,0 +1,4 @@
+interface:
+  display_name: "Last Train Core"
+  short_description: "Implement rules, routing and state invariants"
+  default_prompt: "Use $lt-core to implement the assigned Last Train rule and verify its phase boundaries."

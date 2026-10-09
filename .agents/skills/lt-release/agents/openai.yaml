@@ -1,0 +1,4 @@
+interface:
+  display_name: "Last Train Release"
+  short_description: "Verify a playable milestone and local startup"
+  default_prompt: "Use $lt-release to verify the current milestone and provide the working game and its limits."

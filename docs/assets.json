@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "assets": [
+    {
+      "name": "Tabletop city, trains, tracks, water and station markers",
+      "source": "src/scene — project procedural geometry",
+      "license": "project original",
+      "transformations": "runtime box, cylinder and plane geometries; original palette",
+      "hash": "cc2be52d1976f189ced0bbda202fafc40919e590aed866e830bd9194e30e5fe0",
+      "hashKind": "sha256 of procedural source"
+    }
+  ],
+  "externalAssets": [],
+  "paidDependencies": [],
+  "fonts": "System UI and Georgia; no remote font dependency"
+}

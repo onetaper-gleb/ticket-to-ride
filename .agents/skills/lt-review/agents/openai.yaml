@@ -1,0 +1,4 @@
+interface:
+  display_name: "Last Train Review"
+  short_description: "Review game boundaries and milestone readiness"
+  default_prompt: "Use $lt-review to independently verify the current milestone and report reproducible defects."
