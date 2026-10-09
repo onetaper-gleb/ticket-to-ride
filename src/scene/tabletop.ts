@@ -3,6 +3,14 @@ import type { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { CardColor, Observation } from '../shared/types';
 import type { TableInteraction, TableView } from './interaction';
 import { buildDispatcher } from './characters';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { TABLE_LAYOUT } from './table-layout';
+import { presentationCities, routeLayouts, cityLabels } from './board-layout';
+import { renderEuropeAtlas } from './europe-atlas';
+import { createRailMiniatures } from './rail-miniatures';
+import { drawTrainCard } from './card-art';
+import { batchRailMiniatures } from './rail-batching';
+import { buildPlayerReserve } from './player-reserve';
 
 export const railColors: Record<string, string> = {
   red: '#b54e3d',
@@ -15,17 +23,6 @@ export const railColors: Record<string, string> = {
   white: '#ebe3cd',
   gray: '#89877a',
   wild: '#a68d52',
-};
-const cardNames: Record<CardColor, string> = {
-  red: 'КРАСНЫЙ',
-  blue: 'СИНИЙ',
-  green: 'ЗЕЛЁНЫЙ',
-  yellow: 'ЖЁЛТЫЙ',
-  orange: 'ОРАНЖЕВЫЙ',
-  purple: 'РОЗОВЫЙ',
-  black: 'ЧЁРНЫЙ',
-  white: 'БЕЛЫЙ',
-  wild: 'ЛОКОМОТИВ',
 };
 export type MapSelection = { kind: 'station' | 'edge'; id: string } | null;
 export type CardMesh = { group: THREE.Group; cardId: string; baseY: number; baseZ: number };
@@ -41,6 +38,7 @@ export type Engine = {
   hand: THREE.Group;
   furniture: THREE.Group;
   pickables: THREE.Object3D[];
+  routePickCenters: Map<string, THREE.Vector3[]>;
   uiPickables: THREE.Object3D[];
   hoveredInteraction: TableInteraction | null;
   pressedInteraction?: TableInteraction | null;
@@ -112,68 +110,12 @@ export function textureFromCanvas(
   return texture;
 }
 
-// Locally drawn supply documents; no downloaded illustrations or hidden font fetches.
 export function cardPrint(color: CardColor, back = false, maxAnisotropy = 4) {
-  const texture = textureFromCanvas((ctx) => {
-    ctx.fillStyle = back ? '#263833' : '#eee5cf';
-    ctx.fillRect(0, 0, 512, 768);
-    ctx.strokeStyle = back ? '#c1b891' : '#ac9e7b';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(22, 22, 468, 724);
-    ctx.textAlign = 'center';
-    const sans = '"IBM Plex Sans", Arial, sans-serif';
-    if (back) {
-      ctx.strokeStyle = '#8b967e';
-      for (let i = -6; i <= 6; i++) {
-        ctx.beginPath();
-        ctx.moveTo(60, 384 + i * 38);
-        ctx.lineTo(452, 384 - i * 38);
-        ctx.stroke();
-      }
-      ctx.fillStyle = '#263833';
-      ctx.fillRect(30, 280, 452, 190);
-      ctx.fillStyle = '#e0d7b9';
-      ctx.font = `64px ${sans}`;
-      ctx.fillText('ВАГОНЫ', 256, 355);
-      ctx.font = `40px ${sans}`;
-      ctx.fillText('EUROPE · 1900', 256, 420);
-      return;
-    }
-    ctx.fillStyle = '#35413a';
-    ctx.font = `54px ${sans}`;
-    ctx.fillText(cardNames[color], 256, 103);
-    ctx.font = `42px ${sans}`;
-    ctx.fillText(color === 'wild' ? 'Любой цвет' : '1 вагон', 256, 164);
-    const colors =
-      color === 'wild'
-        ? ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'black', 'white']
-        : [color];
-    const stripeHeight = 235 / colors.length;
-    colors.forEach((item, i) => {
-      ctx.fillStyle = railColors[item];
-      ctx.fillRect(68, 243 + i * stripeHeight, 376, stripeHeight + 1);
-    });
-    ctx.strokeStyle = '#263833';
-    ctx.lineWidth = 9;
-    ctx.strokeRect(68, 243, 376, 235);
-    ctx.fillStyle = '#eae5d3';
-    for (let i = 0; i < 4; i++) ctx.fillRect(92 + i * 87, 272, 56, 68);
-    ctx.fillStyle = '#263833';
-    for (const x of [138, 374]) {
-      ctx.beginPath();
-      ctx.arc(x, 484, 36, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(48, 530);
-    ctx.lineTo(464, 530);
-    ctx.stroke();
-    ctx.font = `48px ${sans}`;
-    ctx.fillText(color === 'wild' ? 'ЗАМЕНЯЕТ ВАГОН' : 'ЗАНЯТЬ МАРШРУТ', 256, 609);
-    ctx.font = `36px ${sans}`;
-    ctx.fillText(color === 'wild' ? 'Открытый: весь добор' : 'Карты одного цвета', 256, 675);
-  });
+  const texture = textureFromCanvas(
+    (ctx) => drawTrainCard(ctx, color, back, 1024, 1536, railColors),
+    1024,
+    1536,
+  );
   texture.anisotropy = Math.min(maxAnisotropy, 8);
   return texture;
 }
@@ -291,13 +233,43 @@ export function buildEnvironment(eng: Engine, observation: Observation) {
   box([95, 0.5, 95], '#1b2628', [0, -8, 0]);
   box([75, 28, 0.6], '#283536', [0, 6, -31]);
   box([0.6, 28, 80], '#222d2f', [-35, 6, 0]);
-  box([39, 1.4, 39], '#3e3026', [0, -2.15, 0]);
-  box([38.5, 0.09, 38.5], '#6b5038', [0, -1.4, 0]);
-  for (let plank = -4; plank <= 4; plank++)
-    box([0.022, 0.007, 38.3], '#352b25', [plank * 4.25, -1.346, 0]);
+  const { width, depth } = TABLE_LAYOUT.table;
+  const wood = textureFromCanvas(
+    (ctx) => {
+      ctx.fillStyle = '#614936';
+      ctx.fillRect(0, 0, 1024, 1024);
+      for (let row = 0; row < 1024; row += 3) {
+        const shade = Math.round(53 + Math.sin(row * 0.019) * 9 + Math.sin(row * 0.13) * 4);
+        ctx.strokeStyle = `rgba(${shade},${shade - 10},${shade - 20},.22)`;
+        ctx.lineWidth = 1 + (row % 7) * 0.25;
+        ctx.beginPath();
+        for (let x = 0; x <= 1024; x += 16) {
+          const y = row + Math.sin(x * 0.011 + row * 0.004) * 3;
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+    },
+    1024,
+    1024,
+  );
+  wood.wrapS = wood.wrapT = THREE.RepeatWrapping;
+  wood.repeat.set(2, 1.5);
+  wood.anisotropy = Math.min(eng.renderer.capabilities.getMaxAnisotropy(), 8);
+  const table = new THREE.Mesh(
+    new RoundedBoxGeometry(width, 1.4, depth, 3, 0.25),
+    new THREE.MeshStandardMaterial({ color: '#d6c4a5', map: wood, roughness: 0.7 }),
+  );
+  table.position.y = -2.15;
+  table.receiveShadow = true;
+  table.castShadow = true;
+  eng.environment.add(table);
+  for (let plank = -3; plank <= 3; plank++)
+    box([width - 0.7, 0.012, 0.025], '#3c3027', [0, -1.443, plank * 4.15]);
   for (const side of [-1, 1]) {
-    box([0.1, 0.06, 38.4], '#978260', [side * 19.05, -1.34, 0]);
-    box([38.1, 0.06, 0.1], '#978260', [0, -1.34, side * 19.05]);
+    box([0.08, 0.03, depth - 0.8], '#978260', [side * (width / 2 - 0.4), -1.425, 0]);
+    box([width - 0.8, 0.03, 0.08], '#978260', [0, -1.425, side * (depth / 2 - 0.4)]);
     box([1.5, 6, 1.5], '#2d2923', [side * 16, -5.2, -15]);
   }
   const lamp = new THREE.Group();
@@ -336,6 +308,7 @@ export function buildEnvironment(eng: Engine, observation: Observation) {
   box([2.3, 0.12, 1.55], '#b2a78d', [15.5, -1.24, -11.8]);
   box([2.3, 0.1, 1.55], '#d3c6a9', [15.4, -1.12, -11.7]).rotation.y = -0.11;
   box([0.12, 0.12, 2.3], '#6d4431', [14.8, -0.97, -12.1]).rotation.y = -0.5;
+  buildPlayerReserve(eng.environment, observation);
 }
 
 export function buildBoard(
@@ -348,245 +321,225 @@ export function buildBoard(
   disposeObjects(eng.board);
   eng.board.clear();
   eng.pickables = [];
+  eng.routePickCenters.clear();
   const { box, mesh } = primitiveFactory(eng.board);
-  box([23.1, 0.45, 17.1], '#8a7751', [0, -0.95, 0]);
+  const cities = presentationCities(observation.cities);
+  const routes = routeLayouts(observation.edges, cities);
+  const labels = cityLabels(cities, routes);
+  const width = TABLE_LAYOUT.board.width,
+    depth = TABLE_LAYOUT.board.depth;
+  const frame = new THREE.Mesh(
+    new RoundedBoxGeometry(width + 0.5, 0.34, depth + 0.5, 3, 0.09),
+    new THREE.MeshStandardMaterial({ color: '#574735', roughness: 0.48 }),
+  );
+  frame.position.y = -0.98;
+  frame.castShadow = true;
+  frame.receiveShadow = true;
+  eng.board.add(frame);
+  for (const side of [-1, 1]) {
+    box([width + 0.23, 0.02, 0.035], '#b09a69', [0, -0.8, side * (depth / 2 + 0.1)]);
+    box([0.035, 0.02, depth + 0.23], '#b09a69', [side * (width / 2 + 0.1), -0.8, 0]);
+  }
   const atlas = textureFromCanvas(
     (ctx) => {
-      const w = 2048,
-        h = 1536;
-      ctx.fillStyle = '#839aa0';
-      ctx.fillRect(0, 0, w, h);
-      const polygon = (points: [number, number][], color: string) => {
+      const w = 3072,
+        h = 2048;
+      renderEuropeAtlas(ctx, w, h);
+      const pixel = (x: number, z: number) => ({
+        x: (x / width + 0.5) * w,
+        y: (z / depth + 0.5) * h,
+      });
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (const label of labels) {
+        const center = pixel(label.x, label.z),
+          pin = pixel(label.city.x, label.city.z);
+        const marked =
+          view?.routeStationIds.includes(label.city.id) ||
+          (selection?.kind === 'station' && selection.id === label.city.id);
+        ctx.strokeStyle = marked ? '#8b622d' : '#696d59';
+        ctx.lineWidth = marked ? 3.8 : 2.5;
         ctx.beginPath();
-        points.forEach(([x, z], i) => {
-          const px = ((x + 11.5) / 23) * w,
-            py = ((z + 8.5) / 17) * h;
-          if (i === 0) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
-        });
-        ctx.closePath();
-        ctx.fillStyle = color;
+        ctx.moveTo(pin.x, pin.y);
+        ctx.lineTo(center.x, center.y);
+        ctx.stroke();
+        const bw = (label.width / width) * w,
+          bh = (label.height / depth) * h;
+        ctx.fillStyle = marked ? '#e5c479' : '#ede6cc';
+        ctx.globalAlpha = 0.93;
+        ctx.beginPath();
+        ctx.roundRect(center.x - bw / 2, center.y - bh / 2, bw, bh, 5);
         ctx.fill();
-        ctx.strokeStyle = '#697b73';
-        ctx.lineWidth = 5;
-        ctx.stroke();
-      };
-      polygon(
-        [
-          [-7.5, -1.7],
-          [-5, -3.3],
-          [-3, -3.2],
-          [-2.6, -4.3],
-          [-1.8, -4.3],
-          [-1.4, -2.7],
-          [1.2, -3.1],
-          [1.3, -4.5],
-          [2.5, -5.1],
-          [2.8, -6.4],
-          [5.5, -7.0],
-          [11.5, -7.0],
-          [11.5, 8.5],
-          [4, 8.5],
-          [2.5, 7],
-          [2, 5.4],
-          [0.9, 3.8],
-          [-0.7, 2.8],
-          [-1.1, 4],
-          [-0.7, 5.3],
-          [0.5, 5.4],
-          [0, 6.2],
-          [-1.9, 4.8],
-          [-2.7, 2.9],
-          [-4, 3.3],
-          [-5, 5],
-          [-6.7, 5.8],
-          [-8.4, 7.4],
-          [-10.5, 6.2],
-          [-10.5, 3],
-          [-7, 0.6],
-        ],
-        '#c9c8a4',
-      );
-      polygon(
-        [
-          [-8, -6],
-          [-7, -7],
-          [-6.5, -5],
-          [-5.7, -3.1],
-          [-7, -1.7],
-          [-8, -2.4],
-          [-7.5, -4],
-        ],
-        '#c9c8a4',
-      );
-      polygon(
-        [
-          [-2.9, -8.5],
-          [0, -8.5],
-          [1, -6],
-          [0, -3.5],
-          [-1.2, -2.8],
-          [-2, -4.5],
-        ],
-        '#c9c8a4',
-      );
-      polygon(
-        [
-          [0.8, 3.3],
-          [1.4, 4],
-          [2.5, 5.5],
-          [2.3, 6.5],
-          [1.4, 5.4],
-          [0.5, 4.5],
-        ],
-        '#b5b68f',
-      );
-      ctx.strokeStyle = '#74878b';
-      ctx.lineWidth = 1;
-      for (let x = 0; x < w; x += 128) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, h);
-        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#283b36';
+        ctx.font = `500 ${Math.round(bh * 0.7)}px "IBM Plex Sans", Arial, sans-serif`;
+        ctx.fillText(label.city.name, center.x, center.y + 1, bw - 9);
       }
-      for (let y = 0; y < h; y += 128) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
-      }
-      ctx.fillStyle = '#4c656b';
-      ctx.font = '48px "IBM Plex Mono", monospace';
-      ctx.fillText('ATLAS / EUROPE', 54, 1460);
-      ctx.font = '28px "IBM Plex Sans", sans-serif';
-      ctx.fillText('ЖЕЛЕЗНЫЕ ДОРОГИ · 1900', 56, 1508);
     },
+    3072,
     2048,
-    1536,
   );
+  atlas.anisotropy = Math.min(eng.renderer.capabilities.getMaxAnisotropy(), 8);
   const map = new THREE.Mesh(
-    new THREE.PlaneGeometry(23, 17),
-    new THREE.MeshBasicMaterial({ map: atlas, toneMapped: false }),
+    new THREE.PlaneGeometry(width, depth),
+    new THREE.MeshStandardMaterial({ map: atlas, roughness: 0.96, metalness: 0 }),
   );
   map.rotation.x = -Math.PI / 2;
-  map.position.y = -0.7;
+  map.position.y = -0.796;
+  map.receiveShadow = true;
   eng.board.add(map);
-  for (const side of [-1, 1]) {
-    box([23.1, 0.11, 0.08], '#c7b786', [0, -0.62, side * 8.48]);
-    box([0.08, 0.11, 17], '#c7b786', [side * 11.48, -0.62, 0]);
-  }
-  const cities = new Map(observation.cities.map((city) => [city.id, city]));
-  for (const edge of observation.edges) {
-    const a = cities.get(edge.a)!,
-      b = cities.get(edge.b)!;
-    const dx = b.x - a.x,
-      dz = b.z - a.z,
-      distance = Math.hypot(dx, dz);
-    const pair = edge.parallel
-      ? observation.edges.filter((other) => other.parallel === edge.parallel)
-      : [edge];
-    const lane = edge.parallel
-      ? (pair.findIndex((other) => other.id === edge.id) - (pair.length - 1) / 2) * 0.42
-      : 0;
-    const x = (a.x + b.x) / 2 - (dz / distance) * lane,
-      z = (a.z + b.z) / 2 + (dx / distance) * lane;
-    const group = new THREE.Group();
-    group.position.set(x, -0.56, z);
-    group.rotation.y = Math.atan2(dx, dz);
-    eng.board.add(group);
+  const models = createRailMiniatures();
+  const miniatureGroups: THREE.Group[] = [];
+  const hitMaterial = new THREE.MeshBasicMaterial({
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+  });
+  for (const route of routes) {
+    const { edge } = route;
+    eng.routePickCenters.set(
+      edge.id,
+      route.slots.map(
+        (slot) =>
+          new THREE.Vector3(
+            slot.position.x,
+            edge.owner === null
+              ? -0.754
+              : -0.745 + (0.2232 / 0.3) * 0.283 * (route.coachLength / 0.62),
+            slot.position.z,
+          ),
+      ),
+    );
     const selected = selection?.kind === 'edge' && selection.id === edge.id;
-    const color =
-      edge.owner !== null
-        ? observation.players.find((player) => player.id === edge.owner)!.color
-        : railColors[edge.color];
-    const halo = box([0.55, 0.05, Math.max(0.2, distance - 0.4)], '#e8bf67', [0, -0.06, 0], group);
+    const group = new THREE.Group();
+    eng.board.add(group);
+    group.position.y = -0.77;
+    const highlightCurve = new THREE.CatmullRomCurve3(
+      route.points.map((p) => new THREE.Vector3(p.x, 0.018, p.z)),
+    );
+    const halo = new THREE.Mesh(
+      new THREE.TubeGeometry(highlightCurve, 48, route.width * 0.65, 5, false),
+      new THREE.MeshBasicMaterial({
+        color: '#ddb458',
+        transparent: true,
+        opacity: 0.7,
+        depthWrite: false,
+      }),
+    );
     halo.userData.highlightForTable = { kind: 'edge', id: edge.id };
     halo.userData.selected = selected;
     halo.visible = selected;
-    const step = Math.max(0.12, (distance - 0.48) / edge.length);
-    for (let i = 0; i < edge.length; i++) {
-      const at = (i - (edge.length - 1) / 2) * step;
-      const sleeper = box([0.28, 0.1, step * 0.8], color, [0, 0, at], group);
-      sleeper.userData.interaction = { kind: 'edge', id: edge.id };
-      sleeper.userData.enabled = true;
-      eng.pickables.push(sleeper);
-      for (const side of [-1, 1])
-        box(
-          [0.035, 0.025, step * 0.75],
-          edge.tunnel ? '#2d3737' : '#bdb796',
-          [side * 0.09, 0.064, at],
-          group,
-        );
+    group.add(halo);
+    route.slots.forEach((slot, index) => {
+      const unit = models.addTrackSlot(
+        group,
+        railColors[edge.color]!,
+        0.62,
+        0.2852,
+        edge.tunnel,
+        index < edge.ferries,
+      );
+      unit.scale.setScalar(route.coachLength / 0.62);
+      miniatureGroups.push(unit);
+      unit.position.set(slot.position.x, 0, slot.position.z);
+      unit.rotation.y = slot.angle;
+      unit.traverse((object) => {
+        if (object instanceof THREE.Mesh) {
+          object.userData.interaction = { kind: 'edge', id: edge.id };
+          object.userData.enabled = true;
+          eng.pickables.push(object);
+        }
+      });
       if (edge.owner !== null) {
-        box([0.25, 0.17, step * 0.64], color, [0, 0.14, at], group);
-        box([0.16, 0.06, step * 0.45], '#d8c9a1', [0, 0.26, at], group);
-      } else if (i < edge.ferries) {
-        box([0.22, 0.06, step * 0.42], '#e7c260', [0, 0.1, at], group);
-        box([0.07, 0.09, step * 0.18], '#3a4643', [0, 0.18, at], group);
+        const color = observation.players.find((player) => player.id === edge.owner)!.color;
+        const coach = models.addCoach(group, color, 0.62, 0.2232);
+        coach.scale.setScalar(route.coachLength / 0.62);
+        miniatureGroups.push(coach);
+        coach.position.set(slot.position.x, 0.025, slot.position.z);
+        coach.rotation.y = slot.angle;
+        coach.traverse((object) => {
+          if (object instanceof THREE.Mesh) {
+            object.userData.interaction = { kind: 'edge', id: edge.id };
+            object.userData.enabled = true;
+            eng.pickables.push(object);
+          }
+        });
       }
-    }
-    const hit = box([0.45, 0.08, Math.max(0.2, distance - 0.32)], '#ffffff', [0, 0.02, 0], group);
-    hit.material.transparent = true;
-    hit.material.opacity = 0;
-    hit.material.depthWrite = false;
-    hit.castShadow = false;
+    });
+    const hit = new THREE.Mesh(
+      new THREE.TubeGeometry(highlightCurve, 48, Math.max(0.12, route.width * 0.68), 4, false),
+      hitMaterial,
+    );
     hit.userData.interaction = { kind: 'edge', id: edge.id };
     hit.userData.enabled = true;
+    group.add(hit);
     eng.pickables.push(hit);
     if (detailed && selected) {
-      const type = edge.tunnel ? ' · тоннель' : edge.ferries ? ` · паром ${edge.ferries}` : '';
+      const p = route.points[Math.floor(route.points.length / 2)]!;
+      const extra = edge.tunnel ? ' · тоннель' : edge.ferries ? ` · паром ${edge.ferries}` : '';
       const face = placard(
         eng.board,
-        `${edge.length} вагонов${type}`,
+        `${edge.length} карт${extra}`,
         [],
-        2.4,
+        2.25,
         0.4,
-        new THREE.Vector3(x, 0.3, z),
+        new THREE.Vector3(p.x, 0.17, p.z - 0.5),
         { kind: 'edge', id: edge.id },
         true,
       );
       eng.pickables.push(face);
     }
   }
-  for (const city of observation.cities) {
+  const batched = batchRailMiniatures(eng.board, miniatureGroups);
+  const removed = new Set(batched.removed);
+  eng.pickables = eng.pickables.filter((object) => !removed.has(object));
+  eng.pickables.push(...batched.meshes);
+  for (const label of labels) {
+    const target = new THREE.Mesh(new THREE.PlaneGeometry(label.width, label.height), hitMaterial);
+    target.rotation.x = -Math.PI / 2;
+    target.position.set(label.x, -0.775, label.z);
+    target.userData.interaction = { kind: 'station', id: label.city.id };
+    target.userData.cityLabel = true;
+    target.userData.enabled = true;
+    eng.board.add(target);
+    eng.pickables.push(target);
+  }
+  for (const city of cities) {
     const selected = selection?.kind === 'station' && selection.id === city.id;
     const marked = view?.routeStationIds.includes(city.id);
-    const pin = mesh('cylinder', [0.17, 0.16, 0.17], marked || selected ? '#d3a951' : '#635d46', [
+    const pin = mesh('cylinder', [0.16, 0.035, 0.16], marked || selected ? '#d0a855' : '#aa9265', [
       city.x,
-      -0.35,
+      -0.744,
       city.z,
     ]);
-    pin.userData.interaction = { kind: 'station', id: city.id };
-    pin.userData.enabled = true;
-    eng.pickables.push(pin);
-    const cap = mesh('sphere', [0.16, 0.08, 0.16], '#e7d8b0', [city.x, -0.25, city.z]);
-    cap.userData.interaction = { kind: 'station', id: city.id };
-    cap.userData.enabled = true;
-    eng.pickables.push(cap);
+    const cap = mesh('cylinder', [0.1, 0.038, 0.1], '#ebdec2', [city.x, -0.717, city.z]);
+    for (const part of [pin, cap]) {
+      part.userData.interaction = { kind: 'station', id: city.id };
+      part.userData.enabled = true;
+      eng.pickables.push(part);
+    }
+    const target = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.1, 16), hitMaterial);
+    target.position.set(city.x, -0.705, city.z);
+    target.userData.interaction = { kind: 'station', id: city.id };
+    target.userData.enabled = true;
+    eng.board.add(target);
+    eng.pickables.push(target);
     const owner = observation.players.find((player) => player.stations.includes(city.id));
     if (owner) {
       const group = new THREE.Group();
-      group.position.set(city.x, -0.4, city.z);
+      group.position.set(city.x, -0.71, city.z);
       eng.board.add(group);
-      box([0.44, 0.3, 0.34], owner.color, [0, 0.21, 0], group);
-      const roof = mesh('cone', [0.37, 0.25, 0.3], '#514d3b', [0, 0.5, 0], group);
+      const station = new THREE.Mesh(
+        new RoundedBoxGeometry(0.38, 0.25, 0.3, 2, 0.025),
+        new THREE.MeshStandardMaterial({ color: owner.color, roughness: 0.4 }),
+      );
+      station.position.y = 0.17;
+      station.castShadow = true;
+      group.add(station);
+      const roof = mesh('cone', [0.32, 0.2, 0.25], '#394642', [0, 0.39, 0], group);
       roof.rotation.y = Math.PI / 4;
-      box([0.09, 0.18, 0.02], '#e3d4ae', [0, 0.18, 0.18], group);
+      box([0.095, 0.135, 0.015], '#eee4cc', [0, 0.125, 0.155], group);
     }
-    const width = THREE.MathUtils.clamp(0.35 + city.name.length * 0.14, 1.15, 2.15);
-    // Keep the one-car Amsterdam line exposed beside the Brussels nameplate.
-    const labelX = city.x - (city.id === 'bruxelles' ? 0.78 : 0);
-    const face = placard(
-      eng.board,
-      city.name,
-      [],
-      width,
-      detailed ? 0.56 : 0.47,
-      new THREE.Vector3(labelX, 0.12, city.z - (city.id === 'smolensk' ? 0.66 : 0.4)),
-      { kind: 'station', id: city.id },
-      !!(selected || marked),
-    );
-    eng.pickables.push(face);
   }
 }
 

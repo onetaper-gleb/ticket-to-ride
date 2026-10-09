@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { TABLE_CAMERA, tableOverviewFit } from './table-layout';
+import { chooseBoardHit, interactionForHit } from './board-picking';
+import { presentationCities, routeLayouts, cityLabels } from './board-layout';
+import { EUROPE_LAND_RINGS, projectEurope } from '../data/europe-geography';
 import type { Observation } from '../shared/types';
 import type { TableInteraction, TableView } from './interaction';
 import {
@@ -143,19 +148,23 @@ function Fallback({
   view,
   onInteract,
 }: Pick<Props, 'observation' | 'view' | 'onInteract'>) {
-  const xs = observation.cities.map((station) => station.x),
-    zs = observation.cities.map((station) => station.z);
-  const minX = Math.min(...xs),
-    minZ = Math.min(...zs),
-    spanX = Math.max(...xs) - minX || 1,
-    spanZ = Math.max(...zs) - minZ || 1;
-  const xy = (id: string) => {
-    const station = observation.cities.find((item) => item.id === id)!;
-    return {
-      x: 50 + ((station.x - minX) / spanX) * 700,
-      y: 45 + ((station.z - minZ) / spanZ) * 430,
-    };
-  };
+  const cities = presentationCities(observation.cities);
+  const routes = routeLayouts(observation.edges, cities);
+  const labels = cityLabels(cities, routes);
+  const pixel = (point: { x: number; z: number }) => ({
+    x: 400 + point.x * 31.25,
+    y: 260 + point.z * 31.25,
+  });
+  const xy = (id: string) => pixel(cities.find((city) => city.id === id)!);
+  const land = EUROPE_LAND_RINGS.map(
+    (ring) =>
+      ring
+        .map(([lon, lat], i) => {
+          const p = pixel(projectEurope(lon, lat));
+          return `${i ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+        })
+        .join(' ') + 'Z',
+  ).join(' ');
   const activate = (kind: 'station' | 'edge', id: string) => onInteract({ kind, id });
   return (
     <div className="map-fallback tabletop-fallback">
@@ -166,23 +175,15 @@ function Fallback({
         <p key={index}>{line}</p>
       ))}
       <svg viewBox="0 0 800 520" aria-label="Схема железной дороги">
-        {observation.edges.map((edge) => {
-          const a = xy(edge.a),
-            b = xy(edge.b);
-          if (edge.parallel) {
-            const siblings = observation.edges.filter((item) => item.parallel === edge.parallel);
-            const lane =
-              (siblings.findIndex((item) => item.id === edge.id) - (siblings.length - 1) / 2) * 12;
-            const dx = b.x - a.x,
-              dy = b.y - a.y,
-              length = Math.hypot(dx, dy);
-            const ox = (-dy / length) * lane,
-              oy = (dx / length) * lane;
-            a.x += ox;
-            b.x += ox;
-            a.y += oy;
-            b.y += oy;
-          }
+        <rect x="25" y="10" width="750" height="500" rx="3" fill="#a8bfb6" />
+        <path d={land} fill="#e4d6b6" fillRule="evenodd" stroke="#819b90" strokeWidth="1" />
+        {routes.map(({ edge, points }) => {
+          const polyline = points
+            .map((point) => {
+              const p = pixel(point);
+              return `${p.x},${p.y}`;
+            })
+            .join(' ');
           return (
             <g
               key={edge.id}
@@ -197,24 +198,24 @@ function Fallback({
               }}
               aria-label={`Линия ${edge.id}`}
             >
-              <line
-                x1={a.x}
-                y1={a.y}
-                x2={b.x}
-                y2={b.y}
+              <polyline
+                points={polyline}
                 stroke={
                   edge.owner !== null
                     ? observation.players.find((player) => player.id === edge.owner)?.color
                     : railColors[edge.color]
                 }
+                fill="none"
                 strokeWidth={edge.owner !== null ? 5 : 3}
                 strokeDasharray={edge.owner !== null ? '' : '8 6'}
               />
-              <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent" strokeWidth="10" />
+              <polyline points={polyline} fill="none" stroke="transparent" strokeWidth="10" />
             </g>
           );
         })}
-        {observation.cities.map((station) => {
+        {labels.map((label) => {
+          const station = label.city;
+          const name = pixel(label);
           const p = xy(station.id);
           return (
             <g
@@ -230,8 +231,17 @@ function Fallback({
               }}
               aria-label={station.name}
             >
-              <circle cx={p.x} cy={p.y} r={15} fill="#d7cfb4" />
-              <text x={p.x} y={p.y + 30} textAnchor="middle" fill="#eee6d2" fontSize="12">
+              <circle cx={p.x} cy={p.y} r={5} fill="#eee5ce" stroke="#aa9265" strokeWidth="2" />
+              <text
+                x={name.x}
+                y={name.y + 3}
+                textAnchor="middle"
+                fill="#283b36"
+                fontSize="9"
+                paintOrder="stroke"
+                stroke="#e4d6b6"
+                strokeWidth="3"
+              >
                 {station.name}
               </text>
             </g>
@@ -300,11 +310,11 @@ export default function Diorama({
       setFallback(true);
       return;
     }
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setClearColor('#192527', 1);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.15;
+    renderer.toneMappingExposure = 1.02;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.autoClear = false;
@@ -312,6 +322,13 @@ export default function Diorama({
     renderer.domElement.style.cursor = 'none';
     el.prepend(renderer.domElement);
     const scene = new THREE.Scene();
+    const room = new RoomEnvironment();
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const reflections = pmrem.fromScene(room, 0.04);
+    scene.environment = reflections.texture;
+    scene.environmentIntensity = 0.35;
+    room.dispose();
+    pmrem.dispose();
     scene.fog = new THREE.Fog('#192527', 55, 110);
     const foreground = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(43, 1, 0.1, 180);
@@ -325,15 +342,15 @@ export default function Diorama({
     controls.enableRotate = false;
     controls.enableZoom = false;
     controls.enablePan = false;
-    scene.add(new THREE.HemisphereLight('#b7c4c0', '#332c24', 1.5));
-    const light = new THREE.DirectionalLight('#ffe0ad', 3.4);
+    scene.add(new THREE.HemisphereLight('#b7c4c0', '#332c24', 1.0));
+    const light = new THREE.DirectionalLight('#ffe0ad', 2.2);
     light.position.set(-15, 26, 7);
     light.castShadow = true;
-    light.shadow.mapSize.set(1024, 1024);
-    light.shadow.camera.left = -24;
-    light.shadow.camera.right = 24;
-    light.shadow.camera.top = 24;
-    light.shadow.camera.bottom = -24;
+    light.shadow.mapSize.set(2048, 2048);
+    light.shadow.camera.left = -26;
+    light.shadow.camera.right = 26;
+    light.shadow.camera.top = 26;
+    light.shadow.camera.bottom = -26;
     light.shadow.camera.far = 65;
     light.shadow.normalBias = 0.035;
     light.shadow.bias = -0.0002;
@@ -341,7 +358,7 @@ export default function Diorama({
     const lampLight = new THREE.PointLight('#ffd092', 85, 36, 2);
     lampLight.position.set(-15.3, 3.5, -12);
     scene.add(lampLight);
-    const coolFill = new THREE.DirectionalLight('#8ca9c5', 0.9);
+    const coolFill = new THREE.DirectionalLight('#8ca9c5', 0.65);
     coolFill.position.set(18, 16, -15);
     scene.add(coolFill);
     foreground.add(new THREE.HemisphereLight('#fff4da', '#554936', 2.2));
@@ -366,6 +383,7 @@ export default function Diorama({
       hand,
       furniture,
       pickables: [],
+      routePickCenters: new Map(),
       cardPickables: [],
       uiPickables: [],
       cards: [],
@@ -507,10 +525,10 @@ export default function Diorama({
       // A visible pointer exists only in the enlarged city. Furniture is never raycast here.
       eng.scene.updateMatrixWorld(true);
       raycaster.setFromCamera(pointer, camera);
-      const hit = raycaster.intersectObjects(eng.pickables, false)[0];
+      const hits = raycaster.intersectObjects(eng.pickables, false);
+      const hit = chooseBoardHit(hits, camera, pointer, eng.routePickCenters);
       if (!hit) return null;
-      const interaction = (hit.object.userData.interaction ?? hit.object.userData.selection) as
-        TableInteraction | undefined;
+      const interaction = interactionForHit(hit);
       return interaction ? { interaction, enabled: hit.object.userData.enabled !== false } : null;
     };
     const pointerDown = (event: PointerEvent) => {
@@ -551,7 +569,7 @@ export default function Diorama({
         down.dragged = true;
       if (!boardMode()) {
         const previous = activeZone();
-        const zone = pointerZone((pointer.x + 1) / 2, (1 - pointer.y) / 2, previous);
+        const zone = pointerZone((pointer.x + 1) / 2, (1 - pointer.y) / 2, previous, camera.aspect);
         focusZone.current = zone;
         if (zone !== previous || !lastPointer) movement = emptyMovement();
         else if (zone !== 'neutral') {
@@ -677,33 +695,22 @@ export default function Diorama({
     const animate = () => {
       const plan = boardMode(),
         zone = activeZone();
+      const cameraView = plan
+        ? TABLE_CAMERA.board
+        : zone === 'neutral'
+          ? TABLE_CAMERA.overview
+          : TABLE_CAMERA[zone];
+      cameraGoal.fromArray(cameraView.position);
+      targetGoal.fromArray(cameraView.target);
       if (plan) {
-        // The city, rather than the whole table, occupies the close planning view.
-        cameraGoal.set(0, 22, 7);
-        targetGoal.set(0, 0, 0);
         cameraGoal.multiplyScalar(boardZoom).add(boardPan);
         targetGoal.add(boardPan);
-      } else if (zone === 'deck') {
-        cameraGoal.set(-13.25, 19.5, 13);
-        targetGoal.set(-13.25, 0, 2.75);
-      } else if (zone === 'paper') {
-        cameraGoal.set(13.5, 13.8, 18.2);
-        targetGoal.set(13.5, 2.8, 5.7);
-      } else if (zone === 'goals') {
-        cameraGoal.set(-13.6, 7.5, 19.2);
-        targetGoal.set(-13.6, -1.1, 12.5);
-      } else if (zone === 'dock') {
-        cameraGoal.set(11.5, 9.8, 22);
-        targetGoal.set(11.5, -1.1, 13.3);
-      } else if (zone === 'hand') {
-        cameraGoal.set(0, 25, 31);
-        targetGoal.set(0, 0.7, 1.8);
-      } else {
-        cameraGoal.set(0, 28.5, 34);
-        targetGoal.set(0, 0.7, 0.7);
       }
-      if (plan || zone === 'goals') {
-        const fit = Math.max(1, 1.35 / camera.aspect);
+      if (plan || zone === 'goals' || zone === 'dock' || zone === 'neutral' || zone === 'hand') {
+        const fit =
+          zone === 'neutral' || zone === 'hand'
+            ? tableOverviewFit(camera.aspect)
+            : Math.max(1, (plan ? 1.48 : 1.35) / camera.aspect);
         cameraGoal.sub(targetGoal).multiplyScalar(fit).add(targetGoal);
       }
       const blend = reducedMotion ? 1 : 0.085;
@@ -722,7 +729,7 @@ export default function Diorama({
       for (const card of eng.cards) {
         const hover = card.cardId === eng.hoveredCard && zone === 'hand',
           selected = viewRef.current.selectedCardIds.includes(card.cardId),
-          y = card.baseY + (hover ? 0.65 : selected ? 0.25 : 0),
+          y = card.baseY + (hover ? 0.95 : selected ? 0.25 : 0),
           z = card.baseZ + (hover ? 1 : 0);
         card.group.position.y = reducedMotion
           ? y
@@ -730,6 +737,10 @@ export default function Diorama({
         card.group.position.z = reducedMotion
           ? z
           : THREE.MathUtils.lerp(card.group.position.z, z, 0.23);
+        const cardScale = hover ? 1.65 : 1;
+        card.group.scale.setScalar(
+          reducedMotion ? cardScale : THREE.MathUtils.lerp(card.group.scale.x, cardScale, 0.23),
+        );
       }
       if (keyboardObject.current) {
         eng.hoveredInteraction = keyboardObject.current;
@@ -749,8 +760,9 @@ export default function Diorama({
       renderer.render(foreground, handCamera);
       frame = requestAnimationFrame(animate);
     };
-    camera.position.set(0, boardMode() ? 25 : 28.5, boardMode() ? 11 : 34);
-    controls.target.set(0, 0.7, boardMode() ? -1.8 : 0.7);
+    const initialView = boardMode() ? TABLE_CAMERA.board : TABLE_CAMERA.overview;
+    camera.position.fromArray(initialView.position);
+    controls.target.fromArray(initialView.target);
     camera.lookAt(controls.target);
     animate();
     setReady(true);
@@ -769,6 +781,7 @@ export default function Diorama({
       disposeObjects(scene);
       disposeObjects(foreground);
       light.shadow.map?.dispose();
+      reflections.dispose();
       renderer.dispose();
       renderer.domElement.remove();
       engine.current = null;
@@ -803,9 +816,9 @@ export default function Diorama({
     eng.hoveredInteraction = null;
     eng.hoveredCard = null;
     if (eng.reducedMotion) {
-      const plan = topView;
-      eng.camera.position.set(0, plan ? 25 : 28.5, plan ? 11 : 34);
-      eng.controls.target.set(0, 0.7, plan ? -1.8 : 0.7);
+      const cameraView = topView ? TABLE_CAMERA.board : TABLE_CAMERA.overview;
+      eng.camera.position.fromArray(cameraView.position);
+      eng.controls.target.fromArray(cameraView.target);
       eng.camera.lookAt(eng.controls.target);
     }
   }, [topView, reset, ready]);

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createGame, getObservation } from '../core';
 import type { TableView } from './interaction';
+import { PerspectiveCamera, Vector3 } from 'three';
+import { TABLE_CAMERA, TABLE_LAYOUT, tableOverviewFit } from './table-layout';
 import {
   accumulateMovement,
   buildZoneLayouts,
@@ -22,6 +24,27 @@ describe('table regions and relative selection', () => {
     expect(pointerZone(0.5, 0.9, 'neutral')).toBe('hand');
     expect(pointerZone(0.9, 0.9, 'neutral')).toBe('dock');
   });
+
+  it.each([16 / 9, 16 / 10, 21 / 9, 814 / 914])(
+    'reaches physical controls with aspect %s',
+    (aspect) => {
+      const camera = new PerspectiveCamera(43, aspect, 0.1, 180);
+      camera.position.fromArray(TABLE_CAMERA.overview.position);
+      const target = new Vector3().fromArray(TABLE_CAMERA.overview.target);
+      camera.position.sub(target).multiplyScalar(tableOverviewFit(aspect)).add(target);
+      camera.lookAt(target);
+      camera.updateMatrixWorld(true);
+      const screen = (x: number, z: number) => {
+        const p = new Vector3(x, -0.75, z).project(camera);
+        return { x: (p.x + 1) / 2, y: (1 - p.y) / 2 };
+      };
+      const bell = screen(TABLE_LAYOUT.bell.x, TABLE_LAYOUT.bell.z);
+      for (const previous of ['neutral', 'hand', 'paper'] as const)
+        expect(pointerZone(bell.x, bell.y, previous, aspect)).toBe('dock');
+      const tickets = screen(TABLE_LAYOUT.goals.x, TABLE_LAYOUT.goals.z);
+      expect(pointerZone(tickets.x, tickets.y, 'deck', aspect)).toBe('goals');
+    },
+  );
 
   it('accumulates slow movement, ignores small jitter and resets after edge gestures', () => {
     let movement = emptyMovement();

@@ -1,5 +1,6 @@
 import type { Observation } from '../shared/types';
 import type { TableInteraction, TableView } from './interaction';
+import { tableOverviewFit } from './table-layout';
 
 export type FocusZone = 'neutral' | 'deck' | 'hand' | 'goals' | 'paper' | 'dock';
 export type OptionZone = Exclude<FocusZone, 'neutral'>;
@@ -15,13 +16,16 @@ export const interactionKey = (interaction: TableInteraction) =>
   `${interaction.kind}:${interaction.id}`;
 
 // The region chooses a collection. Individual choices never depend on a hidden hit point.
-export function pointerZone(x: number, y: number, previous: FocusZone): FocusZone {
+export function pointerZone(x: number, y: number, previous: FocusZone, aspect = 16 / 9): FocusZone {
+  const fit = tableOverviewFit(aspect);
+  x = Math.max(0, Math.min(1, 0.5 + (((x - 0.5) * aspect) / (16 / 9)) * fit));
+  y = Math.max(0, Math.min(1, 0.5 + (y - 0.5) * fit));
   const bounds: Record<OptionZone, [number, number, number, number]> = {
-    deck: [0, 0.32, 0.27, 0.76],
-    hand: [0.32, 0.68, 0.76, 1],
-    goals: [0, 0.32, 0.76, 1],
-    paper: [0.71, 1, 0.24, 0.76],
-    dock: [0.68, 1, 0.76, 1],
+    deck: [0, 0.32, 0.27, 0.7],
+    hand: [0.32, 0.63, 0.76, 1],
+    goals: [0, 0.32, 0.74, 1],
+    paper: [0.71, 1, 0.24, 0.7],
+    dock: [0.63, 1, 0.74, 1],
   };
   if (previous !== 'neutral') {
     const [left, right, top, bottom] = bounds[previous];
