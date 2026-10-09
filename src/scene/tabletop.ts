@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { CardColor, Observation, PublicPlayer, Station } from '../shared/types';
+import type { TableInteraction, TableView } from './interaction';
 
 export const railColors: Record<string, string> = {
   red: '#a34d3c',
@@ -17,7 +18,7 @@ const cardNames: Record<CardColor, string> = {
   yellow: 'ИНСТРУМЕНТ',
   wild: 'РЕЗЕРВ',
 };
-export type MapSelection = { kind: 'station' | 'edge'; id: string } | null;
+export type MapSelection = { kind: 'station' | 'edge' | 'train'; id: string } | null;
 export type CardMesh = { group: THREE.Group; cardId: string; baseY: number; baseZ: number };
 export type Engine = {
   scene: THREE.Scene;
@@ -29,7 +30,18 @@ export type Engine = {
   environment: THREE.Group;
   board: THREE.Group;
   hand: THREE.Group;
+  furniture: THREE.Group;
   pickables: THREE.Object3D[];
+  uiPickables: THREE.Object3D[];
+  hoveredInteraction: TableInteraction | null;
+  pressedInteraction?: TableInteraction | null;
+  animatedProps: {
+    group: THREE.Group;
+    interaction: TableInteraction;
+    baseY: number;
+    lift: number;
+    enabled: boolean;
+  }[];
   cardPickables: THREE.Object3D[];
   cards: CardMesh[];
   hoveredCard: string | null;
@@ -58,7 +70,7 @@ export function disposeObjects(root: THREE.Object3D) {
   geometries.forEach((geometry) => geometry.dispose());
 }
 
-function roundedShape(width: number, height: number, radius: number) {
+export function roundedShape(width: number, height: number, radius: number) {
   const x = -width / 2,
     y = -height / 2;
   const shape = new THREE.Shape();
@@ -74,10 +86,14 @@ function roundedShape(width: number, height: number, radius: number) {
   return shape;
 }
 
-function textureFromCanvas(draw: (ctx: CanvasRenderingContext2D) => void) {
+export function textureFromCanvas(
+  draw: (ctx: CanvasRenderingContext2D) => void,
+  width = 512,
+  height = 768,
+) {
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 768;
+  canvas.width = width;
+  canvas.height = height;
   const ctx = canvas.getContext('2d');
   if (ctx) draw(ctx);
   const texture = new THREE.CanvasTexture(canvas);
@@ -87,7 +103,7 @@ function textureFromCanvas(draw: (ctx: CanvasRenderingContext2D) => void) {
 }
 
 // Locally drawn supply documents; no downloaded illustrations or hidden font fetches.
-function cardPrint(color: CardColor, back = false) {
+export function cardPrint(color: CardColor, back = false) {
   return textureFromCanvas((ctx) => {
     ctx.fillStyle = back ? '#25312e' : '#e7dfcc';
     ctx.fillRect(0, 0, 512, 768);
@@ -217,7 +233,7 @@ function cardPrint(color: CardColor, back = false) {
   });
 }
 
-function primitiveFactory(parent: THREE.Group) {
+export function primitiveFactory(parent: THREE.Group) {
   const materials = new Map<string, THREE.MeshStandardMaterial>();
   const geometries = new Map<string, THREE.BufferGeometry>();
   const material = (color: string, roughness = 0.85, metalness = 0) => {
@@ -263,6 +279,55 @@ function primitiveFactory(parent: THREE.Group) {
     target: THREE.Object3D = parent,
   ) => mesh('box', size, color, position, target);
   return { mesh, box, material };
+}
+
+function placard(
+  parent: THREE.Group,
+  title: string,
+  subtitle: string,
+  width: number,
+  height: number,
+  position: THREE.Vector3,
+  interaction: TableInteraction,
+  selected = false,
+) {
+  const group = new THREE.Group();
+  group.position.copy(position);
+  group.rotation.x = -Math.PI / 4;
+  const texture = textureFromCanvas(
+    (ctx) => {
+      ctx.fillStyle = selected ? '#d8bc78' : '#e8dfc7';
+      ctx.fillRect(0, 0, 512, 192);
+      ctx.strokeStyle = '#9c927b';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(7, 7, 498, 178);
+      ctx.fillStyle = '#263935';
+      ctx.textAlign = 'center';
+      ctx.font = '62px "IBM Plex Sans", Arial, sans-serif';
+      ctx.fillText(title, 256, 81, 476);
+      ctx.font = '50px "IBM Plex Mono", Consolas, monospace';
+      ctx.fillStyle = '#665e4b';
+      ctx.fillText(subtitle, 256, 151, 476);
+    },
+    512,
+    192,
+  );
+  const backing = new THREE.Mesh(
+    new THREE.BoxGeometry(width, height, 0.055),
+    new THREE.MeshStandardMaterial({ color: '#847b63', roughness: 0.95 }),
+  );
+  backing.castShadow = true;
+  group.add(backing);
+  const face = new THREE.Mesh(
+    new THREE.PlaneGeometry(width - 0.025, height - 0.025),
+    new THREE.MeshBasicMaterial({ map: texture, toneMapped: false }),
+  );
+  face.position.z = 0.029;
+  face.userData.interaction = interaction;
+  face.userData.enabled = true;
+  group.add(face);
+  parent.add(group);
+  return face;
 }
 
 function buildDispatcher(
@@ -377,9 +442,16 @@ export function buildEnvironment(eng: Engine, observation: Observation) {
   box([0.12, 0.12, 2.3], '#6d4431', [14.8, -0.97, -12.1]).rotation.y = -0.5;
 }
 
-export function buildBoard(eng: Engine, observation: Observation, selection: MapSelection) {
+export function buildBoard(
+  eng: Engine,
+  observation: Observation,
+  selection: MapSelection,
+  view?: TableView,
+) {
   disposeObjects(eng.board);
   eng.board.clear();
+  eng.board.scale.set(0.74, 1, 0.74);
+  eng.board.position.set(0, 0, -1.8);
   eng.pickables = [];
   const xs = observation.stations.map((station) => station.x),
     zs = observation.stations.map((station) => station.z);
@@ -451,7 +523,15 @@ export function buildBoard(eng: Engine, observation: Observation, selection: Map
       distance = direction.length(),
       side = new THREE.Vector3(-direction.z, 0, direction.x).normalize();
     const closed = a.flooded || b.flooded,
-      selected = selection?.kind === 'edge' && selection.id === edge.id;
+      selected =
+        (selection?.kind === 'edge' && selection.id === edge.id) ||
+        Boolean(
+          view?.routeStationIds.some(
+            (id, index, route) =>
+              (id === edge.a && route[index + 1] === edge.b) ||
+              (id === edge.b && route[index + 1] === edge.a),
+          ),
+        );
     const color = selected
       ? '#d6b968'
       : closed
@@ -495,6 +575,8 @@ export function buildBoard(eng: Engine, observation: Observation, selection: Map
     hit.position.copy(midpoint);
     hit.quaternion.copy(quaternion);
     hit.userData.selection = { kind: 'edge', id: edge.id };
+    hit.userData.interaction = { kind: 'edge', id: edge.id } satisfies TableInteraction;
+    hit.userData.enabled = true;
     eng.board.add(hit);
     eng.pickables.push(hit);
     if (!edge.open && !closed) {
@@ -504,6 +586,8 @@ export function buildBoard(eng: Engine, observation: Observation, selection: Map
         midpoint.z,
       ]);
       marker.userData.selection = { kind: 'edge', id: edge.id };
+      marker.userData.interaction = hit.userData.interaction;
+      marker.userData.enabled = true;
       eng.pickables.push(marker);
       for (let i = 0; i < edge.cost; i++)
         mesh('sphere', [0.043, 0.043, 0.043], '#eee7d3', [
@@ -541,6 +625,8 @@ export function buildBoard(eng: Engine, observation: Observation, selection: Map
       [p.x, level + 0.14, p.z],
     );
     platform.userData.selection = { kind: 'station', id: station.id };
+    platform.userData.interaction = { kind: 'station', id: station.id } satisfies TableInteraction;
+    platform.userData.enabled = true;
     eng.pickables.push(platform);
     const target = new THREE.Mesh(
       new THREE.BoxGeometry(2.4, 1.35, 1.8),
@@ -553,6 +639,8 @@ export function buildBoard(eng: Engine, observation: Observation, selection: Map
     );
     target.position.set(p.x, level + 0.6, p.z - 0.28);
     target.userData.selection = platform.userData.selection;
+    target.userData.interaction = platform.userData.interaction;
+    target.userData.enabled = true;
     eng.board.add(target);
     eng.pickables.push(target);
     const buildingColor = station.flooded ? '#70817a' : station.safe ? '#e2d6b4' : '#d3c6a7';
@@ -591,13 +679,33 @@ export function buildBoard(eng: Engine, observation: Observation, selection: Map
       ]);
       mesh('sphere', [0.086, 0.086, 0.086], '#d4b696', [x, level + 0.56, z]);
     });
-    if (selection?.kind === 'station' && selection.id === station.id) {
+    const stationSelected = selection?.kind === 'station' && selection.id === station.id;
+    const stationOnRoute = view?.routeStationIds.includes(station.id) ?? false;
+    const plate = placard(
+      eng.board,
+      station.name,
+      station.safe
+        ? 'УБЕЖИЩЕ'
+        : station.flooded
+          ? 'ЗАКРЫТА'
+          : `${station.groups.length} ГР. · ВОЛНА ${station.floodRound}`,
+      3.2,
+      0.7,
+      new THREE.Vector3(p.x, level + 0.55, p.z + 1.26),
+      platform.userData.interaction as TableInteraction,
+      stationSelected,
+    );
+    eng.pickables.push(plate);
+    {
       const ring = new THREE.Mesh(
         new THREE.TorusGeometry(1.15, 0.045, 5, 42),
-        new THREE.MeshBasicMaterial({ color: '#c89940' }),
+        new THREE.MeshBasicMaterial({ color: stationOnRoute ? '#ebba4b' : '#c89940' }),
       );
       ring.rotation.x = Math.PI / 2;
       ring.position.set(p.x, level + 0.28, p.z);
+      ring.userData.highlightForTable = platform.userData.interaction;
+      ring.userData.selected = stationSelected || stationOnRoute;
+      ring.visible = stationSelected || stationOnRoute;
       eng.board.add(ring);
     }
     if (!station.safe) {
@@ -615,30 +723,86 @@ export function buildBoard(eng: Engine, observation: Observation, selection: Map
     const p = point(station),
       peers = observation.trains.filter((item) => item.stationId === station.id),
       index = peers.findIndex((item) => item.id === train.id);
-    const x = p.x + ((index % 4) - 1.5) * 0.43,
-      z = p.z + 0.63 + Math.floor(index / 4) * 0.53,
+    const rowSize = Math.min(4, peers.length);
+    const x = p.x + ((index % 4) - (rowSize - 1) / 2) * 1.15,
+      z = p.z + 0.7 + Math.floor(index / 4) * 1.35,
       y = p.y + 0.31;
     const color = train.disabled
       ? '#6a807b'
       : (observation.players.find((player) => player.id === train.playerId)?.color ?? '#ddd7bb');
-    box([0.33, 0.26, 0.64], color, [x, y + 0.2, z]);
-    box([0.29, 0.27, 0.22], color, [x, y + 0.36, z - 0.15]);
-    box([0.22, 0.12, 0.018], '#3e5252', [x, y + 0.4, z - 0.27]);
-    mesh('cylinder', [0.035, 0.14, 0.035], '#354344', [x, y + 0.43, z + 0.14]);
+    const own = train.playerId === observation.self.id;
+    const trainGroup = new THREE.Group();
+    trainGroup.position.set(x, y, z);
+    trainGroup.scale.setScalar(own ? 2.2 : 1.65);
+    eng.board.add(trainGroup);
+    const body = box([0.33, 0.26, 0.64], color, [0, 0.2, 0], trainGroup);
+    box([0.29, 0.27, 0.22], color, [0, 0.36, -0.15], trainGroup);
+    box([0.22, 0.12, 0.018], '#3e5252', [0, 0.4, -0.27], trainGroup);
+    mesh('cylinder', [0.035, 0.14, 0.035], '#354344', [0, 0.43, 0.14], trainGroup);
     for (const side of [-1, 1])
       for (const dz of [-0.18, 0.18])
-        mesh('cylinder', [0.08, 0.06, 0.08], '#354344', [
-          x + side * 0.185,
-          y + 0.08,
-          z + dz,
-        ]).rotation.z = Math.PI / 2;
+        mesh(
+          'cylinder',
+          [0.08, 0.06, 0.08],
+          '#354344',
+          [side * 0.185, 0.08, dz],
+          trainGroup,
+        ).rotation.z = Math.PI / 2;
     train.cargo.forEach((group, cargoIndex) =>
-      box([0.115, 0.1, 0.11], group.priority ? '#d6a657' : '#d4c6a0', [
-        x + (cargoIndex - 0.5) * 0.13,
-        y + 0.39,
-        z + 0.15,
-      ]),
+      box(
+        [0.115, 0.1, 0.11],
+        group.priority ? '#d6a657' : '#d4c6a0',
+        [(cargoIndex - 0.5) * 0.13, 0.39, 0.15],
+        trainGroup,
+      ),
     );
+    const trainInteraction: TableInteraction = { kind: 'train', id: train.id };
+    body.userData.interaction = trainInteraction;
+    body.userData.enabled = true;
+    eng.pickables.push(body);
+    const trainHit = new THREE.Mesh(
+      new THREE.BoxGeometry(0.53, 0.7, 0.84),
+      new THREE.MeshBasicMaterial({
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        colorWrite: false,
+      }),
+    );
+    trainHit.position.y = 0.29;
+    trainHit.userData.interaction = trainInteraction;
+    trainHit.userData.enabled = true;
+    trainGroup.add(trainHit);
+    eng.pickables.push(trainHit);
+    const halo = new THREE.Mesh(
+      new THREE.TorusGeometry(0.43, 0.045, 5, 24),
+      new THREE.MeshBasicMaterial({ color: '#ecc566' }),
+    );
+    halo.rotation.x = Math.PI / 2;
+    halo.position.y = 0.07;
+    halo.userData.highlightForTable = trainInteraction;
+    halo.userData.selected = view?.selectedTrainId === train.id;
+    halo.visible = Boolean(halo.userData.selected);
+    trainGroup.add(halo);
+    if (own) {
+      const tag = placard(
+        trainGroup,
+        train.id.split('-').at(-1)?.toUpperCase() ?? train.id,
+        `${train.cargo.length}/2`,
+        0.8,
+        0.38,
+        new THREE.Vector3(0, 0.93, 0),
+        trainInteraction,
+        view?.selectedTrainId === train.id,
+      );
+      eng.pickables.push(tag);
+    }
+    trainGroup.traverse((object) => {
+      if (object instanceof THREE.Mesh && object !== halo) {
+        object.userData.interaction = trainInteraction;
+        object.userData.enabled = true;
+      }
+    });
   }
 }
 
@@ -695,6 +859,8 @@ export function buildHand(eng: Engine, observation: Observation) {
       const front = new THREE.Mesh(frontGeometry, material);
       front.position.z = 0.043;
       front.userData.cardId = card.id;
+      front.userData.interaction = { kind: 'card', id: card.id } satisfies TableInteraction;
+      front.userData.enabled = true;
       group.add(front);
       const back = new THREE.Mesh(frontGeometry, backMaterial);
       back.position.z = -0.012;

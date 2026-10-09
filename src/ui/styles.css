@@ -2115,3 +2115,52 @@ input[type='checkbox'] {
     scroll-behavior: auto !important;
   }
 }
+
+/* All game presentation belongs to the table; DOM controls are for assistive input. */
+.world-only.game-shell {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+}
+.world-only .table-scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  z-index: 0;
+}
+.world-only .diorama,
+.world-only .diorama canvas {
+  cursor: none;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.world-only .map-fallback {
+  height: 100dvh;
+  overflow: auto;
+  background: #192527;
+  color: #e5ddc7;
+}
+.world-only .map-fallback svg {
+  height: min(68vh, 650px);
+}
+.world-only .fallback-actions {
+  padding: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.world-only .fallback-actions button {
+  padding: 10px;
+}

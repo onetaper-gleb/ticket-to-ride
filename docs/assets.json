@@ -1,12 +1,12 @@
 {
-  "version": 2,
+  "version": 3,
   "assets": [
     {
-      "name": "Dispatcher table, seated brigades, hands, printed cards and miniature railway",
-      "source": "src/scene/Diorama.tsx + src/scene/tabletop.ts",
+      "name": "3D dispatcher table, miniature railway, seated brigades, physical stock, hand, chalkboard and papers",
+      "source": "src/scene/Diorama.tsx + src/scene/interaction.ts + src/scene/tabletop.ts + src/scene/world-ui.ts",
       "license": "project original",
-      "transformations": "Original procedural Three.js meshes, instanced rails and ties, canvas card printing, original palette",
-      "hash": "18180231c21f7b07406a7c1c428fd0cbbd3fba37a23ac1de9435e0ed56ed85e0",
+      "transformations": "Original procedural Three.js meshes, instanced rails and ties, canvas printing on physical cards and world surfaces, local IBM Plex typography",
+      "hash": "2e754d5020ed1e0c6bf4fa0f6d705cf9d2757c9bf2b1e13b7d8378aaf75c82ff",
       "hashKind": "sha256 of ordered file name + LF + file bytes + LF for each source"
     }
   ],
