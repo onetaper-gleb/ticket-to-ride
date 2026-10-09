@@ -11,6 +11,24 @@ import type {
 import Diorama, { type MapSelection } from '../scene/Diorama';
 import type { TableControl, TableInteraction, TableView } from '../scene/interaction';
 import './styles.css';
+import TutorialOverlay, { TutorialWelcome } from './TutorialOverlay';
+import { getTutorialLesson, tutorialCommandAllowed } from './tutorial';
+
+const welcomeKey = 'last-train-onboarding-v1';
+function firstLaunch() {
+  try {
+    return !localStorage.getItem(welcomeKey);
+  } catch {
+    return true;
+  }
+}
+function rememberWelcome(value: 'seen' | 'complete') {
+  try {
+    localStorage.setItem(welcomeKey, value);
+  } catch {
+    /* The lesson also works without browser storage. */
+  }
+}
 
 const districtNames: Record<District, string> = {
   harbor: 'Порт',
@@ -71,7 +89,8 @@ function Rules({ onClose }: { onClose: () => void }) {
         <h2 id="rules-title">Памятка диспетчера</h2>
         <p>
           Речной уходит под воду. Восстанавливайте железную дорогу и доставляйте группы жителей в
-          два убежища. Линиями пользуются все бригады.
+          два убежища. Побеждает бригада с наибольшим числом очков. Операция длится до 12 раундов.
+          Спасённые всеми бригадами жители — общий результат города.
         </p>
         <ol className="rules-steps">
           <li>
@@ -146,7 +165,10 @@ function Menu(props: AppProps & { onRules: () => void }) {
         <section className="menu-intro">
           <span className="eyebrow">Речной / Диспетчерская</span>
           <h1>Последний рейс</h1>
-          <p>Восстанавливайте пути. Отправляйте поезда. Вывозите жителей до следующей волны.</p>
+          <p>
+            Доставляйте жителей в убежища до подъёма воды. Побеждает бригада с наибольшим числом
+            очков.
+          </p>
           <div className="menu-board" aria-hidden="true">
             <div className="menu-board-paper">
               <span className="board-stamp">
@@ -180,7 +202,7 @@ function Menu(props: AppProps & { onRules: () => void }) {
           </div>
           <div className="menu-features">
             <span>2–4 бригады</span>
-            <span>12 раундов</span>
+            <span>До 12 раундов</span>
             <span>4 волны</span>
           </div>
         </section>
@@ -241,6 +263,10 @@ function Menu(props: AppProps & { onRules: () => void }) {
               placeholder="Одинаковый код — одинаковая раздача"
               maxLength={64}
             />
+            <p className="muted">
+              Пустой код — новая случайная раздача. Карта города и четыре вида бонусов остаются теми
+              же.
+            </p>
           </details>
           <button
             className="button primary full start-button"
@@ -257,6 +283,15 @@ function Menu(props: AppProps & { onRules: () => void }) {
           >
             Начать эвакуацию <span>→</span>
           </button>
+          <button
+            className="button secondary full"
+            onClick={props.canContinueTutorial ? props.onContinueTutorial : props.onStartTutorial}
+          >
+            {props.canContinueTutorial ? 'Продолжить обучение' : 'Пройти обучение'} <span>→</span>
+          </button>
+          <p className="muted">
+            Покажем управление и довезём первых жителей. Сохранённая партия останется на месте.
+          </p>
           {props.canContinue && (
             <button className="button secondary full" onClick={props.onContinue}>
               Продолжить сохранённую партию
@@ -297,9 +332,20 @@ export default function App(props: AppProps) {
   const [orderStep, setOrderStep] = useState<'pickup' | 'refuge' | 'ready'>('pickup');
   const [riskAccepted, setRiskAccepted] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [welcome, setWelcome] = useState(firstLaunch);
+  const [inspectedDistrict, setInspectedDistrict] = useState<District | null>(null);
+  const [inspectedMaterial, setInspectedMaterial] = useState<CardColor | null>(null);
+  const [cueRequest, setCueRequest] = useState({ key: '', nonce: 0 });
+  const lessonBase = props.tutorial && observation ? getTutorialLesson(observation) : null;
   const legal = useMemo(() => (observation ? getLegalCommands(observation) : []), [observation]);
   const ownTurn = !!observation && observation.activePlayer === observation.self.id && !props.busy;
-  const can = (command: GameCommand) => ownTurn && legal.some((c) => isSame(c, command));
+  const can = (command: GameCommand) =>
+    ownTurn &&
+    legal.some((c) => isSame(c, command)) &&
+    (!props.tutorial || tutorialCommandAllowed(observation!, command));
+  useEffect(() => {
+    if (lessonBase?.complete) rememberWelcome('complete');
+  }, [lessonBase?.complete]);
   useEffect(() => {
     setSelection(null);
     setSelectedTrainId(null);
@@ -307,9 +353,15 @@ export default function App(props: AppProps) {
     setRiskAccepted(false);
     setFeedback('');
     setObjectives([]);
+    setInspectedDistrict(null);
+    setInspectedMaterial(null);
     setRules(false);
     if (!observation || observation.revision === 0) setTopView(false);
-  }, [!!observation, observation?.activePlayer, observation?.revision === 0]);
+  }, [props.sessionId, !!observation, observation?.activePlayer, observation?.revision === 0]);
+  useEffect(() => {
+    setTopView(false);
+    setCueRequest({ key: '', nonce: 0 });
+  }, [props.sessionId]);
   useEffect(() => {
     if (observation?.phase === 'action') {
       setSelection(null);
@@ -323,6 +375,19 @@ export default function App(props: AppProps) {
       <>
         <Menu {...props} onRules={() => setRules(true)} />
         {rules && <Rules onClose={() => setRules(false)} />}
+        {welcome && (
+          <TutorialWelcome
+            onStart={() => {
+              setWelcome(false);
+              rememberWelcome('seen');
+              props.onStartTutorial();
+            }}
+            onDismiss={() => {
+              setWelcome(false);
+              rememberWelcome('seen');
+            }}
+          />
+        )}
       </>
     );
   const phase = observation.phase;
@@ -351,6 +416,8 @@ export default function App(props: AppProps) {
     setDraft(null);
     setRiskAccepted(false);
     setFeedback('');
+    setInspectedDistrict(null);
+    setInspectedMaterial(null);
   };
   const send = (command: GameCommand) => {
     setFeedback('');
@@ -363,12 +430,20 @@ export default function App(props: AppProps) {
       setFeedback('Красная печать подтверждает риск этого рейса.');
       return;
     }
+    if (
+      props.tutorial &&
+      !tutorialCommandAllowed(observation, { type: 'order', trainId: train.id, order: draft })
+    ) {
+      setFeedback('В учебном рейсе выберите Старый рынок, затем Северный холм.');
+      return;
+    }
     send({
       type: 'order',
       trainId: train.id,
       order: { ...draft, confirmRisk: risky && riskAccepted },
     });
     clear();
+    setFeedback('Приказ принят. Поезд поедет после ходов всех бригад.');
   };
   const controls: TableControl[] = [];
   let headline = phaseNames[phase];
@@ -380,10 +455,10 @@ export default function App(props: AppProps) {
     notice = 'Соперник планирует. Можно осмотреть поле.';
     detailLines = [observation.events.at(-1)?.message ?? 'Ожидаем приказ.'];
   } else if (phase === 'setup') {
-    notice = `Выберите два задания на карточках. Отмечено ${objectives.length}/2.`;
+    notice = `Выберите два личных бонуса слева внизу. Отмечено ${objectives.length}/2.`;
     detailLines = [
       'Две доставленные группы из района дают +3 очка.',
-      'Карточки лежат рядом с журналом диспетчера.',
+      'Спасать можно из любого района. Бонус — за доставку, не погрузку.',
     ];
     controls.push({
       id: 'acceptObjectives',
@@ -414,12 +489,28 @@ export default function App(props: AppProps) {
       'Погрузка или выгрузка завершает движение.',
     ];
   } else if (phase === 'action') {
-    notice = 'Материалы — слева. Ремонт и экспресс — на приближённом поле.';
+    notice = 'Сначала одно действие: материалы, ремонт или экспресс. Затем приказы поездам.';
     detailLines = [
-      'Одно основное действие за ход.',
-      'Две обычные карты или одна открытая универсальная.',
-      'В зоне двигайте мышь к соседней карте. ЛКМ — выбрать.',
-      'Из центра: ЛКМ или пробел — поле. Esc — вернуться.',
+      'Материалы слева: две карты или одна открытая универсальная.',
+      'Пробел — поле. Открытые линии уже пригодны для рейса.',
+      ...observation.events
+        .filter(
+          (e) =>
+            e.round === observation.round - 1 &&
+            e.playerId === observation.self.id &&
+            ['load', 'deliver', 'loss'].includes(e.kind),
+        )
+        .slice(-2)
+        .map((e) => e.message),
+      ...(observation.events.some((e) => e.round === observation.round - 1 && e.kind === 'flood')
+        ? [
+            `Вода закрыла: ${observation.stations
+              .filter((s) => s.floodRound === observation.round - 1)
+              .map((s) => s.name)
+              .join(', ')}.`,
+          ]
+        : []),
+      ...(observation.round === 1 ? ['Жители спасены только после возвращения в убежище.'] : []),
     ];
   } else if (phase === 'draw') {
     notice = 'Возьмите вторую карту со стола или из колоды.';
@@ -460,13 +551,13 @@ export default function App(props: AppProps) {
       else if (risky) detailLines.push(preview?.reason ?? 'Поезд не успевает до закрытия.');
       else if (preview) detailLines.push('Открытый путь безопасен. Очередь не закреплена.');
     }
-    if (!train.cargo.length)
+    if (!train.cargo.length && !props.tutorial)
       controls.push({
         id: 'position',
         label: draft.mode === 'position' ? 'Режим: позиция' : 'Режим: эвакуация',
         enabled: true,
       });
-    if (!train.cargo.length && draft.mode === 'evacuate')
+    if (!train.cargo.length && draft.mode === 'evacuate' && !props.tutorial)
       controls.push({
         id: 'repeat',
         label: draft.repeat ? 'Повтор рейса: да' : 'Повтор рейса: нет',
@@ -480,13 +571,19 @@ export default function App(props: AppProps) {
         danger: true,
       });
     controls.push({ id: 'cancel', label: 'Отменить выбор', enabled: true });
-    if (!train.cargo.length && train.order.mode !== 'idle')
+    if (!train.cargo.length && train.order.mode !== 'idle' && !props.tutorial)
       controls.push({ id: 'stopTrain', label: 'Остановить поезд', enabled: true });
   } else if (phase === 'orders') {
     notice = 'Выберите свой поезд, затем станцию и убежище на макете.';
     detailLines = [
       'Приказы бесплатны. Старые рейсы продолжаются.',
       'Звонок завершит ход. Поезда едут после всех бригад.',
+      ...observation.trains
+        .filter((t) => t.playerId === observation.self.id)
+        .map(
+          (t) =>
+            `Т${trainNumber(t.id)} · ${t.disabled ? 'Потерян' : `${stationName(t.stationId)} · ${t.cargo.length}/2 в поезде · ${t.order.mode === 'idle' ? 'без приказа' : t.cargo.length ? 'возвращается' : 'рейс назначен'}`}`,
+        ),
     ];
   } else if (phase === 'finished') {
     headline =
@@ -518,13 +615,16 @@ export default function App(props: AppProps) {
         ? 'Убежище: жители в безопасности.'
         : station.flooded
           ? 'Станция закрыта водой.'
-          : `${station.groups.length} групп · закрытие после ${station.floodRound}`,
+          : `Ждут: ${station.groups.length} групп. Вода после раунда ${station.floodRound}.`,
+      station.safe
+        ? 'Возвращайте сюда поезд с грузом: доставка приносит очки.'
+        : 'В поезде два места. Погрузка завершает движение раунда.',
       ...detailLines.slice(0, 2),
     ];
   }
   if (rules) {
     headline = 'Памятка диспетчера';
-    notice = `Лист ${rulesPage + 1}/2. Сначала действие. Затем приказы. Звонок — конец хода.`;
+    notice = `Лист ${rulesPage + 1}/3. Спасайте жителей. Победит бригада с наибольшим числом очков.`;
     detailLines = [
       'Добор: две карты или одна открытая универсальная.',
       'Ремонт: нажмите рельс дважды.',
@@ -534,20 +634,57 @@ export default function App(props: AppProps) {
       'Волны после 6, 8, 10, 12. Погрузка — остановка.',
       'Очки: 2 за группу, 3 за приоритетную, +3 за задание.',
       'Риск подтвердите печатью; сброс — по картам в руке.',
+      'Районный бонус: доставьте 2 группы из этого района.',
+      'Погрузка не даёт очков: верните поезд в убежище.',
+      'Операция длится до 12 раундов; город спасают все.',
+      'Для практики откройте обучение: оно сохранится отдельно.',
     ].slice(rulesPage * 4, rulesPage * 4 + 4);
     controls.length = 0;
     controls.push({
       id: 'rulesPage',
-      label: rulesPage ? 'Первый лист' : 'Второй лист',
+      label: rulesPage === 2 ? 'Первый лист' : 'Следующий лист',
       enabled: true,
     });
+    if (!props.tutorial) controls.push({ id: 'tutorial', label: 'Пройти обучение', enabled: true });
+  }
+  if (!rules && inspectedDistrict && !['setup', 'draw', 'discard', 'finished'].includes(phase)) {
+    const delivered = observation.self.delivered.filter(
+      (g) => g.district === inspectedDistrict,
+    ).length;
+    headline = `Личный бонус · ${districtNames[inspectedDistrict]}`;
+    notice =
+      delivered >= 2
+        ? 'Выполнено: +3 очка уже включены в счёт.'
+        : `Доставьте 2 группы из этого района. Сейчас ${delivered}/2.`;
+    detailLines = [
+      'Можно спасать жителей из любого района.',
+      'Засчитывается доставка в убежище, не погрузка.',
+      ...observation.stations
+        .filter((s) => s.district === inspectedDistrict)
+        .map((s) => `${s.name}: ${s.flooded ? 'затоплена' : `${s.groups.length} групп ждут`}`),
+    ];
+    controls.push({ id: 'cancel', label: 'Закрыть карточку', enabled: true });
+  }
+  if (!rules && inspectedMaterial && !['setup', 'draw', 'discard', 'finished'].includes(phase)) {
+    headline = `${colorNames[inspectedMaterial]} материалы ${colorSymbols[inspectedMaterial]}`;
+    notice =
+      inspectedMaterial === 'wild'
+        ? 'Эта карта заменяет одну карту любого цвета.'
+        : 'Одна карта оплачивает единицу ремонта линии того же цвета.';
+    detailLines = [
+      'Цена ремонта указана на закрытой линии.',
+      'На серой линии нужен один цвет на всю цену.',
+      'Экспресс для своего поезда стоит любые две карты.',
+      'Выбирайте ремонт и ускорение на приближённом поле.',
+    ];
+    controls.push({ id: 'cancel', label: 'Закрыть карточку', enabled: true });
   }
   if (feedback) notice = feedback;
   if (props.error) notice = props.error;
   if (ownTurn && phase === 'action')
     controls.push({
       id: 'pass',
-      label: 'Сохранить материалы',
+      label: 'Пропустить действие',
       enabled: can({ type: 'pass' }),
       placement: 'bell',
     });
@@ -583,9 +720,10 @@ export default function App(props: AppProps) {
       progress:
         phase === 'setup'
           ? 'Доставить 2 группы · +3'
-          : `${Math.min(2, observation.self.delivered.filter((g) => g.district === id).length)}/2 доставлены`,
+          : `${Math.min(2, observation.self.delivered.filter((g) => g.district === id).length)}/2 доставлено`,
       selected: phase === 'setup' ? objectives.includes(id) : true,
-      enabled: ownTurn && phase === 'setup',
+      enabled: phase === 'setup' ? ownTurn : !props.tutorial,
+      completed: observation.self.delivered.filter((g) => g.district === id).length >= 2,
     })),
     selectedTrainId,
     routeStationIds: preview?.path ?? [],
@@ -598,8 +736,32 @@ export default function App(props: AppProps) {
     enabledTrainIds: observation.trains
       .filter((t) => t.playerId === observation.self.id && !t.disabled)
       .map((t) => t.id),
+    highlightedDistrict: inspectedDistrict,
   };
   const interact = (intent: TableInteraction) => {
+    if (['train', 'station', 'edge', 'deck', 'market'].includes(intent.kind)) {
+      setInspectedDistrict(null);
+      setInspectedMaterial(null);
+    }
+    if (
+      props.tutorial &&
+      intent.kind !== 'control' &&
+      intent.kind !== 'objective' &&
+      intent.kind !== 'deck'
+    ) {
+      const intended =
+        (phase === 'discard' && intent.kind === 'card') ||
+        (phase === 'orders' &&
+          observation.round === 1 &&
+          ((intent.kind === 'train' && intent.id === 'p0-t1') ||
+            (intent.kind === 'station' &&
+              !!draft &&
+              (draft.destination ? intent.id === 'hill' : intent.id === 'market'))));
+      if (!intended) {
+        setFeedback(lessonBase?.action ?? 'Следуйте подсказке учебного рейса.');
+        return;
+      }
+    }
     if (intent.kind !== 'control') setRules(false);
     if (intent.kind === 'control') {
       if (!view.controls.some((c) => c.id === intent.id && c.enabled)) return;
@@ -616,7 +778,10 @@ export default function App(props: AppProps) {
           setRulesPage(0);
           return;
         case 'rulesPage':
-          setRulesPage((page) => 1 - page);
+          setRulesPage((page) => (page + 1) % 3);
+          return;
+        case 'tutorial':
+          props.onStartTutorial();
           return;
         case 'clearError':
           props.onClearError();
@@ -691,7 +856,13 @@ export default function App(props: AppProps) {
     }
     if (intent.kind === 'objective') {
       const district = observation.self.objectiveOptions.find((d) => d === intent.id);
-      if (!district || !ownTurn || phase !== 'setup') return;
+      if (!district) return;
+      if (phase !== 'setup') {
+        clear();
+        setInspectedDistrict(district);
+        return;
+      }
+      if (!ownTurn) return;
       setObjectives((current) =>
         current.includes(district)
           ? current.filter((d) => d !== district)
@@ -715,7 +886,10 @@ export default function App(props: AppProps) {
       if (can(command)) send(command);
       else {
         const card = observation.self.hand.find((c) => c.id === intent.id);
-        if (card) setFeedback(`${colorNames[card.color]} материалы. Ремонт выбирается на рельсах.`);
+        if (card) {
+          clear();
+          setInspectedMaterial(card.color);
+        }
       }
       return;
     }
@@ -791,6 +965,55 @@ export default function App(props: AppProps) {
       }
     }
   };
+  let lesson = lessonBase;
+  if (lesson?.id === 'first-order' && topView && !train) {
+    lesson = {
+      ...lesson,
+      action:
+        'Поле приближено, курсор виден. Нажмите оранжевый поезд T1 у Северного холма (слева вверху).',
+    };
+  }
+  if (lesson?.id === 'loaded') {
+    lesson = {
+      ...lesson,
+      action: topView
+        ? 'Жители ещё в поезде на Старом рынке. Нажмите пробел, чтобы вернуться к столу, затем выберите звонок «Пропустить действие» в правой нижней зоне.'
+        : 'В правой нижней зоне выберите звонок «Пропустить действие». Приказ сохранён: поезд сам вернётся в убежище после окончания раунда.',
+    };
+  }
+  if (lesson && ownTurn && phase === 'setup' && objectives.length === 2) {
+    lesson = {
+      ...lesson,
+      action: 'Оба бонуса выбраны. Нажмите печать «Принять задания» на листе справа.',
+      focus: 'paper',
+      target: { kind: 'control', id: 'acceptObjectives' },
+    };
+  }
+  if (lesson && ownTurn && phase === 'orders' && observation.round === 1 && train && draft) {
+    lesson = {
+      ...lesson,
+      action: !draft.destination
+        ? 'Нажмите «Старый рынок»: там ждут жители.'
+        : !draft.returnTo
+          ? 'Нажмите «Северный холм»: это убежище для обратного рейса.'
+          : 'Нажмите «Северный холм» ещё раз. Так вы подтверждаете приказ.',
+      target: { kind: 'station', id: draft.destination ? 'hill' : 'market' },
+    };
+  }
+  const lessonKey = lesson
+    ? `${props.sessionId}:${lesson.id}:${lesson.target?.kind}:${lesson.target?.id}`
+    : '';
+  const requested = cueRequest.key === lessonKey;
+  const guidance =
+    lesson?.target &&
+    (lesson.focus !== 'board' || lesson.id !== 'first-order' || topView || requested)
+      ? { key: `${lessonKey}:${requested ? cueRequest.nonce : 0}`, target: lesson.target }
+      : undefined;
+  if (lesson && !rules) {
+    view.headline = `Обучение · ${lesson.title}`;
+    view.notice = lesson.action;
+    if (!train || !draft) view.detailLines = [lesson.text];
+  }
   return (
     <main className={`game-shell world-only phase-${phase}`}>
       <div className="table-scene">
@@ -802,11 +1025,24 @@ export default function App(props: AppProps) {
           topView={topView}
           onBoardModeChange={setTopView}
           reset={reset}
+          guidance={guidance}
         />
       </div>
       <p className="sr-only" role="status" aria-live="polite">
         {headline}. {notice}
       </p>
+      {lesson && (
+        <TutorialOverlay
+          lesson={lesson}
+          onShow={() => {
+            setRules(false);
+            setCueRequest({ key: lessonKey, nonce: cueRequest.nonce + 1 });
+          }}
+          onSkip={props.onMenu}
+          onFinish={props.onMenu}
+          onRestart={props.onStartTutorial}
+        />
+      )}
     </main>
   );
 }

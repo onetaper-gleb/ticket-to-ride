@@ -37,6 +37,7 @@ interface Props {
   topView: boolean;
   onBoardModeChange: (active: boolean) => void;
   reset: number;
+  guidance?: { key: string; target: TableInteraction };
 }
 const materialNames = {
   red: 'Красный материал',
@@ -113,8 +114,8 @@ function AccessibleObjects({
     })),
     ...observation.self.hand.map((card, index) => ({
       interaction: { kind: 'card' as const, id: card.id },
-      label: `Сбросить карту ${index + 1}: ${materialNames[card.color]}`,
-      enabled: view.discardEnabled,
+      label: `${view.discardEnabled ? 'Сбросить' : 'Осмотреть'} карту ${index + 1}: ${materialNames[card.color]}`,
+      enabled: true,
     })),
   ];
   return (
@@ -243,6 +244,7 @@ export default function Diorama({
   topView,
   onBoardModeChange,
   reset,
+  guidance,
 }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const engine = useRef<Engine | null>(null);
@@ -738,10 +740,10 @@ export default function Diorama({
     const eng = engine.current;
     if (!eng) return;
     buildEnvironment(eng, observation);
-    buildBoard(eng, observation, selection, view);
+    buildBoard(eng, observation, selection, view, topView);
     buildHand(eng, observation);
     buildTableInterface(eng, observation, view);
-  }, [observation, selection, view, ready, fontRevision]);
+  }, [observation, selection, view, ready, fontRevision, topView]);
   useEffect(() => {
     if (view.discardEnabled) {
       focusZone.current = 'hand';
@@ -770,6 +772,9 @@ export default function Diorama({
       eng.camera.lookAt(eng.controls.target);
     }
   }, [topView, reset, ready]);
+  useEffect(() => {
+    if (ready && guidance) focusObject.current(guidance.target);
+  }, [guidance?.key, ready]);
   if (fallback) return <Fallback observation={observation} view={view} onInteract={onInteract} />;
   return (
     <div

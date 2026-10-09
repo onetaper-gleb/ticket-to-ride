@@ -18,6 +18,7 @@ export type TableGoal = {
   progress: string;
   selected: boolean;
   enabled: boolean;
+  completed?: boolean;
 };
 export type TableView = {
   headline: string;
@@ -32,4 +33,5 @@ export type TableView = {
   discardEnabled: boolean;
   enabledEdgeIds: string[];
   enabledTrainIds: string[];
+  highlightedDistrict?: District | null;
 };

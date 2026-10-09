@@ -19,6 +19,13 @@ const cardNames: Record<CardColor, string> = {
   yellow: 'ИНСТРУМЕНТ',
   wild: 'РЕЗЕРВ',
 };
+const cardUses: Record<CardColor, string> = {
+  red: 'Красные линии',
+  blue: 'Синие линии',
+  green: 'Зелёные линии',
+  yellow: 'Жёлтые линии',
+  wild: 'Любой цвет',
+};
 export type MapSelection = { kind: 'station' | 'edge' | 'train'; id: string } | null;
 export type CardMesh = { group: THREE.Group; cardId: string; baseY: number; baseZ: number };
 export type Engine = {
@@ -42,6 +49,7 @@ export type Engine = {
     baseY: number;
     lift: number;
     enabled: boolean;
+    marker?: THREE.Group;
   }[];
   cardPickables: THREE.Object3D[];
   cards: CardMesh[];
@@ -104,8 +112,8 @@ export function textureFromCanvas(
 }
 
 // Locally drawn supply documents; no downloaded illustrations or hidden font fetches.
-export function cardPrint(color: CardColor, back = false) {
-  return textureFromCanvas((ctx) => {
+export function cardPrint(color: CardColor, back = false, maxAnisotropy = 4) {
+  const texture = textureFromCanvas((ctx) => {
     ctx.fillStyle = back ? '#25312e' : '#e7dfcc';
     ctx.fillRect(0, 0, 512, 768);
     ctx.strokeStyle = back ? '#9eaa92' : '#b7ad98';
@@ -122,38 +130,27 @@ export function cardPrint(color: CardColor, back = false) {
         ctx.stroke();
       }
       ctx.fillStyle = '#25312e';
-      ctx.fillRect(-160, -60, 320, 120);
-      ctx.strokeRect(-160, -60, 320, 120);
+      ctx.fillRect(-218, -94, 436, 188);
+      ctx.strokeRect(-218, -94, 436, 188);
       ctx.fillStyle = '#d5cfb5';
       ctx.textAlign = 'center';
-      ctx.font = '24px "IBM Plex Sans", Arial, sans-serif';
-      ctx.fillText('РЕЧНОЙ', 0, 5);
-      ctx.font = '13px "IBM Plex Mono", Consolas, monospace';
-      ctx.fillText('ДИСПЕТЧЕРСКАЯ СЛУЖБА', 0, 35);
+      ctx.font = '64px "IBM Plex Sans", Arial, sans-serif';
+      ctx.fillText('МАТЕРИАЛЫ', 0, -6);
+      ctx.font = '40px "IBM Plex Sans", Arial, sans-serif';
+      ctx.fillText('Речной', 0, 56);
       return;
     }
     ctx.fillStyle = railColors[color];
-    ctx.fillRect(34, 34, 444, 94);
-    ctx.fillStyle = '#eee8d7';
-    ctx.font = '28px "IBM Plex Mono", Consolas, monospace';
-    ctx.textAlign = 'left';
-    const number =
-      color === 'wild'
-        ? '05'
-        : String(['red', 'blue', 'green', 'yellow'].indexOf(color) + 1).padStart(2, '0');
-    ctx.fillText('М / ' + number, 57, 75);
-    ctx.font = '17px "IBM Plex Mono", Consolas, monospace';
-    ctx.fillText('РЕЧНОЙ — МАТЕРИАЛЫ', 57, 104);
-    ctx.fillStyle = '#292d28';
-    ctx.font = '35px "IBM Plex Mono", Consolas, monospace';
-    ctx.fillText(cardNames[color], 49, 182);
-    ctx.strokeStyle = '#bbb19b';
-    ctx.beginPath();
-    ctx.moveTo(49, 205);
-    ctx.lineTo(463, 205);
-    ctx.stroke();
+    ctx.fillRect(34, 34, 444, 116);
+    ctx.fillStyle = color === 'yellow' ? '#26352f' : '#fff7e4';
+    ctx.font = '68px "IBM Plex Sans", Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(cardNames[color], 256, 115);
+    ctx.fillStyle = '#353b32';
+    ctx.font = '44px "IBM Plex Mono", Consolas, monospace';
+    ctx.fillText('1 КАРТА', 256, 217);
     ctx.save();
-    ctx.translate(256, 396);
+    ctx.translate(256, 399);
     ctx.strokeStyle = railColors[color];
     ctx.fillStyle = railColors[color];
     ctx.lineWidth = 8;
@@ -221,17 +218,15 @@ export function cardPrint(color: CardColor, back = false) {
       ctx.fillText('+', 0, 79);
     }
     ctx.restore();
-    ctx.fillStyle = '#67685e';
-    ctx.textAlign = 'left';
-    ctx.font = '19px "IBM Plex Mono", Consolas, monospace';
-    ctx.fillText('ДЛЯ РЕМОНТА ЛИНИИ', 49, 649);
-    ctx.fillText(color === 'wild' ? 'ЛЮБОЙ МАТЕРИАЛ / 1 ЕД.' : 'СКЛАДСКАЯ ЕДИНИЦА / 1', 49, 682);
-    ctx.strokeStyle = '#b7ad98';
-    ctx.beginPath();
-    ctx.moveTo(49, 713);
-    ctx.lineTo(463, 713);
-    ctx.stroke();
+    ctx.fillStyle = '#353b32';
+    ctx.textAlign = 'center';
+    ctx.font = '52px "IBM Plex Sans", Arial, sans-serif';
+    ctx.fillText('РЕМОНТ', 256, 642);
+    ctx.font = '44px "IBM Plex Sans", Arial, sans-serif';
+    ctx.fillText(cardUses[color], 256, 702);
   });
+  texture.anisotropy = Math.max(1, Math.min(8, maxAnisotropy));
+  return texture;
 }
 
 export function primitiveFactory(parent: THREE.Group) {
@@ -285,7 +280,7 @@ export function primitiveFactory(parent: THREE.Group) {
 function placard(
   parent: THREE.Group,
   title: string,
-  subtitle: string,
+  subtitle: string | string[],
   width: number,
   height: number,
   position: THREE.Vector3,
@@ -295,23 +290,30 @@ function placard(
   const group = new THREE.Group();
   group.position.copy(position);
   group.rotation.x = -Math.PI / 4;
+  const detailLines = Array.isArray(subtitle) ? subtitle : subtitle ? [subtitle] : [];
+  const printHeight = detailLines.length ? 240 : 144;
   const texture = textureFromCanvas(
     (ctx) => {
       ctx.fillStyle = selected ? '#d8bc78' : '#e8dfc7';
-      ctx.fillRect(0, 0, 512, 192);
+      ctx.fillRect(0, 0, 768, printHeight);
       ctx.strokeStyle = '#9c927b';
       ctx.lineWidth = 3;
-      ctx.strokeRect(7, 7, 498, 178);
+      ctx.strokeRect(8, 8, 752, printHeight - 16);
       ctx.fillStyle = '#263935';
       ctx.textAlign = 'center';
-      ctx.font = '62px "IBM Plex Sans", Arial, sans-serif';
-      ctx.fillText(title, 256, 81, 476);
-      ctx.font = '50px "IBM Plex Mono", Consolas, monospace';
+      let titleSize = detailLines.length ? 62 : 76;
+      ctx.font = `${titleSize}px "IBM Plex Sans", Arial, sans-serif`;
+      while (titleSize > 40 && ctx.measureText(title).width > 716) {
+        titleSize -= 2;
+        ctx.font = `${titleSize}px "IBM Plex Sans", Arial, sans-serif`;
+      }
+      ctx.fillText(title, 384, detailLines.length ? 81 : 96);
+      ctx.font = '44px "IBM Plex Sans", Arial, sans-serif';
       ctx.fillStyle = '#665e4b';
-      ctx.fillText(subtitle, 256, 151, 476);
+      detailLines.forEach((line, index) => ctx.fillText(line, 384, 144 + index * 57));
     },
-    512,
-    192,
+    768,
+    printHeight,
   );
   const backing = new THREE.Mesh(
     new THREE.BoxGeometry(width, height, 0.055),
@@ -368,7 +370,7 @@ export function buildEnvironment(eng: Engine, observation: Observation) {
   // Only public opponents reach this scene, and only card backs are rendered.
   const others = observation.players.filter((player) => player.id !== observation.self.id);
   const opponentCardBack = others.some((player) => player.handCount > 0)
-    ? cardPrint('wild', true)
+    ? cardPrint('wild', true, eng.renderer.capabilities.getMaxAnisotropy())
     : null;
   others.forEach((player, i) =>
     buildDispatcher(
@@ -390,6 +392,7 @@ export function buildBoard(
   observation: Observation,
   selection: MapSelection,
   view?: TableView,
+  detailed = false,
 ) {
   disposeObjects(eng.board);
   eng.board.clear();
@@ -624,31 +627,46 @@ export function buildBoard(
     });
     const stationSelected = selection?.kind === 'station' && selection.id === station.id;
     const stationOnRoute = view?.routeStationIds.includes(station.id) ?? false;
+    const stationInDistrict = Boolean(
+      view?.highlightedDistrict && station.district === view.highlightedDistrict,
+    );
+    const stationDetails = station.safe
+      ? ['Убежище']
+      : station.flooded
+        ? ['Затоплено · рейсы закрыты']
+        : [
+            `Ждут: ${station.groups.length} ${
+              station.groups.length === 1
+                ? 'группа'
+                : station.groups.length >= 2 && station.groups.length <= 4
+                  ? 'группы'
+                  : 'групп'
+            }`,
+            `Вода после раунда ${station.floodRound}`,
+          ];
     const plate = placard(
       eng.board,
       station.name,
-      station.safe
-        ? 'УБЕЖИЩЕ'
-        : station.flooded
-          ? 'ЗАКРЫТА'
-          : `${station.groups.length} ГР. · ВОЛНА ${station.floodRound}`,
-      3.2,
-      0.7,
-      new THREE.Vector3(p.x, level + 0.55, p.z + 1.26),
+      detailed ? stationDetails : '',
+      4.0,
+      detailed ? 1.25 : 0.7,
+      new THREE.Vector3(p.x, level + (detailed ? 0.67 : 0.55), p.z + 1.26),
       platform.userData.interaction as TableInteraction,
-      stationSelected,
+      stationSelected || stationInDistrict,
     );
     eng.pickables.push(plate);
     {
       const ring = new THREE.Mesh(
         new THREE.TorusGeometry(1.15, 0.045, 5, 42),
-        new THREE.MeshBasicMaterial({ color: stationOnRoute ? '#ebba4b' : '#c89940' }),
+        new THREE.MeshBasicMaterial({
+          color: stationInDistrict ? '#93af7b' : stationOnRoute ? '#ebba4b' : '#c89940',
+        }),
       );
       ring.rotation.x = Math.PI / 2;
       ring.position.set(p.x, level + 0.28, p.z);
       ring.userData.highlightForTable = platform.userData.interaction;
-      ring.userData.selected = stationSelected || stationOnRoute;
-      ring.visible = stationSelected || stationOnRoute;
+      ring.userData.selected = stationSelected || stationOnRoute || stationInDistrict;
+      ring.visible = stationSelected || stationOnRoute || stationInDistrict;
       eng.board.add(ring);
     }
     if (!station.safe) {
@@ -778,9 +796,9 @@ export function buildHand(eng: Engine, observation: Observation) {
       );
     uv.needsUpdate = true;
     const sideMaterial = new THREE.MeshStandardMaterial({ color: '#bfb59e', roughness: 1 });
-    const fronts = new Map<CardColor, THREE.MeshStandardMaterial>();
+    const fronts = new Map<CardColor, THREE.MeshBasicMaterial>();
     const backMaterial = new THREE.MeshStandardMaterial({
-      map: cardPrint('wild', true),
+      map: cardPrint('wild', true, eng.renderer.capabilities.getMaxAnisotropy()),
       roughness: 1,
       side: THREE.DoubleSide,
     });
@@ -796,7 +814,10 @@ export function buildHand(eng: Engine, observation: Observation) {
       group.add(body);
       let material = fronts.get(card.color);
       if (!material) {
-        material = new THREE.MeshStandardMaterial({ map: cardPrint(card.color), roughness: 1 });
+        material = new THREE.MeshBasicMaterial({
+          map: cardPrint(card.color, false, eng.renderer.capabilities.getMaxAnisotropy()),
+          toneMapped: false,
+        });
         fronts.set(card.color, material);
       }
       const front = new THREE.Mesh(frontGeometry, material);
@@ -833,18 +854,18 @@ export function buildHand(eng: Engine, observation: Observation) {
       ctx.strokeRect(24, 24, 464, 720);
       ctx.fillStyle = '#505b50';
       ctx.textAlign = 'center';
-      ctx.font = '26px "IBM Plex Mono", Consolas, monospace';
-      ctx.fillText('СКЛАДСКАЯ ОПИСЬ', 256, 100);
+      ctx.font = '44px "IBM Plex Sans", Arial, sans-serif';
+      ctx.fillText('РУКА', 256, 112);
       ctx.font = '62px "IBM Plex Sans", Arial, sans-serif';
       ctx.fillText('Материалов', 256, 347);
       ctx.fillText('нет', 256, 425);
-      ctx.font = '27px "IBM Plex Sans", Arial, sans-serif';
+      ctx.font = '44px "IBM Plex Sans", Arial, sans-serif';
       ctx.fillText('Возьмите карты', 256, 608);
       ctx.fillText('из колоды на столе', 256, 650);
     });
     const front = new THREE.Mesh(
       new THREE.PlaneGeometry(1.03, 1.58),
-      new THREE.MeshStandardMaterial({ map: texture, roughness: 1 }),
+      new THREE.MeshBasicMaterial({ map: texture, toneMapped: false }),
     );
     front.position.z = 0.04;
     front.userData.cardId = 'empty-hand';

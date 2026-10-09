@@ -200,12 +200,17 @@ export type BotDifficulty = 'easy' | 'normal';
 // src/bots/index.ts exports chooseBotCommand(observation,difficulty='normal'):GameCommand.
 // src/ui/App.tsx default export consumes AppProps below; session integration stays with root.
 export interface AppProps {
+  sessionId: number;
   observation: Observation | null;
   result: GameResult | null;
   busy: boolean;
   error: string | null;
   canContinue: boolean;
   difficulty: BotDifficulty;
+  tutorial: boolean;
+  canContinueTutorial: boolean;
+  onStartTutorial: () => void;
+  onContinueTutorial: () => void;
   onStart: (options: GameOptions, difficulty: BotDifficulty) => void;
   onContinue: () => void;
   onCommand: (command: GameCommand) => void;

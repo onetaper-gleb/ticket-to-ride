@@ -60,7 +60,7 @@ export function buildZoneLayouts(observation: Observation, view: TableView): Zon
     ],
     hand: observation.self.hand.length
       ? observation.self.hand.map((card, index) =>
-          option({ kind: 'card', id: card.id }, view.discardEnabled, index),
+          option({ kind: 'card', id: card.id }, true, index),
         )
       : [option({ kind: 'card', id: 'empty-hand' }, false, 0)],
     goals: view.goals.map((goal, index) =>

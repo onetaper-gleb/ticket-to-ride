@@ -16,12 +16,13 @@ function openDB(): Promise<IDBDatabase> {
     request.onerror = () => reject(request.error);
   });
 }
-async function write(save: Save): Promise<void> {
+type SaveSlot = 'current' | 'tutorial';
+async function write(save: Save, slot: SaveSlot): Promise<void> {
   const db = await openDB();
   try {
     await new Promise<void>((resolve, reject) => {
       const transaction = db.transaction('saves', 'readwrite');
-      transaction.objectStore('saves').put(save, 'current');
+      transaction.objectStore('saves').put(save, slot);
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error);
       transaction.onabort = () => reject(transaction.error);
@@ -30,17 +31,24 @@ async function write(save: Save): Promise<void> {
     db.close();
   }
 }
-export function saveMatch(state: GameState, difficulty: BotDifficulty): Promise<void> {
+export function saveMatch(
+  state: GameState,
+  difficulty: BotDifficulty,
+  slot: SaveSlot = 'current',
+): Promise<void> {
   const save: Save = { schemaVersion: 1, savedAt: new Date().toISOString(), difficulty, state };
-  writes = writes.catch(() => undefined).then(() => write(save));
+  writes = writes.catch(() => undefined).then(() => write(save, slot));
   return writes;
 }
-export async function loadMatch(rulesVersion: string): Promise<Save | null> {
+export async function loadMatch(
+  rulesVersion: string,
+  slot: SaveSlot = 'current',
+): Promise<Save | null> {
   await writes.catch(() => undefined);
   const db = await openDB();
   try {
     const save = await new Promise<Save | undefined>((resolve, reject) => {
-      const request = db.transaction('saves', 'readonly').objectStore('saves').get('current');
+      const request = db.transaction('saves', 'readonly').objectStore('saves').get(slot);
       request.onsuccess = () => resolve(request.result as Save | undefined);
       request.onerror = () => reject(request.error);
     });

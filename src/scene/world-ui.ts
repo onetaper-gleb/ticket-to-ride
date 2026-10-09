@@ -38,7 +38,7 @@ function printLines(
   leading: number,
 ) {
   for (const line of wrapText(ctx, text, width)) {
-    ctx.fillText(line, x, y, width);
+    ctx.fillText(line, x, y);
     y += leading;
   }
   return y;
@@ -82,7 +82,33 @@ function register(
     face.userData.enabled = enabled;
     eng.uiPickables.push(face);
   });
-  eng.animatedProps.push({ group, interaction, baseY: group.position.y, enabled, lift });
+  // A clear physical rim makes logical selection visible without a hidden cursor.
+  const face = faces.find(
+    (item) => item instanceof THREE.Mesh && item.geometry instanceof THREE.PlaneGeometry,
+  ) as THREE.Mesh<THREE.PlaneGeometry> | undefined;
+  let marker: THREE.Group | undefined;
+  if (face?.parent) {
+    marker = new THREE.Group();
+    marker.position.copy(face.position);
+    marker.rotation.copy(face.rotation);
+    marker.position.z += 0.012;
+    const { width, height } = face.geometry.parameters;
+    const material = new THREE.MeshBasicMaterial({
+      color: enabled ? '#d79741' : '#9b9482',
+      toneMapped: false,
+    });
+    for (const side of [-1, 1]) {
+      const horizontal = new THREE.Mesh(new THREE.BoxGeometry(width, 0.045, 0.025), material);
+      horizontal.position.y = (side * height) / 2;
+      marker.add(horizontal);
+      const vertical = new THREE.Mesh(new THREE.BoxGeometry(0.045, height, 0.025), material);
+      vertical.position.x = (side * width) / 2;
+      marker.add(vertical);
+    }
+    marker.visible = false;
+    face.parent.add(marker);
+  }
+  eng.animatedProps.push({ group, interaction, baseY: group.position.y, enabled, lift, marker });
 }
 
 function caption(label: string, enabled: boolean, selected = false, danger = false) {
@@ -95,8 +121,13 @@ function caption(label: string, enabled: boolean, selected = false, danger = fal
       ctx.strokeRect(8, 8, 496, 112);
       ctx.fillStyle = danger ? '#8d4938' : ink;
       ctx.textAlign = 'center';
-      ctx.font = `52px ${sans}`;
-      ctx.fillText(label, 256, 83, 470);
+      let size = 52;
+      ctx.font = `${size}px ${sans}`;
+      while (size > 30 && ctx.measureText(label).width > 470) {
+        size -= 2;
+        ctx.font = `${size}px ${sans}`;
+      }
+      ctx.fillText(label, 256, 83);
     },
     512,
     128,
@@ -123,7 +154,13 @@ function buildStock(eng: Engine, observation: Observation, view: TableView) {
   observation.market.forEach((card, index) => {
     const slotX = (index % 2 === 0 ? -1 : 1) * 1.69;
     const slotZ = -3.15 + Math.floor(index / 2) * 3.95;
-    const item = page(shelf, cardWidth, cardHeight, cardPrint(card.color), '#bfb297');
+    const item = page(
+      shelf,
+      cardWidth,
+      cardHeight,
+      cardPrint(card.color, false, eng.renderer.capabilities.getMaxAnisotropy()),
+      '#bfb297',
+    );
     item.group.rotation.x = -Math.PI / 2;
     item.group.position.set(slotX, 0.12, slotZ);
     item.face.material.opacity = view.enabledMarketIndices.includes(index) ? 1 : 0.72;
@@ -137,7 +174,13 @@ function buildStock(eng: Engine, observation: Observation, view: TableView) {
       0.28,
     );
   });
-  const deck = page(shelf, cardWidth, cardHeight, cardPrint('wild', true), '#c2bda7');
+  const deck = page(
+    shelf,
+    cardWidth,
+    cardHeight,
+    cardPrint('wild', true, eng.renderer.capabilities.getMaxAnisotropy()),
+    '#c2bda7',
+  );
   deck.group.rotation.x = -Math.PI / 2;
   deck.group.position.set(1.69, 0.32, 4.75);
   // Printed edges give the deck a visible stack rather than a single flat card.
@@ -177,8 +220,12 @@ function buildChalkboard(eng: Engine, observation: Observation) {
       ctx.moveTo(60, 213);
       ctx.lineTo(963, 213);
       ctx.stroke();
+      ctx.textAlign = 'right';
+      ctx.font = `32px ${sans}`;
+      ctx.fillText('ОЧКИ', 928, 249);
+      ctx.textAlign = 'left';
       observation.players.forEach((player, index) => {
-        const y = 285 + index * 80;
+        const y = 302 + index * 80;
         ctx.fillStyle = player.color;
         ctx.fillRect(61, y - 30, 23, 23);
         ctx.fillStyle = '#e1dfc9';
@@ -189,6 +236,13 @@ function buildChalkboard(eng: Engine, observation: Observation) {
         ctx.fillText(String(player.score), 928, y);
         ctx.textAlign = 'left';
       });
+      const delivered = observation.players.reduce(
+        (sum, player) => sum + player.delivered.length,
+        0,
+      );
+      ctx.fillStyle = '#e1dfc9';
+      ctx.font = `38px ${sans}`;
+      ctx.fillText(`Город: спасено ${delivered} / ${observation.totalGroups} групп`, 60, 602);
       const nextFlood = Math.min(
         ...observation.stations
           .filter((station) => !station.flooded && station.floodRound !== null)
@@ -310,33 +364,41 @@ function buildPaper(eng: Engine, view: TableView) {
   });
 }
 
-function buildGoals(eng: Engine, view: TableView) {
+function buildGoals(eng: Engine, observation: Observation, view: TableView) {
   const goals = view.goals;
   goals.forEach((goal, index) => {
     const texture = textureFromCanvas(
       (ctx) => {
-        ctx.fillStyle = goal.selected ? '#ded2a5' : '#d2c8b0';
-        ctx.fillRect(0, 0, 512, 448);
+        ctx.fillStyle = goal.completed ? '#d5dcc1' : goal.selected ? '#ded2a5' : '#e6ddc7';
+        ctx.fillRect(0, 0, 512, 704);
         ctx.strokeStyle = '#91846a';
         ctx.lineWidth = 3;
-        ctx.strokeRect(15, 15, 482, 418);
+        ctx.strokeRect(15, 15, 482, 674);
         ctx.fillStyle = '#6d6755';
-        ctx.font = `34px ${mono}`;
-        ctx.fillText('РАЙОННАЯ ЗАЯВКА', 33, 67, 445);
+        ctx.font = `43px ${sans}`;
+        ctx.fillText('ЛИЧНЫЙ БОНУС', 33, 79);
         ctx.fillStyle = ink;
-        ctx.font = `54px ${sans}`;
-        let y = printLines(ctx, goal.label, 33, 159, 445, 64);
-        ctx.font = `42px ${mono}`;
-        ctx.fillStyle = '#645c45';
-        y = printLines(ctx, goal.progress, 33, y + 52, 445, 50);
-        ctx.fillStyle = goal.selected ? '#536a4d' : '#887b5c';
-        ctx.font = `37px ${mono}`;
-        ctx.fillText(goal.selected ? 'ПРИНЯТО' : goal.enabled ? 'ВЫБРАТЬ' : 'ЗАЯВКА', 33, 408, 445);
+        ctx.font = `68px ${sans}`;
+        printLines(ctx, goal.label, 33, 177, 445, 75);
+        ctx.font = `42px ${sans}`;
+        ctx.fillStyle = '#514c3d';
+        ctx.fillText('Доставьте 2 группы', 33, 340);
+        ctx.fillText('из этого района', 33, 393);
+        ctx.fillStyle = '#374d37';
+        ctx.font = `64px ${sans}`;
+        ctx.fillText('+3 очка', 33, 487);
+        ctx.font = `46px ${sans}`;
+        ctx.fillStyle = '#514c3d';
+        const progress = observation.phase === 'setup' ? 'Выберите 2 бонуса' : goal.progress;
+        ctx.fillText(progress, 33, 570);
+        ctx.fillStyle = goal.completed ? '#374d37' : goal.selected ? '#536a4d' : '#887b5c';
+        ctx.font = `42px ${sans}`;
+        ctx.fillText(goal.completed ? 'ВЫПОЛНЕНО' : goal.selected ? 'ВЫБРАНО' : 'ВЫБРАТЬ', 33, 651);
       },
       512,
-      448,
+      704,
     );
-    const card = page(eng.furniture, 2.62, 2.38, texture);
+    const card = page(eng.furniture, 2.72, 3.75, texture);
     card.group.position.set(-16.5 + index * 2.95, -1.16, 12.5);
     card.group.rotation.x = -Math.PI / 2;
     card.group.rotation.z = (index - 1) * 0.025;
@@ -408,7 +470,7 @@ export function buildTableInterface(eng: Engine, observation: Observation, view:
   buildStock(eng, observation, view);
   buildChalkboard(eng, observation);
   buildPaper(eng, view);
-  buildGoals(eng, view);
+  buildGoals(eng, observation, view);
   view.controls
     .filter((control) => control.placement === 'dock')
     .forEach((control, index) => buildDockControl(eng, control, index));
@@ -424,6 +486,7 @@ const same = (a: TableInteraction | null | undefined, b: TableInteraction | null
 export function updateTableHover(eng: Engine, pressed = eng.pressedInteraction) {
   for (const item of eng.animatedProps) {
     const hovered = same(eng.hoveredInteraction, item.interaction);
+    if (item.marker) item.marker.visible = hovered;
     const target =
       item.baseY +
       (hovered ? item.lift : 0) -
