@@ -3,7 +3,12 @@ import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUnifo
 import { buildMenuModels, type MenuModels } from './menu-models';
 import { buildMenuCashier, type MenuCashier } from './menu-character';
 import { preloadMenuHandSurfaces } from './menu-character-hands';
-import { loadMenuCompositionArt, type MenuCompositionArt } from './menu-composition-art';
+import {
+  loadMenuCompositionArt,
+  loadMenuTitleShapes,
+  type MenuCompositionArt,
+  type MenuTitleShapes,
+} from './menu-composition-art';
 import { menuCompositionPreset, type MenuRect } from './menu-composition-presets';
 
 let areaLightsReady = false;
@@ -52,7 +57,15 @@ export type MenuComposition = {
     railFill: THREE.SpotLight;
     lamps: readonly THREE.SpotLight[];
   };
-  layout(width: number, height: number, board?: MenuRect, settings?: MenuRect): void;
+  readonly titleVisible: boolean;
+  /** Title rect is measured in untransformed native board pixels, including its border. */
+  layout(
+    width: number,
+    height: number,
+    board?: MenuRect,
+    settings?: MenuRect,
+    title?: MenuRect,
+  ): void;
   projectFrame(width: number, height: number): { board: MenuRect; settings: MenuRect };
   projectCorners(width: number, height: number): { board: MenuQuad; settings: MenuQuad };
   dispose(): void;
@@ -66,8 +79,14 @@ export async function createMenuComposition(
   const art = await loadMenuCompositionArt(`${prefix}art/`, options.signal);
   let models: MenuModels | undefined;
   let cashier: MenuCashier | undefined;
+  let title: MenuTitleShapes | undefined;
   try {
     await preloadMenuHandSurfaces(`${prefix}models/cashier/hand-bind-v1.bin`, options.signal);
+    try {
+      title = await loadMenuTitleShapes(`${prefix}art/`, options.signal);
+    } catch {
+      options.signal?.throwIfAborted();
+    }
     options.signal?.throwIfAborted();
     models = buildMenuModels({
       ...art,
@@ -75,10 +94,13 @@ export async function createMenuComposition(
         woodDark: { color: '#887660' },
         leather: { roughness: 0.9 },
         cream: { color: '#c6cbd1', roughness: 0.95 },
-        stone: { color: '#a0adbe', roughness: 0.92 },
-        boardPaint: { roughness: 0.88 },
-        paper: { roughness: 0.95 },
+        stone: { color: '#c0b9ae', roughness: 0.92 },
+        // The mapped green already contains its base color; grade its channels in linear space.
+        green: { color: new THREE.Color(1.4, 1.05, 1.8) },
+        boardPaint: { color: '#abb8b0', roughness: 0.88 },
+        paper: { color: '#d8d2bc', roughness: 0.95 },
         iron: { color: '#3d454a', roughness: 0.6, metalness: 0.25 },
+        steel: { color: '#3d454a', roughness: 0.6, metalness: 0.45 },
         sky: { color: '#000000', emissive: '#ffffff', emissiveIntensity: 1 },
       },
     });
@@ -120,7 +142,7 @@ export async function createMenuComposition(
     models.clock.root.position.set(2.114, 1.55, -0.03);
     models.clock.hourHand.rotation.z = (Math.PI * (10 + 10 / 60)) / -6;
     models.clock.minuteHand.rotation.z = -Math.PI / 3;
-    return assemble(models, cashier, art);
+    return assemble(models, cashier, art, title);
   } catch (error) {
     cashier?.dispose();
     models?.dispose();
@@ -133,12 +155,13 @@ function assemble(
   models: MenuModels,
   cashier: MenuCashier,
   art: MenuCompositionArt,
+  titleShapes?: MenuTitleShapes,
 ): MenuComposition {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#a4c5e7');
   scene.add(models.root);
   const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 80);
-  const fill = new THREE.HemisphereLight('#bed0e2', '#777a7c', 1.1);
+  const fill = new THREE.HemisphereLight('#bed0e2', '#918675', 1.1);
   const keyLight = new THREE.DirectionalLight('#fff2df', 1.5);
   keyLight.position.set(6, 8, 2);
   keyLight.castShadow = true;
@@ -160,7 +183,7 @@ function assemble(
     RectAreaLightUniformsLib.init();
     areaLightsReady = true;
   }
-  const softFill = new THREE.RectAreaLight('#fff1dd', 4, 5, 4);
+  const softFill = new THREE.RectAreaLight('#fff1dd', 6, 5, 4);
   softFill.position.set(2, 3, 4);
   softFill.lookAt(0, 0.5, 0);
   const railFill = new THREE.SpotLight('#ffe2b1', 200, 12, 0.3, 0.9, 2);
@@ -171,10 +194,10 @@ function assemble(
     const distantLamp = fixture.name === 'lamp-distant';
     const light = new THREE.SpotLight(
       '#ffcf83',
-      windowLamp ? 4 : distantLamp ? 4 : 12,
+      windowLamp ? 4 : distantLamp ? 4 : 2,
       windowLamp ? 3 : distantLamp ? 3.5 : 5,
       windowLamp ? 1.1 : distantLamp ? 0.8 : 0.9,
-      0.75,
+      windowLamp ? 1 : 0.75,
       2,
     );
     light.name = `${fixture.name}-light`;
@@ -184,7 +207,7 @@ function assemble(
     target.position.set(
       0,
       light.position.y - (windowLamp ? 1 : 1.5),
-      windowLamp ? 0.3 : distantLamp ? -0.2 : -0.5,
+      windowLamp ? -0.25 : distantLamp ? -0.2 : -0.5,
     );
     fixture.add(light, target);
     light.target = target;
@@ -200,7 +223,13 @@ function assemble(
   function alive() {
     if (disposed) throw new Error('Menu composition is disposed');
   }
-  function layout(width: number, height: number, board?: MenuRect, settings?: MenuRect) {
+  function layout(
+    width: number,
+    height: number,
+    board?: MenuRect,
+    settings?: MenuRect,
+    title?: MenuRect,
+  ) {
     alive();
     const preset = menuCompositionPreset(width, height);
     camera.aspect = width / height;
@@ -262,6 +291,26 @@ function assemble(
       (12 * (boardBounds.max.y - boardBounds.min.y)) / boardRect.height,
       (6 * (settingsBounds.max.y - settingsBounds.min.y)) / settingsRect.height,
     );
+    if (titleShapes && title) {
+      const size = models.board.bounds.getSize(new THREE.Vector3());
+      const titleBounds = new THREE.Box2(
+        new THREE.Vector2(
+          (title.x / boardRect.width - 0.5) * size.x,
+          (0.5 - (title.y + title.height) / boardRect.height) * size.y,
+        ),
+        new THREE.Vector2(
+          ((title.x + title.width) / boardRect.width - 0.5) * size.x,
+          (0.5 - title.y / boardRect.height) * size.y,
+        ),
+      );
+      try {
+        models.board.setTitleShapes(titleShapes.shapes, titleShapes.sourceBounds, titleBounds);
+      } catch {
+        models.board.clearTitleShapes();
+      }
+    } else {
+      models.board.clearTitleShapes();
+    }
     scene.updateMatrixWorld(true);
     railFill.target.position.copy(models.train.root.localToWorld(new THREE.Vector3(0, 0.95, 0.55)));
     railFill.target.updateMatrixWorld(true);
@@ -303,6 +352,9 @@ function assemble(
     art,
     keyLight,
     lighting: { sky: fill, softFill, railFill, lamps: lampLights },
+    get titleVisible() {
+      return !disposed && models.board.titleRoot.visible;
+    },
     layout,
     projectFrame,
     projectCorners,
