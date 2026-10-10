@@ -11,6 +11,11 @@ import {
   motionBlend,
 } from './camera-motion';
 import { emptyGesture, feedGesture } from './vector-motion';
+import {
+  createPointerLockController,
+  measureRelativePress,
+  type PointerLockState,
+} from './pointer-lock';
 import { chooseBoardHit, interactionForHit } from './board-picking';
 import { presentationCities, routeLayouts, cityLabels } from './board-layout';
 import { EUROPE_LAND_RINGS, projectEurope } from '../data/europe-geography';
@@ -364,6 +369,8 @@ export default function Diorama({
   const previousReset = useRef(reset);
   const [fallback, setFallback] = useState(false);
   const [ready, setReady] = useState(false);
+  const [lockState, setLockState] = useState<PointerLockState>('released');
+  const acquirePointer = useRef<() => void>(() => {});
   const [fontRevision, setFontRevision] = useState(0);
   useEffect(() => {
     let mounted = true;
@@ -398,7 +405,7 @@ export default function Diorama({
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.autoClear = false;
     renderer.domElement.setAttribute('aria-hidden', 'true');
-    renderer.domElement.style.cursor = 'none';
+    renderer.domElement.style.cursor = 'auto';
     el.prepend(renderer.domElement);
     const scene = new THREE.Scene();
     const room = new RoomEnvironment();
@@ -500,8 +507,13 @@ export default function Diorama({
         inputEpoch: number;
         cameraReady: boolean;
         pointerId: number;
+        relativeDistance: number;
       } | null = null;
     const boardMode = () => topViewRef.current;
+    const ownsPointerLock = () => document.pointerLockElement === renderer.domElement;
+    let acquisition: { pointerId: number; x: number; y: number; dragged: boolean } | null = null;
+    let rulesReturnZone: FocusZone | null = null;
+    let previousRulesOpen = viewRef.current.rulesOpen === true;
     let boardZoom = 1;
     const boardPan = new THREE.Vector3();
     resetBoardView.current = () => {
@@ -516,9 +528,11 @@ export default function Diorama({
       );
       return focusZone.current;
     };
+    let lastNonRulesZone = focusZone.current;
     let previousSeatedZone = activeZone();
     let previousBoardMode = boardMode();
     const setFocusZone = (zone: FocusZone) => {
+      acquisition = null;
       if (focusZone.current === zone) return;
       focusZone.current = zone;
       inputEpoch++;
@@ -538,9 +552,10 @@ export default function Diorama({
     };
     const publishInput = () => {
       const mode = boardMode() ? 'board' : 'seated';
+      if (!viewRef.current.rulesOpen) lastNonRulesZone = focusZone.current;
       const zone = activeZone();
       const selected = eng.hoveredInteraction ? interactionKey(eng.hoveredInteraction) : '';
-      const key = `${mode}/${zone}/${selected}/${cameraReady}`;
+      const key = `${mode}/${zone}/${selected}/${cameraReady}/${ownsPointerLock()}`;
       if (key === displayKey) return;
       displayKey = key;
       el.dataset.inputMode = mode;
@@ -549,9 +564,11 @@ export default function Diorama({
       el.dataset.cameraReady = String(cameraReady);
       if (cameraReady) delete el.dataset.waitingForCamera;
       el.classList.toggle('board-mode', mode === 'board');
-      el.style.cursor = renderer.domElement.style.cursor = mode === 'board' ? 'crosshair' : 'none';
+      el.dataset.pointerLock = ownsPointerLock() ? 'locked' : lock.state;
+      el.style.cursor = renderer.domElement.style.cursor = mode === 'board' ? 'crosshair' : 'auto';
     };
     const invalidateGesture = () => {
+      acquisition = null;
       inputEpoch++;
       cameraReady = false;
       keyboardObject.current = null;
@@ -573,6 +590,7 @@ export default function Diorama({
       } else if (active) previousSeatedZone = activeZone();
       if (!active) setFocusZone(returnFocusZone(previousSeatedZone, inputPolicyRef.current));
       previousBoardMode = active;
+      lock.release();
       resetBoardView.current();
       invalidateGesture();
       publishInput();
@@ -585,12 +603,17 @@ export default function Diorama({
       onBoardModeChangeRef.current(active);
     };
     applyInputPolicy.current = () => {
+      const rulesOpen = viewRef.current.rulesOpen === true;
+      if (rulesOpen && !previousRulesOpen) rulesReturnZone = lastNonRulesZone;
+      const restoredZone = !rulesOpen && previousRulesOpen ? rulesReturnZone : null;
+      previousRulesOpen = rulesOpen;
       const policy = inputPolicyRef.current;
       const initialZone = policy
         ? returnFocusZone(policy.allowedZones[0] ?? 'neutral', policy)
         : activeZone();
-      previousSeatedZone = initialZone;
-      setFocusZone(initialZone);
+      const nextZone = restoredZone ? returnFocusZone(restoredZone, policy) : initialZone;
+      previousSeatedZone = nextZone;
+      setFocusZone(nextZone);
       invalidateGesture();
       if (boardMode() && policy?.boardAllowed === false) changeBoardMode(false);
       publishInput();
@@ -615,6 +638,7 @@ export default function Diorama({
       showLogicalSelection();
     };
     focusObject.current = (interaction) => {
+      lock.release();
       if (!interaction) {
         keyboardObject.current = null;
         return;
@@ -648,7 +672,7 @@ export default function Diorama({
         );
       lastLookTime = now;
     };
-    const setPointer = (event: PointerEvent) => {
+    const setPointer = (event: MouseEvent) => {
       const bounds = renderer.domElement.getBoundingClientRect();
       pointer.set(
         ((event.clientX - bounds.left) / bounds.width) * 2 - 1,
@@ -683,7 +707,17 @@ export default function Diorama({
       return interaction ? { interaction, enabled: hit.object.userData.enabled !== false } : null;
     };
     const pointerDown = (event: PointerEvent) => {
-      if (event.button !== 0) return;
+      if (event.button !== 0 || event.pointerType !== 'mouse') return;
+      if (!boardMode()) {
+        if (!ownsPointerLock() && lock.state !== 'requesting')
+          acquisition = {
+            pointerId: event.pointerId,
+            x: event.clientX,
+            y: event.clientY,
+            dragged: false,
+          };
+        return;
+      }
       down = null;
       eng.pressedInteraction = null;
       keyboardObject.current = null;
@@ -707,11 +741,20 @@ export default function Diorama({
         inputEpoch,
         cameraReady,
         pointerId: event.pointerId,
+        relativeDistance: 0,
       };
       eng.pressedInteraction = hit?.enabled && cameraReady ? hit.interaction : null;
       renderer.domElement.setPointerCapture(event.pointerId);
     };
     const pointerMove = (event: PointerEvent) => {
+      if (!boardMode()) {
+        if (
+          acquisition &&
+          Math.hypot(event.clientX - acquisition.x, event.clientY - acquisition.y) > 6
+        )
+          acquisition.dragged = true;
+        return;
+      }
       setPointer(event);
       pointerInside = true;
       keyboardObject.current = null;
@@ -736,49 +779,6 @@ export default function Diorama({
       advanceLook(now);
       if (!down && lastPointer) {
         mouseLook = addMouseLook(mouseLook, dx, dy, reducedMotion);
-        if (!boardMode() && cameraReady) {
-          const coalesced = event.getCoalescedEvents?.() ?? [];
-          const samples = coalesced.length ? coalesced : [event];
-          let samplePointer = lastPointer;
-          for (const sample of samples) {
-            if (!cameraReady) break;
-            const sampleTime = sample.timeStamp > 0 ? sample.timeStamp : now;
-            let next = feedGesture(
-              movement,
-              sample.clientX - samplePointer.x,
-              sample.clientY - samplePointer.y,
-              sampleTime,
-              gestureThresholds(
-                activeZone(),
-                selectedOption(),
-                layoutsRef.current,
-                inputPolicyRef.current,
-              ),
-            );
-            samplePointer = { x: sample.clientX, y: sample.clientY };
-            const maxSteps =
-              Math.max(...Object.values(layoutsRef.current).map((options) => options.length)) + 1;
-            for (let steps = 0; steps < maxSteps; steps++) {
-              movement = next.state;
-              if (!next.direction) break;
-              const before = activeZone();
-              navigate(next.direction, true);
-              if (activeZone() !== before) break;
-              next = feedGesture(
-                movement,
-                0,
-                0,
-                sampleTime,
-                gestureThresholds(
-                  activeZone(),
-                  selectedOption(),
-                  layoutsRef.current,
-                  inputPolicyRef.current,
-                ),
-              );
-            }
-          }
-        } else if (!boardMode()) movement = emptyGesture();
       }
       lastPointer = { x: event.clientX, y: event.clientY };
       const hit = currentHit();
@@ -787,6 +787,8 @@ export default function Diorama({
       publishInput();
     };
     const pointerLeave = () => {
+      if (ownsPointerLock()) return;
+      acquisition = null;
       pointerInside = false;
       keyboardObject.current = null;
       lastPointer = null;
@@ -800,6 +802,19 @@ export default function Diorama({
       publishInput();
     };
     const pointerUp = (event: PointerEvent) => {
+      if (!boardMode()) {
+        const entered = acquisition;
+        acquisition = null;
+        if (
+          event.button === 0 &&
+          entered &&
+          entered.pointerId === event.pointerId &&
+          !entered.dragged &&
+          Math.hypot(event.clientX - entered.x, event.clientY - entered.y) <= 6
+        )
+          acquirePointer.current();
+        return;
+      }
       if (event.button !== 0 || !down || event.pointerId !== down.pointerId) return;
       const started = down;
       down = null;
@@ -834,6 +849,7 @@ export default function Diorama({
         onInteractRef.current(hit.interaction);
     };
     const pointerCancel = () => {
+      acquisition = null;
       const capturedId = down?.pointerId;
       down = null;
       eng.pressedInteraction = null;
@@ -841,15 +857,187 @@ export default function Diorama({
       mouseLook = emptyMouseLook();
       lastLookTime = performance.now();
       lastPointer = null;
-      if (capturedId !== undefined && renderer.domElement.hasPointerCapture(capturedId))
+      if (
+        capturedId !== undefined &&
+        capturedId >= 0 &&
+        renderer.domElement.hasPointerCapture(capturedId)
+      )
         renderer.domElement.releasePointerCapture(capturedId);
+    };
+    const resetPointerInput = () => {
+      pointerInside = false;
+      acquisition = null;
+      pointerCancel();
+      inputEpoch++;
+      keyboardObject.current = null;
+    };
+    const lock = createPointerLockController(
+      {
+        isLocked: ownsPointerLock,
+        request: () => {
+          delete el.dataset.pointerLockError;
+          try {
+            const pending = renderer.domElement.requestPointerLock();
+            return pending?.catch((error: unknown) => {
+              el.dataset.pointerLockError = error instanceof Error ? error.name : 'Error';
+              throw error;
+            });
+          } catch (error) {
+            el.dataset.pointerLockError = error instanceof Error ? error.name : 'Error';
+            throw error;
+          }
+        },
+        exit: () => document.exitPointerLock(),
+      },
+      (state) => {
+        resetPointerInput();
+        setLockState(state);
+        publishInput();
+      },
+    );
+    acquirePointer.current = () => {
+      if (boardMode() || document.hidden || !document.hasFocus()) return;
+      el.focus({ preventScroll: true });
+      resetPointerInput();
+      lock.request();
+    };
+    const lockChanged = () => lock.changed();
+    const lockError = () => lock.failed();
+    const releasePointerInput = () => {
+      lock.release();
+      resetPointerInput();
+    };
+    const focusChanged = (event: FocusEvent) => {
+      if (event.target instanceof Node && !el.contains(event.target)) releasePointerInput();
+    };
+    const mouseDown = (event: MouseEvent) => {
+      if (boardMode() || lock.state !== 'locked' || !ownsPointerLock() || event.button !== 0)
+        return;
+      pointerCancel();
+      keyboardObject.current = null;
+      showLogicalSelection();
+      const hit = currentHit();
+      mouseLook = { ...emptyMouseLook(), ...renderedLook };
+      down = {
+        x: 0,
+        y: 0,
+        interaction: hit?.interaction ?? null,
+        dragged: false,
+        relativeDistance: 0,
+        revision: observationRef.current.revision,
+        enabled: hit?.enabled ?? false,
+        mode: 'seated',
+        zone: activeZone(),
+        inputEpoch,
+        cameraReady,
+        pointerId: -1,
+      };
+      eng.pressedInteraction = hit?.enabled && cameraReady ? hit.interaction : null;
+      if (!cameraReady) el.dataset.waitingForCamera = 'true';
+    };
+    const mouseMove = (event: MouseEvent) => {
+      if (boardMode() || lock.state !== 'locked' || !ownsPointerLock()) return;
+      const dx = event.movementX,
+        dy = event.movementY;
+      if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
+      keyboardObject.current = null;
+      if (down) {
+        const press = measureRelativePress(
+          { distance: down.relativeDistance, dragged: down.dragged },
+          dx,
+          dy,
+        );
+        down.relativeDistance = press.distance;
+        down.dragged = press.dragged;
+        return;
+      }
+      const now = performance.now();
+      advanceLook(now);
+      mouseLook = addMouseLook(mouseLook, dx, dy, reducedMotion);
+      if (cameraReady) {
+        const time = event.timeStamp > 0 ? event.timeStamp : now;
+        let next = feedGesture(
+          movement,
+          dx,
+          dy,
+          time,
+          gestureThresholds(
+            activeZone(),
+            selectedOption(),
+            layoutsRef.current,
+            inputPolicyRef.current,
+          ),
+        );
+        const maxSteps =
+          Math.max(...Object.values(layoutsRef.current).map((options) => options.length)) + 1;
+        for (let steps = 0; steps < maxSteps; steps++) {
+          movement = next.state;
+          if (!next.direction) break;
+          const before = activeZone();
+          navigate(next.direction, true);
+          if (activeZone() !== before) break;
+          next = feedGesture(
+            movement,
+            0,
+            0,
+            time,
+            gestureThresholds(
+              activeZone(),
+              selectedOption(),
+              layoutsRef.current,
+              inputPolicyRef.current,
+            ),
+          );
+        }
+      } else movement = emptyGesture();
+      showLogicalSelection();
+    };
+    const mouseUp = (event: MouseEvent) => {
+      if (
+        boardMode() ||
+        lock.state !== 'locked' ||
+        !ownsPointerLock() ||
+        event.button !== 0 ||
+        !down ||
+        down.pointerId !== -1
+      )
+        return;
+      const started = down;
+      down = null;
+      eng.pressedInteraction = null;
+      lastLookTime = performance.now();
+      if (
+        !canReleasePress(started, 0, 0, observationRef.current.revision, inputEpoch) ||
+        !cameraReady ||
+        started.zone !== activeZone()
+      )
+        return;
+      if (started.zone === 'neutral') {
+        changeBoardMode(true);
+        return;
+      }
+      const hit = currentHit();
+      if (
+        started.enabled &&
+        hit?.enabled &&
+        sameInteraction(started.interaction, hit.interaction) &&
+        interactionAllowed(hit.interaction, viewRef.current, inputPolicyRef.current)
+      )
+        onInteractRef.current(hit.interaction);
     };
     const lostPointerCapture = () => {
       if (down) pointerCancel();
     };
     const keyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        releasePointerInput();
+        return;
+      }
+      if (event.key === 'Tab') releasePointerInput();
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
       const target = event.target;
+      if (target instanceof HTMLElement && target.closest('.pointer-lock-hint')) return;
       if (
         target instanceof HTMLElement &&
         (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
@@ -861,11 +1049,7 @@ export default function Diorama({
         !el.contains(target)
       )
         return;
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        if (boardMode()) changeBoardMode(false);
-        else onInteractRef.current({ kind: 'control', id: 'menu' });
-      } else if (event.key === ' ' || event.code === 'Space') {
+      if (event.key === ' ' || event.code === 'Space') {
         event.preventDefault();
         if (!event.repeat) changeBoardMode(!boardMode());
       } else if (!boardMode() && /^Arrow(Left|Right|Up|Down)$/.test(event.key)) {
@@ -898,6 +1082,12 @@ export default function Diorama({
       event.preventDefault();
       setFallback(true);
     };
+    document.addEventListener('pointerlockchange', lockChanged);
+    document.addEventListener('pointerlockerror', lockError);
+    document.addEventListener('focusin', focusChanged);
+    renderer.domElement.addEventListener('mousedown', mouseDown);
+    renderer.domElement.addEventListener('mousemove', mouseMove);
+    renderer.domElement.addEventListener('mouseup', mouseUp);
     renderer.domElement.addEventListener('pointerdown', pointerDown);
     renderer.domElement.addEventListener('pointermove', pointerMove);
     renderer.domElement.addEventListener('pointerleave', pointerLeave);
@@ -907,28 +1097,22 @@ export default function Diorama({
     renderer.domElement.addEventListener('webglcontextlost', lostContext);
     renderer.domElement.addEventListener('wheel', wheel, { passive: false });
     window.addEventListener('keydown', keyDown);
-    const resetPointerInput = () => {
-      pointerInside = false;
-      pointerCancel();
-      inputEpoch++;
-      keyboardObject.current = null;
-    };
     const visibilityChanged = () => {
-      if (document.hidden) resetPointerInput();
+      if (document.hidden) releasePointerInput();
     };
     const motionPreferenceChanged = () => {
       reducedMotion = motionPreference.matches;
       eng.reducedMotion = reducedMotion;
       resetPointerInput();
     };
-    window.addEventListener('blur', resetPointerInput);
+    window.addEventListener('blur', releasePointerInput);
     document.addEventListener('visibilitychange', visibilityChanged);
     motionPreference.addEventListener('change', motionPreferenceChanged);
     const resizeScene = () => {
       const width = el.clientWidth,
         height = el.clientHeight;
       if (!width || !height) return;
-      resetPointerInput();
+      releasePointerInput();
       cameraReady = false;
       renderer.setSize(width, height);
       camera.aspect = width / height;
@@ -1050,6 +1234,27 @@ export default function Diorama({
     animate();
     setReady(true);
     return () => {
+      const pendingLock = lock.pending;
+      lock.dispose();
+      if (pendingLock) {
+        const finishPending = (event: Event) => {
+          if (event.type === 'pointerlockerror') lock.failed();
+          else lock.changed();
+          if (!lock.pending) {
+            document.removeEventListener('pointerlockchange', finishPending);
+            document.removeEventListener('pointerlockerror', finishPending);
+          }
+        };
+        document.addEventListener('pointerlockchange', finishPending);
+        document.addEventListener('pointerlockerror', finishPending);
+      }
+      acquirePointer.current = () => {};
+      document.removeEventListener('pointerlockchange', lockChanged);
+      document.removeEventListener('pointerlockerror', lockError);
+      document.removeEventListener('focusin', focusChanged);
+      renderer.domElement.removeEventListener('mousedown', mouseDown);
+      renderer.domElement.removeEventListener('mousemove', mouseMove);
+      renderer.domElement.removeEventListener('mouseup', mouseUp);
       cancelAnimationFrame(frame);
       resize.disconnect();
       controls.dispose();
@@ -1062,7 +1267,7 @@ export default function Diorama({
       renderer.domElement.removeEventListener('webglcontextlost', lostContext);
       renderer.domElement.removeEventListener('wheel', wheel);
       window.removeEventListener('keydown', keyDown);
-      window.removeEventListener('blur', resetPointerInput);
+      window.removeEventListener('blur', releasePointerInput);
       document.removeEventListener('visibilitychange', visibilityChanged);
       motionPreference.removeEventListener('change', motionPreferenceChanged);
       disposeObjects(scene);
@@ -1099,7 +1304,7 @@ export default function Diorama({
   }, [topView, reset, ready]);
   useEffect(() => {
     if (ready) applyInputPolicy.current();
-  }, [inputPolicyKey, ready]);
+  }, [inputPolicyKey, view.rulesOpen, ready]);
   useEffect(() => {
     if (ready && guidance) focusObject.current(guidance.target);
   }, [guidance?.key, ready]);
@@ -1116,12 +1321,32 @@ export default function Diorama({
     <div
       ref={host}
       className={`diorama tabletop-diorama${topView ? ' board-mode' : ''}`}
-      style={{ cursor: topView ? 'crosshair' : 'none' }}
+      style={{ cursor: topView ? 'crosshair' : 'auto' }}
+      tabIndex={0}
+      data-pointer-lock={lockState}
       data-input-mode={topView ? 'board' : 'seated'}
       data-focus-zone={focusZone.current}
       role="group"
-      aria-label="Железнодорожный стол. Небольшое движение мыши сдвигает взгляд; направленный жест переключает выделенную опцию. Длинный жест на границе коллекции переходит к соседним предметам. В обучении это работает по всей игровой области. ЛКМ активирует выделенный предмет. Пробел приближает поле и показывает курсор; пробел или Escape возвращает к столу. На поле колесо меняет масштаб, перетаскивание двигает карту. Tab выбирает предметы, стрелки меняют опцию, Enter действует."
+      aria-label="Железнодорожный стол. Небольшое движение мыши сдвигает взгляд; направленный жест переключает выделенную опцию. Длинный жест на границе коллекции переходит к соседним предметам. В обучении это работает по всей игровой области. Первый клик захватывает мышь; следующий ЛКМ активирует выделенный предмет. Escape только освобождает мышь. Пробел приближает поле и показывает курсор; повторный пробел возвращает к столу, следующий клик снова захватывает мышь. На поле колесо меняет масштаб, перетаскивание двигает карту. Tab выбирает предметы, стрелки меняют опцию, Enter действует."
     >
+      {!topView && lockState !== 'locked' && (
+        <div className="pointer-lock-hint" role="status">
+          <span>
+            {lockState === 'error'
+              ? 'Браузер не захватил мышь. Повторите клик или используйте Tab и Enter.'
+              : lockState === 'requesting'
+                ? 'Включаем управление мышью…'
+                : 'Кликните, чтобы управлять столом. Esc освобождает мышь.'}
+          </span>
+          <button
+            type="button"
+            disabled={lockState === 'requesting'}
+            onClick={() => acquirePointer.current()}
+          >
+            Управлять мышью
+          </button>
+        </div>
+      )}
       <AccessibleObjects
         observation={observation}
         view={view}

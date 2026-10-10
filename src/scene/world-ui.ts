@@ -357,62 +357,134 @@ function buildChalkboard(eng: Engine, observation: Observation, view: TableView)
   box([0.42, 0.07, 0.09], '#e4dec5', [1.8, -layout.height / 2 + 0.03, 0.2]);
 }
 
+type RuleImage = { image: HTMLImageElement; ready: boolean; listeners: Set<() => void> };
+const ruleImages = new Map<string, RuleImage>();
+function ruleImage(id: string) {
+  let entry = ruleImages.get(id);
+  if (!entry) {
+    const image = new Image();
+    entry = { image, ready: false, listeners: new Set() };
+    ruleImages.set(id, entry);
+    const value = entry;
+    image.onload = () => {
+      value.ready = true;
+      for (const listener of value.listeners) listener();
+    };
+    // Missing artwork leaves the complete text in place.
+    image.onerror = () => {
+      for (const listener of value.listeners) listener();
+    };
+    image.src = `/rules-illustrations/${encodeURIComponent(id)}.png`;
+  }
+  return entry;
+}
+
 function buildPaper(eng: Engine, view: TableView) {
   const layout = TABLE_LAYOUT.paper;
   const paperControls = view.controls.filter(
     (control) => !control.placement || control.placement === 'paper',
   );
   const buttonRows = Math.ceil(paperControls.length / 2);
-  const texture = textureFromCanvas(
-    (ctx) => {
-      ctx.fillStyle = paper;
-      ctx.fillRect(0, 0, 1024, 1408);
-      ctx.strokeStyle = '#c2b69b';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(30, 30, 964, 1348);
-      ctx.fillStyle = '#7a7765';
-      ctx.font = `32px ${mono}`;
-      ctx.fillText('EUROPE · ЛИСТ ПУТИ', 62, 96);
-      ctx.fillStyle = ink;
-      let headingSize = 86;
-      for (; headingSize > 60; headingSize -= 2) {
-        ctx.font = `${headingSize}px ${sans}`;
-        if (wrapText(ctx, view.headline, 900).length <= 2) break;
-      }
+  const illustrations = (view.rulesIllustrations ?? [])
+    .slice(0, 2)
+    .map((item) => ({ ...item, asset: ruleImage(item.id) }));
+  const draw = (ctx: CanvasRenderingContext2D) => {
+    ctx.fillStyle = paper;
+    ctx.fillRect(0, 0, 1024, 1408);
+    ctx.strokeStyle = '#c2b69b';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(30, 30, 964, 1348);
+    ctx.fillStyle = '#7a7765';
+    ctx.font = `32px ${mono}`;
+    ctx.fillText('EUROPE · ЛИСТ ПУТИ', 62, view.rulesOpen ? 134 : 154);
+    ctx.fillStyle = ink;
+    let headingSize = view.rulesOpen ? 72 : 86;
+    for (; headingSize > 60; headingSize -= 2) {
       ctx.font = `${headingSize}px ${sans}`;
-      let y = printLines(ctx, view.headline, 62, 210, 900, headingSize * 1.13) + 39;
-      ctx.font = `50px ${sans}`;
-      ctx.fillStyle = '#565c4a';
-      y = printLines(ctx, view.notice, 62, y, 900, 61) + 33;
-      ctx.strokeStyle = '#b4a788';
-      ctx.beginPath();
-      ctx.moveTo(62, y - 15);
-      ctx.lineTo(962, y - 15);
-      ctx.stroke();
-      y += 18;
-      ctx.fillStyle = ink;
-      // Reserve the physical stamps before fitting the contextual text.
-      const textBottom = paperControls.length ? 1230 - (buttonRows - 1) * 147 : 1265;
-      let size = 46;
-      for (; size > 28; size -= 2) {
-        ctx.font = `${size}px ${sans}`;
-        const height = view.detailLines.reduce(
-          (sum, line) => sum + wrapText(ctx, line, 900).length * size * 1.28 + 24,
-          0,
-        );
-        if (y + height <= textBottom) break;
-      }
+      if (wrapText(ctx, view.headline, 900).length <= 2) break;
+    }
+    ctx.font = `${headingSize}px ${sans}`;
+    let y =
+      printLines(ctx, view.headline, 62, view.rulesOpen ? 224 : 272, 900, headingSize * 1.13) +
+      (view.rulesOpen ? 14 : 39);
+    ctx.font = `${view.rulesOpen ? 32 : 50}px ${sans}`;
+    ctx.fillStyle = '#565c4a';
+    y =
+      printLines(ctx, view.notice, 62, y, 900, view.rulesOpen ? 39 : 61) +
+      (view.rulesOpen ? 18 : 33);
+    ctx.strokeStyle = '#b4a788';
+    ctx.beginPath();
+    ctx.moveTo(62, y - 15);
+    ctx.lineTo(962, y - 15);
+    ctx.stroke();
+    y += 18;
+    ctx.fillStyle = ink;
+    // Reserve the physical stamps before fitting the contextual text.
+    const textBottom = paperControls.length ? 1190 - (buttonRows - 1) * 147 : 1265;
+    let availableImages = illustrations.filter((item) => item.asset.ready);
+    const gap = view.rulesOpen ? 10 : 24;
+    const captionHeight = () => {
+      if (!availableImages.length) return 0;
+      ctx.font = `28px ${sans}`;
+      const slotWidth = 900 / availableImages.length;
+      return (
+        218 +
+        Math.max(
+          ...availableImages.map((item) => wrapText(ctx, item.caption, slotWidth - 24).length * 34),
+        ) +
+        24
+      );
+    };
+    let illustrationHeight = captionHeight();
+    const textHeight = (size: number) => {
       ctx.font = `${size}px ${sans}`;
-      for (const line of view.detailLines) y = printLines(ctx, line, 62, y, 900, size * 1.28) + 24;
-      if (!paperControls.length) {
-        ctx.fillStyle = '#9b927b';
-        ctx.font = `32px ${mono}`;
-        ctx.fillText('ПРОБЕЛ — ПОЛЕ · ESC — К СТОЛУ', 62, 1320, 900);
-      }
-    },
-    1024,
-    1408,
-  );
+      return view.detailLines.reduce(
+        (sum, line) => sum + wrapText(ctx, line, 900).length * size * 1.28 + gap,
+        0,
+      );
+    };
+    // Artwork must never displace the full rules or their navigation stamps.
+    if (y + textHeight(28) + illustrationHeight > textBottom) {
+      availableImages = [];
+      illustrationHeight = 0;
+    }
+    let size = 46;
+    for (; size > 28; size -= 2) if (y + textHeight(size) + illustrationHeight <= textBottom) break;
+    ctx.font = `${size}px ${sans}`;
+    for (const line of view.detailLines) y = printLines(ctx, line, 62, y, 900, size * 1.28) + gap;
+    if (availableImages.length) {
+      const slotWidth = 900 / availableImages.length;
+      availableImages.forEach((item, index) => {
+        const image = item.asset.image;
+        const scale = Math.min((slotWidth - 24) / image.naturalWidth, 184 / image.naturalHeight);
+        const width = image.naturalWidth * scale,
+          height = image.naturalHeight * scale;
+        ctx.drawImage(image, 62 + index * slotWidth + (slotWidth - width) / 2, y, width, height);
+        ctx.font = `28px ${sans}`;
+        printLines(ctx, item.caption, 74 + index * slotWidth, y + 218, slotWidth - 24, 34);
+      });
+    }
+    if (!paperControls.length) {
+      ctx.fillStyle = '#9b927b';
+      ctx.font = `32px ${mono}`;
+      ctx.fillText('ПРОБЕЛ — ПОЛЕ · ESC — ОСВОБОДИТЬ МЫШЬ', 62, 1320, 900);
+    }
+  };
+  const texture = textureFromCanvas(draw, 1024, 1408);
+  let live = true;
+  const refresh = () => {
+    if (!live) return;
+    const ctx = (texture.image as HTMLCanvasElement).getContext('2d');
+    if (ctx) {
+      draw(ctx);
+      texture.needsUpdate = true;
+    }
+  };
+  for (const item of illustrations) item.asset.listeners.add(refresh);
+  texture.addEventListener('dispose', () => {
+    live = false;
+    for (const item of illustrations) item.asset.listeners.delete(refresh);
+  });
   const clipboard = page(eng.furniture, layout.width, layout.height, texture, '#796344');
   clipboard.group.position.set(layout.x, layout.y, layout.z);
   clipboard.group.rotation.x = -Math.PI / 4;
