@@ -80,7 +80,7 @@ Constructor contacts не изменены:
 
 ## Рамы и lifecycle
 
-`board.bounds/settingsBounds` и `setLayout` — stationRoot-local номинальные прямоугольники, не world AABB после yaw; max.z — плоскость проекции native DOM, min.z=max.z−.04. Рельеф физической окантовки board выступает до max.z+.008, бумажной settings — до max.z+.0025; эти детали не меняют nominal corners. `setLayout` требует finite Box3/positive borders, сохраняет rotation/quaternion, обновляет размеры/position и освобождает заменённые geometry. Вызывать на resize/layout, не каждый кадр. innerPlane/settingsPlane getters актуальны.
+`board.bounds/settingsBounds` и `setLayout` — stationRoot-local номинальные прямоугольники, не world AABB после yaw; max.z — плоскость проекции native DOM, min.z=max.z−.04. Рельеф физической окантовки board выступает до max.z+.008, бумажной settings — до max.z+.0025; эти детали не меняют nominal corners. `setLayout` требует finite/Float32-representable Box3, вычисленные размеры/центры и positive borders, сохраняет rotation/quaternion, обновляет размеры/position и освобождает заменённые geometry. Вызывать на resize/layout, не каждый кадр. innerPlane/settingsPlane getters актуальны.
 
 `getCorners()` возвращает новые world Vector3[] в порядке TL/TR/BR/BL: внешние board/settings и inset aperture/settingsAperture. Учтены transforms всех предков. Native DOM преобразуется по этим projected world corners. Settings-hangers дочерние settingsRoot, следуют её rotation и не входят в UI bounds. После dispose обе функции бросают ошибку.
 

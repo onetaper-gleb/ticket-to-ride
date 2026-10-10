@@ -570,9 +570,13 @@ function buildBoard(root: THREE.Group, kit: MenuModelKit): MenuModels['board'] {
         ...nextBounds.max.toArray(),
         ...nextSettings.min.toArray(),
         ...nextSettings.max.toArray(),
+        ...size.toArray(),
+        ...settingsSize.toArray(),
+        ...nextBounds.getCenter(new THREE.Vector3()).toArray(),
+        ...nextSettings.getCenter(new THREE.Vector3()).toArray(),
         border,
         settingsBorder,
-      ].every(Number.isFinite) ||
+      ].every((value) => Number.isFinite(value) && Number.isFinite(Math.fround(value))) ||
       border <= 0 ||
       settingsBorder <= 0 ||
       size.x <= border * 2 ||
