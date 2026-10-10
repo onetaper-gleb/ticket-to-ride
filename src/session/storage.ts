@@ -1,10 +1,11 @@
-import type { BotDifficulty, GameState } from '../shared/types';
+import type { BotDifficulty, GameState, TurnAcknowledgement } from '../shared/types';
 
 export interface Save {
   schemaVersion: 2;
   savedAt: string;
   difficulty: BotDifficulty;
   state: GameState;
+  pendingTurn?: TurnAcknowledgement | null;
 }
 const DB = 'last-train-europe-v1';
 let writes: Promise<void> = Promise.resolve();
@@ -35,8 +36,15 @@ export function saveMatch(
   state: GameState,
   difficulty: BotDifficulty,
   slot: SaveSlot = 'current',
+  pendingTurn: TurnAcknowledgement | null = null,
 ): Promise<void> {
-  const save: Save = { schemaVersion: 2, savedAt: new Date().toISOString(), difficulty, state };
+  const save: Save = {
+    schemaVersion: 2,
+    savedAt: new Date().toISOString(),
+    difficulty,
+    state,
+    pendingTurn,
+  };
   writes = writes.catch(() => undefined).then(() => write(save, slot));
   return writes;
 }

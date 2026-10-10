@@ -4,6 +4,11 @@ import { tableOverviewFit } from './table-layout';
 
 export type FocusZone = 'neutral' | 'deck' | 'hand' | 'goals' | 'paper' | 'dock';
 export type OptionZone = Exclude<FocusZone, 'neutral'>;
+export type InputPolicy = {
+  allowedZones: FocusZone[];
+  boardAllowed: boolean;
+  returnZone?: FocusZone;
+};
 export type ZoneOption = {
   interaction: TableInteraction;
   enabled: boolean;
@@ -14,6 +19,47 @@ export type ZoneLayouts = Record<OptionZone, ZoneOption[]>;
 export type Direction = 'left' | 'right' | 'up' | 'down';
 export const interactionKey = (interaction: TableInteraction) =>
   `${interaction.kind}:${interaction.id}`;
+
+export const zoneAllowed = (zone: FocusZone, policy?: InputPolicy): boolean =>
+  !policy || policy.allowedZones.includes(zone);
+
+export function returnFocusZone(previous: FocusZone, policy?: InputPolicy): FocusZone {
+  if (policy?.returnZone && zoneAllowed(policy.returnZone, policy)) return policy.returnZone;
+  if (zoneAllowed(previous, policy)) return previous;
+  return policy?.allowedZones[0] ?? 'neutral';
+}
+
+export function permittedPointerZone(
+  candidate: FocusZone,
+  previous: FocusZone,
+  policy?: InputPolicy,
+): FocusZone {
+  if (zoneAllowed(candidate, policy)) return candidate;
+  return zoneAllowed(previous, policy) ? previous : returnFocusZone(previous, policy);
+}
+
+export function interactionZone(interaction: TableInteraction, view: TableView): OptionZone | null {
+  if (interaction.kind === 'card') return 'hand';
+  if (interaction.kind === 'market' || interaction.kind === 'deck') return 'deck';
+  if (interaction.kind === 'objective') return 'goals';
+  if (interaction.kind === 'control') {
+    const control = view.controls.find((item) => item.id === interaction.id);
+    return control?.placement === 'dock' || control?.placement === 'bell' ? 'dock' : 'paper';
+  }
+  return null;
+}
+
+export function interactionAllowed(
+  interaction: TableInteraction,
+  view: TableView,
+  policy?: InputPolicy,
+): boolean {
+  if (!policy) return true;
+  if (interaction.kind === 'control' && interaction.id === 'menu') return true;
+  if (interaction.kind === 'control' && interaction.id === 'plan') return policy.boardAllowed;
+  const zone = interactionZone(interaction, view);
+  return zone ? zoneAllowed(zone, policy) : policy.boardAllowed;
+}
 
 // The region chooses a collection. Individual choices never depend on a hidden hit point.
 export function pointerZone(x: number, y: number, previous: FocusZone, aspect = 16 / 9): FocusZone {
@@ -146,10 +192,24 @@ export function accumulateMovement(
 }
 
 export function canReleasePress(
-  press: { x: number; y: number; dragged: boolean; revision: number },
+  press: {
+    x: number;
+    y: number;
+    dragged: boolean;
+    revision: number;
+    inputEpoch?: number;
+    cameraReady?: boolean;
+  },
   x: number,
   y: number,
   revision: number,
+  inputEpoch?: number,
 ): boolean {
-  return !press.dragged && press.revision === revision && Math.hypot(press.x - x, press.y - y) <= 6;
+  return (
+    !press.dragged &&
+    press.cameraReady !== false &&
+    press.revision === revision &&
+    press.inputEpoch === inputEpoch &&
+    Math.hypot(press.x - x, press.y - y) <= 6
+  );
 }

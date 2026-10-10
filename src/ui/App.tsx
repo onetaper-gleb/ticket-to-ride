@@ -19,7 +19,7 @@ import type {
 import Diorama, { type MapSelection } from '../scene/Diorama';
 import type { TableControl, TableInteraction, TableView } from '../scene/interaction';
 import TutorialOverlay, { TutorialWelcome } from './TutorialOverlay';
-import { getTutorialLesson } from './tutorial';
+import { getTutorialLesson, getTutorialInputPolicy, tutorialCommandAllowed } from './tutorial';
 import { paymentMatches } from './payment';
 import { ROUTE_POINTS } from '../data/europe';
 import './styles.css';
@@ -78,7 +78,7 @@ const rulesPages = [
       'Соединяйте города из своих билетов своей сетью.',
       'За ход: взять карты, занять маршрут, взять билеты или построить станцию.',
       'Выполненный билет даёт его очки, невыполненный вычитает.',
-      'Ход заканчивается сразу после выбранного действия.',
+      'После действия нажмите «Завершить ход», чтобы передать ход соперникам.',
     ],
   },
   {
@@ -396,9 +396,15 @@ export default function App(props: AppProps) {
         : [],
     [observation],
   );
-  const ownTurn = !!observation && observation.activePlayer === observation.self.id && !props.busy;
+  const ownTurn =
+    !!observation &&
+    observation.activePlayer === observation.self.id &&
+    !props.busy &&
+    !props.pendingTurn;
   const can = (command: GameCommand) =>
-    ownTurn && legal.some((item) => JSON.stringify(item) === JSON.stringify(command));
+    ownTurn &&
+    (!props.tutorial || tutorialCommandAllowed(observation!, command)) &&
+    legal.some((item) => JSON.stringify(item) === JSON.stringify(command));
   const lessonBase =
     props.tutorial && observation && !tutorialHidden ? getTutorialLesson(observation) : null;
   useEffect(() => {
@@ -480,10 +486,10 @@ export default function App(props: AppProps) {
     setFeedback('');
   };
   const send = (command: GameCommand) => {
-    if (!ownTurn) return;
+    if (!ownTurn || (props.tutorial && !tutorialCommandAllowed(observation, command))) return false;
     setFeedback('');
     props.onClearError();
-    props.onCommand(command);
+    return props.onCommand(command, { sessionId: props.sessionId, revision: observation.revision });
   };
   const controls: TableControl[] = [];
   let headline = phaseNames[phase];
@@ -495,7 +501,19 @@ export default function App(props: AppProps) {
       controls.push({ id: 'paymentOption', label: 'Другая оплата', enabled: ownTurn });
     if (manualPayment !== null)
       controls.push({ id: 'autoPayment', label: 'Автооплата', enabled: ownTurn });
-    controls.push({ id: confirmId, label: confirmLabel, enabled: paymentValid });
+    controls.push({
+      id: confirmId,
+      label: confirmLabel,
+      enabled:
+        paymentValid &&
+        (confirmId !== 'buildStation' ||
+          !props.tutorial ||
+          tutorialCommandAllowed(observation, {
+            type: 'buildStation',
+            cityId: city?.id ?? '',
+            cardIds: paymentIds,
+          })),
+    });
   };
   if (!ownTurn && phase !== 'finished') {
     headline =
@@ -526,7 +544,7 @@ export default function App(props: AppProps) {
     detailLines = [
       'Подходит открытая цветная карта или закрытая колода.',
       'Второй открытый локомотив брать нельзя.',
-      'После добора ход автоматически перейдёт сопернику.',
+      'После добора нажмите «Завершить ход» на листе.',
     ];
   } else if (phase === 'tunnel') {
     const tunnel = observation.pendingTunnel;
@@ -630,7 +648,12 @@ export default function App(props: AppProps) {
     controls.push({ id: 'newGame', label: 'Новая партия', enabled: true });
   }
   const ticket = observation.self.tickets.find((item) => item.id === inspectedTicket);
-  if (!rules && ticket && !['setup', 'tickets', 'draw', 'tunnel'].includes(phase)) {
+  if (
+    !props.pendingTurn &&
+    !rules &&
+    ticket &&
+    !['setup', 'tickets', 'draw', 'tunnel'].includes(phase)
+  ) {
     const complete = progress.find((item) => item.ticket.id === ticket.id)?.complete ?? false;
     headline = ticketName(observation, ticket);
     notice = complete
@@ -649,6 +672,7 @@ export default function App(props: AppProps) {
   }
   if (
     !rules &&
+    !props.pendingTurn &&
     inspectedCard &&
     !['setup', 'tickets', 'draw', 'tunnel', 'finished'].includes(phase) &&
     !edge &&
@@ -666,7 +690,7 @@ export default function App(props: AppProps) {
     ];
     controls.push({ id: 'cancel', label: 'Закрыть карту', enabled: true });
   }
-  if (rules) {
+  if (rules && !props.pendingTurn) {
     const page = rulesPages[rulesPage]!;
     headline = page.title;
     notice = `Памятка · лист ${rulesPage + 1}/${rulesPages.length}`;
@@ -701,23 +725,62 @@ export default function App(props: AppProps) {
   }
   if (observation.finalTurnsRemaining !== null && phase !== 'finished' && detailLines.length < 5)
     detailLines.push(`Последние ходы: ${observation.finalTurnsRemaining}.`);
-  controls.push(
-    {
+  if (props.pendingTurn) {
+    headline = 'Действие выполнено';
+    notice = props.error ?? props.pendingTurn.message;
+    detailLines = [
+      'Нажмите «Завершить ход», чтобы соперники начали свои ходы.',
+      'В этом ходу больше нельзя брать карты, билеты или строить.',
+      `В руке ${observation.self.hand.length} карт. Счёт: ${observation.self.score}.`,
+    ];
+    controls.length = 0;
+    controls.push({ id: 'endTurn', label: 'Завершить ход', enabled: true });
+    if (props.error) controls.push({ id: 'clearError', label: 'Понятно', enabled: true });
+  }
+  const inputPolicy = props.pendingTurn
+    ? {
+        allowedZones: (props.tutorial && !tutorialHidden && !lessonBase?.complete
+          ? ['paper']
+          : [
+              'neutral',
+              'paper',
+              'hand',
+              'goals',
+              'dock',
+            ]) as import('../scene/zone-input').FocusZone[],
+        boardAllowed: !props.tutorial || tutorialHidden || !!lessonBase?.complete,
+        returnZone: 'paper' as const,
+      }
+    : props.tutorial && !tutorialHidden && !lessonBase?.complete
+      ? getTutorialInputPolicy(observation)
+      : undefined;
+  if (!inputPolicy || inputPolicy.boardAllowed)
+    controls.push({
       id: 'plan',
       label: topView ? 'За стол · Пробел' : 'Поле · Пробел',
-      enabled: true,
-      placement: 'dock',
-    },
-    {
+      enabled: inputPolicy?.boardAllowed ?? true,
+      placement: inputPolicy ? 'paper' : 'dock',
+    });
+  if (!inputPolicy)
+    controls.push({
       id: 'rules',
       label: rules ? 'Закрыть памятку' : 'Памятка',
-      enabled: !ownTurn || !['draw', 'tickets', 'tunnel'].includes(phase),
+      enabled: !props.pendingTurn && (!ownTurn || !['draw', 'tickets', 'tunnel'].includes(phase)),
       placement: 'dock',
-    },
-    { id: 'menu', label: 'Меню · Esc', enabled: true, placement: 'dock' },
-  );
+    });
+  controls.push({
+    id: 'menu',
+    label: 'Меню · Esc',
+    enabled: true,
+    placement: inputPolicy ? 'paper' : 'dock',
+  });
   const shownTickets = choosingTickets ? observation.self.ticketOptions : observation.self.tickets;
+  const previewTicket = choosingTickets
+    ? shownTickets.find((item) => item.id === inspectedTicket)
+    : null;
+  if (previewTicket) highlightedCities = [previewTicket.a, previewTicket.b];
   const view: TableView = {
+    awaitingHandoff: !!props.pendingTurn,
     headline,
     notice,
     detailLines,
@@ -744,7 +807,9 @@ export default function App(props: AppProps) {
     deckEnabled: can({ type: 'draw', source: 'deck' }),
     enabledEdgeIds: [
       ...new Set(
-        legal.flatMap((command) => (ownTurn && command.type === 'claim' ? [command.edgeId] : [])),
+        legal.flatMap((command) =>
+          can(command) && command.type === 'claim' ? [command.edgeId] : [],
+        ),
       ),
     ],
     selectedCardIds: paymentIds,
@@ -760,6 +825,11 @@ export default function App(props: AppProps) {
           return;
         case 'plan':
           setTopView((value) => !value);
+          return;
+        case 'endTurn':
+          setTopView(false);
+          clear();
+          props.onEndTurn({ sessionId: props.sessionId, revision: observation.revision });
           return;
         case 'rules':
           setRules((value) => !value);
@@ -798,8 +868,7 @@ export default function App(props: AppProps) {
           const ids = observation.self.ticketOptions
             .filter((item) => ticketIds.includes(item.id))
             .map((item) => item.id);
-          send({ type: 'chooseTickets', ticketIds: ids });
-          setTicketIds([]);
+          if (send({ type: 'chooseTickets', ticketIds: ids })) setTicketIds([]);
           return;
         }
         case 'drawTickets':
@@ -842,6 +911,7 @@ export default function App(props: AppProps) {
     if (intent.kind === 'objective') {
       if (choosingTickets && ownTurn) {
         if (!observation.self.ticketOptions.some((item) => item.id === intent.id)) return;
+        setInspectedTicket(intent.id);
         setTicketIds((current) =>
           current.includes(intent.id)
             ? current.filter((id) => id !== intent.id)
@@ -880,6 +950,8 @@ export default function App(props: AppProps) {
       return;
     }
     if (intent.kind === 'edge' || intent.kind === 'station') {
+      if (choosingTickets) return;
+      if (inputPolicy && !inputPolicy.boardAllowed) return;
       setSelection({ kind: intent.kind, id: intent.id });
       setInspectedTicket(null);
       setInspectedCard(null);
@@ -890,6 +962,17 @@ export default function App(props: AppProps) {
     }
   };
   let lesson = lessonBase;
+  if (props.pendingTurn && lesson)
+    lesson = {
+      ...lesson,
+      id: 'confirm-turn',
+      complete: false,
+      title: 'Действие выполнено — передайте ход',
+      text: props.pendingTurn.message,
+      action: 'На листе справа нажмите «Завершить ход». После ходов соперника продолжим обучение.',
+      focus: 'paper',
+      target: { kind: 'control', id: 'endTurn' },
+    };
   if (lesson && choosingTickets && ticketIds.length >= (phase === 'setup' ? 2 : 1))
     lesson = {
       ...lesson,
@@ -900,21 +983,23 @@ export default function App(props: AppProps) {
   if (lesson?.id === 'claim-first-route' && edge && ownTurn && phase === 'action')
     lesson = {
       ...lesson,
-      action: topView
-        ? 'Маршрут выбран. Нажмите пробел к столу. На листе справа проверьте оплату и подтвердите маршрут.'
-        : paymentOptions.length
-          ? 'На листе справа нажмите «Занять маршрут» или «Попытка тоннеля». Выделенные карты уйдут в оплату.'
-          : 'На выбранный участок карт не хватает. Выберите другой участок или доберите карты.',
-      focus: 'paper',
-      target: { kind: 'control', id: 'claimRoute' },
+      action: !paymentOptions.length
+        ? topView
+          ? 'Этот участок сейчас занять нельзя. Выберите другую свободную линию. «Показать предмет» укажет доступный маршрут.'
+          : 'Этот участок сейчас занять нельзя. Нажмите пробел и выберите другую линию. «Показать предмет» укажет доступный маршрут.'
+        : topView
+          ? 'Маршрут выбран. Нажмите пробел к столу. На листе справа проверьте оплату и подтвердите маршрут.'
+          : 'На листе справа нажмите «Занять маршрут» или «Попытка тоннеля». Выделенные карты уйдут в оплату.',
+      focus: paymentOptions.length ? 'paper' : 'board',
+      target: paymentOptions.length ? { kind: 'control', id: 'claimRoute' } : lesson.target,
     };
   const lessonKey = lesson
     ? `${props.sessionId}:${lesson.id}:${lesson.target?.kind}:${lesson.target?.id}`
     : '';
   const requested = cueRequest.key === lessonKey;
   const guidance =
-    lesson?.target && (lesson.focus !== 'board' || topView || requested)
-      ? { key: `${lessonKey}:${requested ? cueRequest.nonce : 0}`, target: lesson.target }
+    lesson?.target && requested
+      ? { key: `${lessonKey}:${cueRequest.nonce}`, target: lesson.target }
       : undefined;
   return (
     <main className={`game-shell world-only phase-${phase}`}>
@@ -928,6 +1013,7 @@ export default function App(props: AppProps) {
           onBoardModeChange={setTopView}
           reset={props.sessionId}
           guidance={guidance}
+          inputPolicy={inputPolicy}
         />
       </div>
       <p className="sr-only" role="status" aria-live="polite">

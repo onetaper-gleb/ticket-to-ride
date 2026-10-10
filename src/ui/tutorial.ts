@@ -1,6 +1,7 @@
 import { getLegalCommands } from '../core';
 import type { GameCommand, Observation } from '../shared/types';
 import type { TableInteraction } from '../scene/interaction';
+import type { FocusZone } from '../scene/zone-input';
 
 export interface TutorialLesson {
   id: string;
@@ -12,6 +13,65 @@ export interface TutorialLesson {
   focus: 'goals' | 'deck' | 'paper' | 'board' | 'dock' | null;
   target?: TableInteraction;
   complete: boolean;
+}
+
+export interface TutorialInputPolicy {
+  allowedZones: FocusZone[];
+  boardAllowed: boolean;
+  returnZone?: FocusZone;
+}
+
+function ownsRoute(observation: Observation): boolean {
+  return observation.edges.some((edge) => edge.owner === observation.self.id);
+}
+
+// The accepted journal is saved with the match. A draw from an earlier turn
+// proves that its whole action ended; one current-turn draw never skips step 2.
+function hasCompletedTrainDraw(observation: Observation): boolean {
+  return observation.events.some(
+    (event) =>
+      event.kind === 'draw' &&
+      event.playerId === observation.self.id &&
+      event.turn < observation.turn,
+  );
+}
+
+function firstClaim(observation: Observation) {
+  return getLegalCommands(observation).find((command) => command.type === 'claim');
+}
+
+export function getTutorialInputPolicy(observation: Observation): TutorialInputPolicy {
+  if (ownsRoute(observation)) {
+    return {
+      allowedZones: ['neutral', 'deck', 'hand', 'goals', 'paper', 'dock'],
+      boardAllowed: true,
+    };
+  }
+  if (observation.phase === 'finished') {
+    return { allowedZones: ['paper', 'dock'], boardAllowed: false, returnZone: 'dock' };
+  }
+  if (
+    observation.activePlayer !== observation.self.id ||
+    observation.phase === 'setup' ||
+    observation.phase === 'tickets'
+  ) {
+    return { allowedZones: ['goals', 'paper'], boardAllowed: true, returnZone: 'goals' };
+  }
+  if (observation.phase === 'tunnel') {
+    return { allowedZones: ['paper', 'hand'], boardAllowed: false, returnZone: 'paper' };
+  }
+  if (
+    observation.phase === 'draw' ||
+    !hasCompletedTrainDraw(observation) ||
+    !firstClaim(observation)
+  ) {
+    return { allowedZones: ['deck', 'paper'], boardAllowed: false, returnZone: 'deck' };
+  }
+  return {
+    allowedZones: ['neutral', 'paper', 'hand'],
+    boardAllowed: true,
+    returnZone: 'paper',
+  };
 }
 
 export function getTutorialLesson(observation: Observation): TutorialLesson {
@@ -47,7 +107,7 @@ export function getTutorialLesson(observation: Observation): TutorialLesson {
     return {
       ...base,
       id: `waiting-${observation.phase}`,
-      step: observation.self.tickets.length ? 2 : 1,
+      step: observation.self.tickets.length ? (hasCompletedTrainDraw(observation) ? 3 : 2) : 1,
       title: 'Сейчас ходит соперник',
       text: 'Игроки ходят по очереди. Занятые маршруты становятся их собственностью. Чужие карты и билеты скрыты.',
       action: 'Пока соперник выбирает действие, осмотрите поле и города из своих билетов.',
@@ -95,7 +155,8 @@ export function getTutorialLesson(observation: Observation): TutorialLesson {
       target: { kind: 'control', id: 'declineTunnel' },
     };
   }
-  const claim = getLegalCommands(observation).find((command) => command.type === 'claim');
+  const completedDraw = hasCompletedTrainDraw(observation);
+  const claim = completedDraw ? firstClaim(observation) : undefined;
   if (claim?.type === 'claim') {
     const edge = observation.edges.find((item) => item.id === claim.edgeId)!;
     const city = (id: string) => observation.cities.find((item) => item.id === id)?.name ?? id;
@@ -115,8 +176,10 @@ export function getTutorialLesson(observation: Observation): TutorialLesson {
     ...base,
     id: 'collect-train-cards',
     step: 2,
-    title: 'Соберите карты для маршрута',
-    text: 'Для участка нужны карты одного цвета: столько, сколько клеток на линии. Серый участок оплачивается любым одним цветом. Локомотив заменяет цвет.',
+    title: completedDraw ? 'Соберите карты для маршрута' : 'Сначала возьмите карты вагонов',
+    text: completedDraw
+      ? 'Для участка нужны карты одного цвета: столько, сколько клеток на линии. Серый участок оплачивается любым одним цветом. Локомотив заменяет цвет.'
+      : 'Попробуйте полный добор перед первым маршрутом. За ход берут две карты вагонов или один открытый локомотив. Даже если стартовых карт уже хватает на участок, сначала изучим добор.',
     action:
       'В левой зоне выберите открытую карту или закрытую колоду и нажмите ЛКМ. Добор карт занимает весь ход.',
     focus: 'deck',
@@ -124,6 +187,19 @@ export function getTutorialLesson(observation: Observation): TutorialLesson {
   };
 }
 
-export function tutorialCommandAllowed(_observation: Observation, _command: GameCommand): boolean {
-  return true;
+// This filter only orders the lesson. The core still validates every command,
+// including payments, market locomotives and technical passes.
+export function tutorialCommandAllowed(observation: Observation, command: GameCommand): boolean {
+  if (ownsRoute(observation)) return true;
+  if (observation.phase === 'finished' || observation.activePlayer !== observation.self.id)
+    return false;
+  if (observation.phase === 'setup' || observation.phase === 'tickets')
+    return command.type === 'chooseTickets';
+  if (observation.phase === 'draw') return command.type === 'draw';
+  if (observation.phase === 'tunnel') return command.type === 'resolveTunnel';
+  if (command.type === 'pass')
+    return getLegalCommands(observation).every((legal) => legal.type === 'pass');
+  if (!hasCompletedTrainDraw(observation) || !firstClaim(observation))
+    return command.type === 'draw';
+  return command.type === 'claim';
 }

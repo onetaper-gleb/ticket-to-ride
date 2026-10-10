@@ -8,10 +8,14 @@ import {
   buildZoneLayouts,
   canReleasePress,
   emptyMovement,
+  interactionAllowed,
+  permittedPointerZone,
   pointerZone,
   reconcileOption,
+  returnFocusZone,
   stepOption,
   type ZoneOption,
+  type InputPolicy,
 } from './zone-input';
 
 describe('table regions and relative selection', () => {
@@ -115,5 +119,57 @@ describe('table regions and relative selection', () => {
     expect(canReleasePress(press, 101, 101, 13)).toBe(false);
     expect(canReleasePress({ ...press, dragged: true }, 100, 100, 12)).toBe(false);
     expect(canReleasePress(press, 110, 100, 12)).toBe(false);
+    expect(canReleasePress({ ...press, cameraReady: false }, 100, 100, 12)).toBe(false);
+    expect(canReleasePress({ ...press, inputEpoch: 3 }, 100, 100, 12, 4)).toBe(false);
+    expect(canReleasePress({ ...press, inputEpoch: 3 }, 100, 100, 12, 3)).toBe(true);
+  });
+
+  it('keeps a permitted focus when the pointer enters an unavailable tutorial region', () => {
+    const policy: InputPolicy = {
+      allowedZones: ['goals', 'paper'],
+      boardAllowed: true,
+      returnZone: 'goals',
+    };
+    expect(permittedPointerZone('deck', 'paper', policy)).toBe('paper');
+    expect(permittedPointerZone('neutral', 'goals', policy)).toBe('goals');
+    expect(permittedPointerZone('paper', 'goals', policy)).toBe('paper');
+    expect(permittedPointerZone('deck', 'deck', policy)).toBe('goals');
+    expect(returnFocusZone('paper', policy)).toBe('goals');
+    expect(returnFocusZone('hand')).toBe('hand');
+    expect(returnFocusZone('hand', { allowedZones: ['deck'], boardAllowed: false })).toBe('deck');
+  });
+
+  it('applies the same tutorial limits to logical and accessible interactions', () => {
+    const view: TableView = {
+      headline: '',
+      notice: '',
+      detailLines: [],
+      controls: [
+        { id: 'acceptTickets', label: '', enabled: true },
+        { id: 'drawTickets', label: '', enabled: true, placement: 'bell' },
+        { id: 'menu', label: '', enabled: true, placement: 'dock' },
+        { id: 'plan', label: '', enabled: true, placement: 'dock' },
+      ],
+      goals: [],
+      routeStationIds: [],
+      enabledMarketIndices: [],
+      deckEnabled: true,
+      enabledEdgeIds: [],
+      selectedCardIds: [],
+    };
+    const policy: InputPolicy = { allowedZones: ['goals', 'paper'], boardAllowed: false };
+    expect(interactionAllowed({ kind: 'objective', id: 'ticket' }, view, policy)).toBe(true);
+    expect(interactionAllowed({ kind: 'control', id: 'acceptTickets' }, view, policy)).toBe(true);
+    expect(interactionAllowed({ kind: 'control', id: 'drawTickets' }, view, policy)).toBe(false);
+    expect(interactionAllowed({ kind: 'control', id: 'menu' }, view, policy)).toBe(true);
+    expect(interactionAllowed({ kind: 'control', id: 'plan' }, view, policy)).toBe(false);
+    expect(
+      interactionAllowed({ kind: 'control', id: 'plan' }, view, { ...policy, boardAllowed: true }),
+    ).toBe(true);
+    for (const kind of ['deck', 'market', 'card', 'edge', 'station'] as const)
+      expect(interactionAllowed({ kind, id: 'item' }, view, policy)).toBe(false);
+    expect(
+      interactionAllowed({ kind: 'edge', id: 'route' }, view, { ...policy, boardAllowed: true }),
+    ).toBe(true);
   });
 });

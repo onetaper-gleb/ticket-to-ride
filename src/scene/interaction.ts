@@ -20,6 +20,7 @@ export type TableGoal = {
   long?: boolean;
 };
 export type TableView = {
+  awaitingHandoff?: boolean;
   headline: string;
   notice: string;
   detailLines: string[];

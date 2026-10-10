@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { TABLE_CAMERA, tableOverviewFit } from './table-layout';
+import { motionBlend } from './camera-motion';
 import { chooseBoardHit, interactionForHit } from './board-picking';
 import { presentationCities, routeLayouts, cityLabels } from './board-layout';
 import { EUROPE_LAND_RINGS, projectEurope } from '../data/europe-geography';
@@ -24,11 +25,17 @@ import {
   canReleasePress,
   emptyMovement,
   interactionKey,
+  interactionAllowed,
+  interactionZone,
+  permittedPointerZone,
   pointerZone,
   reconcileOption,
+  returnFocusZone,
   stepOption,
+  zoneAllowed,
   type Direction,
   type FocusZone,
+  type InputPolicy,
   type OptionZone,
   type ZoneOption,
 } from './zone-input';
@@ -43,6 +50,7 @@ interface Props {
   onBoardModeChange: (active: boolean) => void;
   reset: number;
   guidance?: { key: string; target: TableInteraction };
+  inputPolicy?: InputPolicy;
 }
 const materialNames = {
   red: 'Красный вагон',
@@ -75,12 +83,14 @@ function AccessibleObjects({
   view,
   onInteract,
   onFocusObject,
+  inputPolicy,
   visible = false,
 }: {
   observation: Observation;
   view: TableView;
   onInteract: (interaction: TableInteraction) => void;
   onFocusObject?: (interaction: TableInteraction | null) => void;
+  inputPolicy?: InputPolicy;
   visible?: boolean;
 }) {
   const objects: Array<{ interaction: TableInteraction; label: string; enabled: boolean }> = [
@@ -131,10 +141,13 @@ function AccessibleObjects({
           key={`${interaction.kind}-${interaction.id}`}
           data-table-kind={interaction.kind}
           data-table-id={interaction.id}
-          disabled={!enabled}
+          disabled={!enabled || !interactionAllowed(interaction, view, inputPolicy)}
           onFocus={() => onFocusObject?.(interaction)}
           onBlur={() => onFocusObject?.(null)}
-          onClick={() => onInteract(interaction)}
+          onClick={() => {
+            if (enabled && interactionAllowed(interaction, view, inputPolicy))
+              onInteract(interaction);
+          }}
         >
           {label}
         </button>
@@ -147,7 +160,8 @@ function Fallback({
   observation,
   view,
   onInteract,
-}: Pick<Props, 'observation' | 'view' | 'onInteract'>) {
+  inputPolicy,
+}: Pick<Props, 'observation' | 'view' | 'onInteract' | 'inputPolicy'>) {
   const cities = presentationCities(observation.cities);
   const routes = routeLayouts(observation.edges, cities);
   const labels = cityLabels(cities, routes);
@@ -165,7 +179,10 @@ function Fallback({
         })
         .join(' ') + 'Z',
   ).join(' ');
-  const activate = (kind: 'station' | 'edge', id: string) => onInteract({ kind, id });
+  const boardAllowed = inputPolicy?.boardAllowed !== false;
+  const activate = (kind: 'station' | 'edge', id: string) => {
+    if (boardAllowed) onInteract({ kind, id });
+  };
   return (
     <div className="map-fallback tabletop-fallback">
       <span className="fallback-note">Карта Европы · 3D недоступен в этом браузере</span>
@@ -189,7 +206,8 @@ function Fallback({
               key={edge.id}
               onClick={() => activate('edge', edge.id)}
               role="button"
-              tabIndex={0}
+              tabIndex={boardAllowed ? 0 : -1}
+              aria-disabled={!boardAllowed}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault();
@@ -222,7 +240,8 @@ function Fallback({
               key={station.id}
               onClick={() => activate('station', station.id)}
               role="button"
-              tabIndex={0}
+              tabIndex={boardAllowed ? 0 : -1}
+              aria-disabled={!boardAllowed}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault();
@@ -248,7 +267,13 @@ function Fallback({
           );
         })}
       </svg>
-      <AccessibleObjects observation={observation} view={view} onInteract={onInteract} visible />
+      <AccessibleObjects
+        observation={observation}
+        view={view}
+        onInteract={onInteract}
+        inputPolicy={inputPolicy}
+        visible
+      />
     </div>
   );
 }
@@ -262,6 +287,7 @@ export default function Diorama({
   onBoardModeChange,
   reset,
   guidance,
+  inputPolicy,
 }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const engine = useRef<Engine | null>(null);
@@ -281,6 +307,13 @@ export default function Diorama({
   const memories = useRef<Partial<Record<OptionZone, ZoneOption>>>({});
   const focusObject = useRef<(interaction: TableInteraction | null) => void>(() => {});
   const resetBoardView = useRef<() => void>(() => {});
+  const synchronizeView = useRef<(resetChanged?: boolean) => void>(() => {});
+  const applyInputPolicy = useRef<() => void>(() => {});
+  const inputPolicyRef = useRef(inputPolicy);
+  inputPolicyRef.current = inputPolicy;
+  const inputPolicyKey = inputPolicy
+    ? `${inputPolicy.allowedZones.join(',')}/${inputPolicy.boardAllowed}/${inputPolicy.returnZone ?? ''}`
+    : '';
   const keyboardObject = useRef<TableInteraction | null>(null);
   const previousReset = useRef(reset);
   const [fallback, setFallback] = useState(false);
@@ -402,6 +435,8 @@ export default function Diorama({
       lastPointer: { x: number; y: number } | null = null,
       movement = emptyMovement(),
       displayKey = '',
+      inputEpoch = 0,
+      cameraReady = true,
       down: {
         x: number;
         y: number;
@@ -411,6 +446,8 @@ export default function Diorama({
         enabled: boolean;
         mode: 'seated' | 'board';
         zone: FocusZone;
+        inputEpoch: number;
+        cameraReady: boolean;
       } | null = null;
     const boardMode = () => topViewRef.current;
     let boardZoom = 1;
@@ -419,7 +456,23 @@ export default function Diorama({
       boardZoom = 1;
       boardPan.set(0, 0, 0);
     };
-    const activeZone = (): FocusZone => focusZone.current;
+    const activeZone = (): FocusZone => {
+      focusZone.current = permittedPointerZone(
+        focusZone.current,
+        focusZone.current,
+        inputPolicyRef.current,
+      );
+      return focusZone.current;
+    };
+    let previousSeatedZone = activeZone();
+    let previousBoardMode = boardMode();
+    const setFocusZone = (zone: FocusZone) => {
+      if (focusZone.current === zone) return;
+      focusZone.current = zone;
+      inputEpoch++;
+      cameraReady = false;
+      movement = emptyMovement();
+    };
     const selectedOption = (): ZoneOption | null => {
       const zone = activeZone();
       if (zone === 'neutral') return null;
@@ -431,19 +484,20 @@ export default function Diorama({
       const mode = boardMode() ? 'board' : 'seated';
       const zone = activeZone();
       const selected = eng.hoveredInteraction ? interactionKey(eng.hoveredInteraction) : '';
-      const key = `${mode}/${zone}/${selected}`;
+      const key = `${mode}/${zone}/${selected}/${cameraReady}`;
       if (key === displayKey) return;
       displayKey = key;
       el.dataset.inputMode = mode;
       el.dataset.focusZone = zone;
       el.dataset.selectedObject = selected;
+      el.dataset.cameraReady = String(cameraReady);
+      if (cameraReady) delete el.dataset.waitingForCamera;
       el.classList.toggle('board-mode', mode === 'board');
       el.style.cursor = renderer.domElement.style.cursor = mode === 'board' ? 'crosshair' : 'none';
     };
-    const changeBoardMode = (active: boolean) => {
-      topViewRef.current = active;
-      resetBoardView.current();
-      focusZone.current = 'neutral';
+    const invalidateGesture = () => {
+      inputEpoch++;
+      cameraReady = false;
       keyboardObject.current = null;
       movement = emptyMovement();
       lastPointer = null;
@@ -451,7 +505,36 @@ export default function Diorama({
       eng.hoveredInteraction = null;
       eng.hoveredCard = null;
       eng.pressedInteraction = null;
+    };
+    synchronizeView.current = (resetChanged = false) => {
+      const active = boardMode();
+      if (!resetChanged && previousBoardMode === active) return;
+      if (resetChanged) {
+        memories.current = {};
+        previousSeatedZone = returnFocusZone('neutral', inputPolicyRef.current);
+      } else if (active) previousSeatedZone = activeZone();
+      if (!active) setFocusZone(returnFocusZone(previousSeatedZone, inputPolicyRef.current));
+      previousBoardMode = active;
+      resetBoardView.current();
+      invalidateGesture();
+      publishInput();
+    };
+    const changeBoardMode = (active: boolean) => {
+      if (active && inputPolicyRef.current?.boardAllowed === false) return;
+      if (boardMode() === active) return;
+      topViewRef.current = active;
+      synchronizeView.current();
       onBoardModeChangeRef.current(active);
+    };
+    applyInputPolicy.current = () => {
+      const policy = inputPolicyRef.current;
+      const initialZone = policy
+        ? returnFocusZone(policy.allowedZones[0] ?? 'neutral', policy)
+        : activeZone();
+      previousSeatedZone = initialZone;
+      setFocusZone(initialZone);
+      invalidateGesture();
+      if (boardMode() && policy?.boardAllowed === false) changeBoardMode(false);
       publishInput();
     };
     const showLogicalSelection = () => {
@@ -468,30 +551,21 @@ export default function Diorama({
       keyboardObject.current = null;
       showLogicalSelection();
     };
-    const interactionZone = (interaction: TableInteraction): OptionZone | null => {
-      if (interaction.kind === 'card') return 'hand';
-      if (interaction.kind === 'market' || interaction.kind === 'deck') return 'deck';
-      if (interaction.kind === 'objective') return 'goals';
-      if (interaction.kind === 'control') {
-        const control = viewRef.current.controls.find((item) => item.id === interaction.id);
-        return control?.placement === 'dock' || control?.placement === 'bell' ? 'dock' : 'paper';
-      }
-      return null;
-    };
     focusObject.current = (interaction) => {
       if (!interaction) {
         keyboardObject.current = null;
         return;
       }
-      const zone = interactionZone(interaction);
-      if (zone) {
+      if (!interactionAllowed(interaction, viewRef.current, inputPolicyRef.current)) return;
+      const zone = interactionZone(interaction, viewRef.current);
+      if (zone && zoneAllowed(zone, inputPolicyRef.current)) {
         if (boardMode()) changeBoardMode(false);
-        focusZone.current = zone;
+        setFocusZone(zone);
         const option = layoutsRef.current[zone].find((item) =>
           sameInteraction(item.interaction, interaction),
         );
         if (option) memories.current[zone] = option;
-      } else {
+      } else if (!zone) {
         if (!boardMode()) changeBoardMode(true);
       }
       keyboardObject.current = interaction;
@@ -511,7 +585,8 @@ export default function Diorama({
     const currentHit = (): TableHit | null => {
       if (keyboardObject.current) {
         const interaction = keyboardObject.current;
-        const zone = interactionZone(interaction);
+        if (!interactionAllowed(interaction, viewRef.current, inputPolicyRef.current)) return null;
+        const zone = interactionZone(interaction, viewRef.current);
         const enabled = zone
           ? layoutsRef.current[zone].find((item) => sameInteraction(item.interaction, interaction))
               ?.enabled === true
@@ -519,9 +594,12 @@ export default function Diorama({
         return { interaction, enabled };
       }
       if (!boardMode()) {
+        if (!zoneAllowed(activeZone(), inputPolicyRef.current)) return null;
         const selected = selectedOption();
         return selected ? { interaction: selected.interaction, enabled: selected.enabled } : null;
       }
+      if (inputPolicyRef.current?.boardAllowed === false) return null;
+      if (!cameraReady) return null;
       // A visible pointer exists only in the enlarged city. Furniture is never raycast here.
       eng.scene.updateMatrixWorld(true);
       raycaster.setFromCamera(pointer, camera);
@@ -533,9 +611,25 @@ export default function Diorama({
     };
     const pointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return;
+      down = null;
+      eng.pressedInteraction = null;
       keyboardObject.current = null;
       setPointer(event);
+      if (!boardMode()) {
+        const candidate = pointerZone(
+          (pointer.x + 1) / 2,
+          (1 - pointer.y) / 2,
+          activeZone(),
+          camera.aspect,
+        );
+        if (!zoneAllowed(candidate, inputPolicyRef.current)) return;
+        // Guidance or keyboard focus must never turn a physical click in another region
+        // into confirmation of the old logical selection.
+        setFocusZone(candidate);
+        showLogicalSelection();
+      }
       const hit = currentHit();
+      if (!cameraReady) el.dataset.waitingForCamera = 'true';
       down = {
         x: event.clientX,
         y: event.clientY,
@@ -545,8 +639,10 @@ export default function Diorama({
         enabled: hit?.enabled ?? false,
         mode: boardMode() ? 'board' : 'seated',
         zone: activeZone(),
+        inputEpoch,
+        cameraReady,
       };
-      eng.pressedInteraction = hit?.enabled ? hit.interaction : null;
+      eng.pressedInteraction = hit?.enabled && cameraReady ? hit.interaction : null;
     };
     const pointerMove = (event: PointerEvent) => {
       setPointer(event);
@@ -569,9 +665,15 @@ export default function Diorama({
         down.dragged = true;
       if (!boardMode()) {
         const previous = activeZone();
-        const zone = pointerZone((pointer.x + 1) / 2, (1 - pointer.y) / 2, previous, camera.aspect);
-        focusZone.current = zone;
-        if (zone !== previous || !lastPointer) movement = emptyMovement();
+        const candidate = pointerZone(
+          (pointer.x + 1) / 2,
+          (1 - pointer.y) / 2,
+          previous,
+          camera.aspect,
+        );
+        const zone = permittedPointerZone(candidate, previous, inputPolicyRef.current);
+        setFocusZone(zone);
+        if (candidate !== zone || zone !== previous || !lastPointer) movement = emptyMovement();
         else if (zone !== 'neutral') {
           const next = accumulateMovement(
             movement,
@@ -590,7 +692,7 @@ export default function Diorama({
     };
     const pointerLeave = () => {
       pointerInside = false;
-      focusZone.current = 'neutral';
+      setFocusZone(permittedPointerZone('neutral', activeZone(), inputPolicyRef.current));
       keyboardObject.current = null;
       lastPointer = null;
       movement = emptyMovement();
@@ -605,7 +707,15 @@ export default function Diorama({
       const started = down;
       down = null;
       eng.pressedInteraction = null;
-      if (!canReleasePress(started, event.clientX, event.clientY, observationRef.current.revision))
+      if (
+        !canReleasePress(
+          started,
+          event.clientX,
+          event.clientY,
+          observationRef.current.revision,
+          inputEpoch,
+        )
+      )
         return;
       if (started.mode !== (boardMode() ? 'board' : 'seated')) return;
       setPointer(event);
@@ -615,7 +725,11 @@ export default function Diorama({
       }
       if (!started.enabled) return;
       const hit = currentHit();
-      if (hit?.enabled && sameInteraction(started.interaction, hit.interaction))
+      if (
+        hit?.enabled &&
+        interactionAllowed(hit.interaction, viewRef.current, inputPolicyRef.current) &&
+        sameInteraction(started.interaction, hit.interaction)
+      )
         onInteractRef.current(hit.interaction);
     };
     const pointerCancel = () => {
@@ -691,8 +805,11 @@ export default function Diorama({
     resizeScene();
     const cameraGoal = new THREE.Vector3(),
       targetGoal = new THREE.Vector3();
-    let frame = 0;
-    const animate = () => {
+    let frame = 0,
+      previousFrame: number | null = null;
+    const animate = (timestamp = performance.now()) => {
+      const elapsedSeconds = previousFrame === null ? 1 / 60 : (timestamp - previousFrame) / 1000;
+      previousFrame = timestamp;
       const plan = boardMode(),
         zone = activeZone();
       const cameraView = plan
@@ -713,34 +830,30 @@ export default function Diorama({
             : Math.max(1, (plan ? 1.48 : 1.35) / camera.aspect);
         cameraGoal.sub(targetGoal).multiplyScalar(fit).add(targetGoal);
       }
-      const blend = reducedMotion ? 1 : 0.085;
-      if (!down || plan) {
-        camera.position.lerp(cameraGoal, blend);
-        controls.target.lerp(targetGoal, blend);
-        camera.lookAt(controls.target);
-      }
-      eng.hand.visible = !plan;
-      eng.hand.position.y = reducedMotion
-        ? zone === 'hand'
-          ? 0.65
-          : -1.1
-        : THREE.MathUtils.lerp(eng.hand.position.y, zone === 'hand' ? 0.65 : -1.1, 0.16);
-      eng.hand.scale.setScalar(zone === 'hand' ? 1.16 : 1);
+      const blend = motionBlend(elapsedSeconds, 0.12, reducedMotion);
+      camera.position.lerp(cameraGoal, blend);
+      controls.target.lerp(targetGoal, blend);
+      camera.lookAt(controls.target);
+      cameraReady =
+        camera.position.distanceToSquared(cameraGoal) <= 0.09 &&
+        controls.target.distanceToSquared(targetGoal) <= 0.01;
+      const handBlend = motionBlend(elapsedSeconds, 0.095, reducedMotion);
+      const handY = plan ? -3.6 : zone === 'hand' ? 0.65 : -1.1;
+      eng.hand.position.y = THREE.MathUtils.lerp(eng.hand.position.y, handY, handBlend);
+      eng.hand.visible = !plan || eng.hand.position.y > -2.8;
+      eng.hand.scale.setScalar(
+        THREE.MathUtils.lerp(eng.hand.scale.x, !plan && zone === 'hand' ? 1.16 : 1, handBlend),
+      );
+      const cardBlend = motionBlend(elapsedSeconds, 0.063, reducedMotion);
       for (const card of eng.cards) {
         const hover = card.cardId === eng.hoveredCard && zone === 'hand',
           selected = viewRef.current.selectedCardIds.includes(card.cardId),
           y = card.baseY + (hover ? 0.95 : selected ? 0.25 : 0),
           z = card.baseZ + (hover ? 1 : 0);
-        card.group.position.y = reducedMotion
-          ? y
-          : THREE.MathUtils.lerp(card.group.position.y, y, 0.23);
-        card.group.position.z = reducedMotion
-          ? z
-          : THREE.MathUtils.lerp(card.group.position.z, z, 0.23);
+        card.group.position.y = THREE.MathUtils.lerp(card.group.position.y, y, cardBlend);
+        card.group.position.z = THREE.MathUtils.lerp(card.group.position.z, z, cardBlend);
         const cardScale = hover ? 1.65 : 1;
-        card.group.scale.setScalar(
-          reducedMotion ? cardScale : THREE.MathUtils.lerp(card.group.scale.x, cardScale, 0.23),
-        );
+        card.group.scale.setScalar(THREE.MathUtils.lerp(card.group.scale.x, cardScale, cardBlend));
       }
       if (keyboardObject.current) {
         eng.hoveredInteraction = keyboardObject.current;
@@ -787,6 +900,8 @@ export default function Diorama({
       engine.current = null;
       focusObject.current = () => {};
       resetBoardView.current = () => {};
+      synchronizeView.current = () => {};
+      applyInputPolicy.current = () => {};
     };
   }, [fallback]);
   useEffect(() => {
@@ -804,28 +919,25 @@ export default function Diorama({
   useEffect(() => {
     const eng = engine.current;
     if (!eng) return;
-    resetBoardView.current();
     const resetChanged = previousReset.current !== reset;
     previousReset.current = reset;
-    if (
-      resetChanged ||
-      (!topView && ['station', 'edge'].includes(keyboardObject.current?.kind ?? ''))
-    )
-      keyboardObject.current = null;
-    if (!keyboardObject.current) focusZone.current = 'neutral';
-    eng.hoveredInteraction = null;
-    eng.hoveredCard = null;
-    if (eng.reducedMotion) {
-      const cameraView = topView ? TABLE_CAMERA.board : TABLE_CAMERA.overview;
-      eng.camera.position.fromArray(cameraView.position);
-      eng.controls.target.fromArray(cameraView.target);
-      eng.camera.lookAt(eng.controls.target);
-    }
+    synchronizeView.current(resetChanged);
   }, [topView, reset, ready]);
+  useEffect(() => {
+    if (ready) applyInputPolicy.current();
+  }, [inputPolicyKey, ready]);
   useEffect(() => {
     if (ready && guidance) focusObject.current(guidance.target);
   }, [guidance?.key, ready]);
-  if (fallback) return <Fallback observation={observation} view={view} onInteract={onInteract} />;
+  if (fallback)
+    return (
+      <Fallback
+        observation={observation}
+        view={view}
+        onInteract={onInteract}
+        inputPolicy={inputPolicy}
+      />
+    );
   return (
     <div
       ref={host}
@@ -840,6 +952,7 @@ export default function Diorama({
         observation={observation}
         view={view}
         onInteract={onInteract}
+        inputPolicy={inputPolicy}
         onFocusObject={(interaction) => focusObject.current(interaction)}
       />
     </div>

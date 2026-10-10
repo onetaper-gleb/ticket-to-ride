@@ -256,7 +256,7 @@ function buildStock(eng: Engine, observation: Observation, view: TableView) {
   );
 }
 
-function buildChalkboard(eng: Engine, observation: Observation) {
+function buildChalkboard(eng: Engine, observation: Observation, view: TableView) {
   const layout = TABLE_LAYOUT.score;
   const result = observation.phase === 'finished' ? getGameResult(observation) : null;
   const texture = textureFromCanvas(
@@ -268,11 +268,15 @@ function buildChalkboard(eng: Engine, observation: Observation) {
       ctx.strokeRect(24, 24, 976, 696);
       ctx.fillStyle = '#f1ead4';
       ctx.font = `58px ${mono}`;
-      ctx.fillText(`EUROPE · ХОД ${observation.turn}`, 54, 100);
+      ctx.fillText(`EUROPE · ХОД ${observation.turn - (view.awaitingHandoff ? 1 : 0)}`, 54, 100);
       const active = observation.players.find((player) => player.id === observation.activePlayer);
       ctx.font = `42px ${sans}`;
       ctx.fillText(
-        observation.phase === 'finished' ? 'Партия завершена' : `Ход: ${active?.name ?? ''}`,
+        observation.phase === 'finished'
+          ? 'Партия завершена'
+          : view.awaitingHandoff
+            ? 'Подтвердите конец хода'
+            : `Ход: ${active?.name ?? ''}`,
         54,
         158,
         916,
@@ -286,7 +290,10 @@ function buildChalkboard(eng: Engine, observation: Observation) {
       ctx.textAlign = 'left';
       observation.players.forEach((player, index) => {
         const y = 280 + index * 64;
-        if (player.id === observation.activePlayer && observation.phase !== 'finished') {
+        if (
+          player.id === (view.awaitingHandoff ? observation.self.id : observation.activePlayer) &&
+          observation.phase !== 'finished'
+        ) {
           ctx.fillStyle = '#3a5040';
           ctx.fillRect(44, y - 45, 936, 58);
           ctx.fillStyle = '#f0d590';
@@ -646,7 +653,7 @@ export function buildTableInterface(eng: Engine, observation: Observation, view:
   eng.uiPickables = [];
   eng.animatedProps = [];
   buildStock(eng, observation, view);
-  buildChalkboard(eng, observation);
+  buildChalkboard(eng, observation, view);
   buildPaper(eng, view);
   buildGoals(eng, observation, view);
   buildRevealed(eng, view);

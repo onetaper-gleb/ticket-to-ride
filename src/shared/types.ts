@@ -170,11 +170,16 @@ export interface GameOptions {
   playerName?: string;
 }
 export type BotDifficulty = 'easy' | 'normal';
+export interface TurnAcknowledgement {
+  revision: number;
+  message: string;
+}
 export interface AppProps {
   sessionId: number;
   observation: Observation | null;
   result: GameResult | null;
   busy: boolean;
+  pendingTurn: TurnAcknowledgement | null;
   error: string | null;
   canContinue: boolean;
   difficulty: BotDifficulty;
@@ -184,7 +189,8 @@ export interface AppProps {
   onContinueTutorial: () => void;
   onStart: (options: GameOptions, difficulty: BotDifficulty) => void;
   onContinue: () => void;
-  onCommand: (command: GameCommand) => void;
+  onCommand: (command: GameCommand, expected: { sessionId: number; revision: number }) => boolean;
+  onEndTurn: (expected: { sessionId: number; revision: number }) => void;
   onMenu: () => void;
   onClearError: () => void;
 }

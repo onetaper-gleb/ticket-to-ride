@@ -2,8 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import App from '../ui/App';
 import { applyCommand, createGame, getGameResult, getLegalCommands, getObservation } from '../core';
 import { chooseBotCommand } from '../bots';
-import type { BotDifficulty, GameCommand, GameOptions, GameState } from '../shared/types';
+import type {
+  BotDifficulty,
+  GameCommand,
+  GameOptions,
+  GameState,
+  TurnAcknowledgement,
+} from '../shared/types';
 import { loadMatch, saveMatch, type Save } from './storage';
+import { getTurnAcknowledgement, restoreTurnAcknowledgement } from './turn-handoff';
+import { tutorialCommandAllowed } from '../ui/tutorial';
 
 export default function GameSession() {
   const [state, setState] = useState<GameState | null>(null);
@@ -11,6 +19,12 @@ export default function GameSession() {
   const [saved, setSaved] = useState<Save | null>(null);
   const [tutorialSave, setTutorialSave] = useState<Save | null>(null);
   const [tutorial, setTutorial] = useState(false);
+  const [pendingTurn, setPendingTurn] = useState<TurnAcknowledgement | null>(null);
+  const pendingTurnRef = useRef<TurnAcknowledgement | null>(null);
+  function updatePendingTurn(value: TurnAcknowledgement | null) {
+    pendingTurnRef.current = value;
+    setPendingTurn(value);
+  }
   const tutorialMode = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const current = useRef<GameState | null>(null);
@@ -43,30 +57,43 @@ export default function GameSession() {
   }, []);
   useEffect(() => {
     if (!state) return;
-    const save: Save = { schemaVersion: 2, savedAt: new Date().toISOString(), difficulty, state };
+    const save: Save = {
+      schemaVersion: 2,
+      savedAt: new Date().toISOString(),
+      difficulty,
+      state,
+      pendingTurn,
+    };
     if (tutorial) setTutorialSave(save);
     else setSaved(save);
-    saveMatch(state, difficulty, tutorial ? 'tutorial' : 'current').catch(() =>
+    saveMatch(state, difficulty, tutorial ? 'tutorial' : 'current', pendingTurn).catch(() =>
       setError(
         'Браузер не разрешил сохранить партию. Можно продолжать играть, пока вкладка открыта.',
       ),
     );
-  }, [state, difficulty, tutorial]);
+  }, [state, difficulty, tutorial, pendingTurn]);
   const commit = useCallback(
     (command: GameCommand, expected?: { epoch: number; revision: number }) => {
       const previous = current.current;
-      if (!previous) return;
+      if (!previous || pendingTurnRef.current) return false;
       if (
         expected &&
         (expected.epoch !== sessionEpoch.current || expected.revision !== previous.revision)
       )
-        return;
+        return false;
+      if (
+        previous.activePlayer === 0 &&
+        tutorialMode.current &&
+        !tutorialCommandAllowed(getObservation(previous, 0), command)
+      )
+        return false;
       const transition = applyCommand(previous, command);
       if (transition.error) {
         setError(transition.error);
         return false;
       }
       current.current = transition.state;
+      updatePendingTurn(getTurnAcknowledgement(previous, transition));
       setState(transition.state);
       setError(null);
       return true;
@@ -74,12 +101,13 @@ export default function GameSession() {
     [],
   );
   useEffect(() => {
-    if (!state || state.phase === 'finished' || state.activePlayer === 0) return;
+    if (!state || pendingTurn || state.phase === 'finished' || state.activePlayer === 0) return;
     const expected = { epoch: sessionEpoch.current, revision: state.revision };
     const timer = window.setTimeout(
       () => {
         if (
           expected.epoch !== sessionEpoch.current ||
+          pendingTurnRef.current ||
           current.current?.revision !== expected.revision
         )
           return;
@@ -106,9 +134,10 @@ export default function GameSession() {
       tutorial ? 550 : state.phase === 'action' ? 360 : 100,
     );
     return () => window.clearTimeout(timer);
-  }, [state, difficulty, commit, tutorial]);
+  }, [state, difficulty, commit, tutorial, pendingTurn]);
   function start(options: GameOptions, nextDifficulty: BotDifficulty) {
     sessionEpoch.current++;
+    updatePendingTurn(null);
     tutorialMode.current = false;
     setTutorial(false);
     const seed =
@@ -122,6 +151,7 @@ export default function GameSession() {
   function continueMatch() {
     if (!saved) return;
     sessionEpoch.current++;
+    updatePendingTurn(restoreTurnAcknowledgement(saved.state, saved.pendingTurn));
     tutorialMode.current = false;
     setTutorial(false);
     current.current = saved.state;
@@ -142,6 +172,11 @@ export default function GameSession() {
             playerName: 'Ваша компания',
           });
     current.current = next;
+    updatePendingTurn(
+      savedLesson && tutorialSave
+        ? restoreTurnAcknowledgement(next, tutorialSave.pendingTurn)
+        : null,
+    );
     setState(next);
     setDifficulty('easy');
     setError(null);
@@ -151,7 +186,8 @@ export default function GameSession() {
       sessionId={sessionEpoch.current}
       observation={state ? getObservation(state, 0) : null}
       result={state ? getGameResult(state) : null}
-      busy={!!state && state.phase !== 'finished' && state.activePlayer !== 0}
+      busy={!!state && !pendingTurn && state.phase !== 'finished' && state.activePlayer !== 0}
+      pendingTurn={pendingTurn}
       error={error}
       canContinue={!!saved}
       difficulty={difficulty}
@@ -161,11 +197,22 @@ export default function GameSession() {
       onContinueTutorial={() => startTutorial(true)}
       onStart={start}
       onContinue={continueMatch}
-      onCommand={(command) => {
-        if (current.current?.activePlayer === 0) commit(command);
+      onCommand={(command, expected) => {
+        if (current.current?.activePlayer !== 0 || expected.sessionId !== sessionEpoch.current)
+          return false;
+        return commit(command, { epoch: expected.sessionId, revision: expected.revision });
+      }}
+      onEndTurn={(expected) => {
+        if (
+          expected.sessionId === sessionEpoch.current &&
+          pendingTurnRef.current?.revision === expected.revision &&
+          current.current?.revision === expected.revision
+        )
+          updatePendingTurn(null);
       }}
       onMenu={() => {
         sessionEpoch.current++;
+        updatePendingTurn(null);
         tutorialMode.current = false;
         setTutorial(false);
         current.current = null;

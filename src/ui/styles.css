@@ -2139,6 +2139,20 @@ input[type='checkbox'] {
 .world-only .diorama.board-mode canvas {
   cursor: crosshair;
 }
+.world-only .diorama[data-camera-ready='false'][data-waiting-for-camera='true']::after {
+  content: 'Дождитесь приближения и нажмите ещё раз';
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  border-radius: 4px;
+  background: #202521eb;
+  color: #eee4cb;
+  font-size: 14px;
+  white-space: nowrap;
+  pointer-events: none;
+}
 .sr-only {
   position: absolute;
   width: 1px;
