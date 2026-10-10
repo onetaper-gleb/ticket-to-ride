@@ -9,6 +9,22 @@ export type MenuCompositionPreset = {
   railway: readonly [number, number, number];
   fov: number;
   buildingYaw: number;
+  luggageAdvance: number;
+  dom: {
+    pad: number;
+    hh: number;
+    rh: number;
+    th: number;
+    gap: number;
+    headgap: number;
+    fs: number;
+    sf: number;
+    is: number;
+    im: number;
+    mark: number;
+    hint: number;
+    touch: number;
+  };
 };
 
 export function menuCompositionPreset(width: number, height: number): MenuCompositionPreset {
@@ -16,41 +32,51 @@ export function menuCompositionPreset(width: number, height: number): MenuCompos
     throw new Error('Menu viewport must have positive finite dimensions');
   const desktop = width >= 1100 && height >= 680;
   const narrow = width >= 760 && width < 1100 && height >= 760 && width / height < 1.25;
-  const referenceScale = Math.min(width / 1672, height / 941);
-  const centerOffset = Math.max(0, (width - 1672 * referenceScale) / 2);
-  const board = desktop
-    ? {
-        x: centerOffset + 60 * referenceScale,
-        y: 50 * referenceScale,
-        width: Math.max(420, 510 * referenceScale),
-        height: Math.max(454, 596 * referenceScale),
-      }
-    : narrow
-      ? {
-          x: 32,
-          y: THREE.MathUtils.clamp(height * 0.272, 220, 360),
-          width: Math.min(400, width - 64),
-          height: 470,
-        }
-      : {
-          x: width >= 760 ? 24 : 16,
-          y: width >= 760 ? 40 : 24,
-          width: Math.min(360, width - 32),
-          height: 438,
-        };
-  const settings = desktop
-    ? {
-        x: centerOffset + 125 * referenceScale,
-        y: 655 * referenceScale,
-        width: Math.max(340, 390 * referenceScale),
-        height: Math.max(64, 98 * referenceScale),
-      }
-    : {
-        x: board.x + 16,
-        y: board.y + board.height + (desktop || narrow ? 24 : 20),
-        width: board.width - 32,
-        height: narrow ? 64 : 56,
-      };
+  let effectiveWidth = Math.min(width, 1920);
+  if (effectiveWidth * (941 / 1672) > height + 1) effectiveWidth = (height * 1672) / 941;
+  const q = THREE.MathUtils.clamp(effectiveWidth, 1280, 1920);
+  const index = q <= 1672 ? 0 : 1;
+  const knots = [1280, 1672, 1920];
+  const t = (q - knots[index]) / (knots[index + 1] - knots[index]);
+  const mix = (values: readonly number[]) =>
+    THREE.MathUtils.lerp(values[index], values[index + 1], t);
+  const compact = !desktop && !narrow && width >= 760;
+  const fs = desktop ? mix([26, 32, 36]) : narrow ? 23 : compact ? 24 : 27;
+  const dom = {
+    pad: desktop ? mix([12, 12, 16]) : 12,
+    hh: desktop ? mix([96, 136, 164]) : 80,
+    rh: desktop ? mix([76, 94, 103]) : narrow ? 72 : compact ? 76 : 84,
+    th: desktop ? mix([76, 94, 103]) : narrow ? 100 : compact ? 106 : 116,
+    gap: desktop ? mix([6, 8, 10]) : 6,
+    headgap: desktop ? mix([16, 12, 18]) : 12,
+    fs,
+    sf: fs,
+    is: desktop ? mix([36, 44, 48]) : 32,
+    im: desktop ? mix([2, 4, 4]) : 4,
+    mark: desktop ? mix([300, 370, 414]) : 340,
+    hint: desktop ? 24 : fs,
+    touch: desktop ? 64 : narrow ? 60 : compact ? 64 : 72,
+  };
+  const board = {
+    x: desktop ? Math.max(0, (width - q) / 2) + mix([46, 60, 69]) : narrow ? 32 : compact ? 24 : 16,
+    y: desktop
+      ? Math.max(0, (height - (q * 941) / 1672) / 2) + mix([38, 50, 57])
+      : narrow
+        ? THREE.MathUtils.clamp(height * 0.272, 220, 360)
+        : compact
+          ? 40
+          : 24,
+    width: desktop
+      ? mix([420, 510, 580])
+      : Math.min(narrow ? 400 : 360, width - (narrow ? 64 : 32)),
+    height: 24 + 2 * dom.pad + dom.hh + dom.headgap + 3 * dom.rh + dom.th + 3 * dom.gap,
+  };
+  const settings = {
+    x: board.x + (desktop ? mix([50, 65, 75]) : 16),
+    y: board.y + board.height + (desktop ? mix([14, 9, 16]) : narrow ? 24 : 20),
+    width: desktop ? mix([340, 390, 448]) : board.width - 32,
+    height: desktop ? mix([76, 98, 112]) : narrow || compact ? 64 : 72,
+  };
   return {
     kind: desktop
       ? width > 1920
@@ -67,5 +93,7 @@ export function menuCompositionPreset(width: number, height: number): MenuCompos
     railway: [narrow ? 2.0 : desktop ? 3.5 : 2.45, -0.65, -3.1],
     fov: 34,
     buildingYaw: THREE.MathUtils.degToRad(27),
+    luggageAdvance: desktop ? mix([0.8, 0, 0]) : 0,
+    dom,
   };
 }

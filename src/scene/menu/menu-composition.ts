@@ -61,9 +61,17 @@ export async function createMenuComposition(
     await preloadMenuHandSurfaces(`${prefix}models/cashier/hand-bind-v1.bin`, options.signal);
     options.signal?.throwIfAborted();
     models = buildMenuModels(art);
-    models.root.rotation.y = menuCompositionPreset(1672, 941).buildingYaw;
+    models.parts.stationRoot.rotation.y = menuCompositionPreset(1672, 941).buildingYaw;
+    models.parts.outerCanopySupport.position.set(1.7, 0, -0.2);
+    models.parts.backdropRoot.position.x = 2;
+    models.parts.luggage[0].position.set(-2.4, -0.9, 2.1);
     models.root.updateMatrixWorld(true);
     const anchor = models.cashierAnchor;
+    const rightContact = models.counter.handRestRight;
+    if (!rightContact.parent) throw new Error('Menu right-hand contact has no parent');
+    const rightWorld = anchor.localToWorld(new THREE.Vector3(0.1, 0, 0.15));
+    rightContact.position.copy(rightContact.parent.worldToLocal(rightWorld));
+    models.root.updateMatrixWorld(true);
     cashier = buildMenuCashier({
       handRestLeft: anchor.worldToLocal(
         models.counter.handRestLeft.getWorldPosition(new THREE.Vector3()),
@@ -82,7 +90,7 @@ export async function createMenuComposition(
     cashier.ticket.material.map = art.ticketPrint;
     cashier.ticket.material.color.set('#ffffff');
     cashier.ticket.material.needsUpdate = true;
-    models.clock.root.position.set(1.7, 1.45, -0.03);
+    models.clock.root.position.set(2.114, 1.55, -0.03);
     models.clock.hourHand.rotation.z = (Math.PI * (10 + 10 / 60)) / -6;
     models.clock.minuteHand.rotation.z = -Math.PI / 3;
     return assemble(models, cashier, art);
@@ -112,6 +120,7 @@ function assemble(
   keyLight.shadow.normalBias = 0.025;
   scene.add(fill, keyLight);
   let disposed = false;
+  const luggageOrigins = models.parts.luggage.map((item) => item.position.clone());
   function alive() {
     if (disposed) throw new Error('Menu composition is disposed');
   }
@@ -124,8 +133,12 @@ function assemble(
     camera.lookAt(camera.position.x, camera.position.y, 0);
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld(true);
-    models.root.rotation.y = preset.buildingYaw;
+    const station = models.parts.stationRoot;
+    station.rotation.y = preset.buildingYaw;
     models.root.updateMatrixWorld(true);
+    models.parts.luggage.forEach((item, index) => {
+      if (index < 3) item.position.copy(luggageOrigins[index]).z += preset.luggageAdvance;
+    });
     models.railwayRoot.position.copy(
       models.root.worldToLocal(new THREE.Vector3(...preset.railway)),
     );
@@ -133,17 +146,12 @@ function assemble(
       models.root.getWorldQuaternion(new THREE.Quaternion()).invert(),
     );
     models.clock.root.position.set(
-      preset.kind === 'narrow' ? 0.98 : preset.kind === 'compact' ? 1.4 : 1.7,
-      1.45,
+      preset.kind === 'narrow' ? 0.98 : preset.kind === 'compact' ? 1.4 : 2.114,
+      1.55,
       -0.03,
     );
     const z = 0.04;
-    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
-      new THREE.Vector3(0, 0, 1).applyQuaternion(
-        models.root.getWorldQuaternion(new THREE.Quaternion()),
-      ),
-      models.root.localToWorld(new THREE.Vector3(0, 0, z)),
-    );
+    const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -z).applyMatrix4(station.matrixWorld);
     const point = (x: number, y: number) => {
       const direction = new THREE.Vector3((2 * x) / width - 1, 1 - (2 * y) / height, 0.5)
         .unproject(camera)
@@ -154,7 +162,7 @@ function assemble(
         new THREE.Vector3(),
       );
       if (!hit) throw new Error('Menu frame is outside the camera-facing plane');
-      return models.root.worldToLocal(hit);
+      return station.worldToLocal(hit);
     };
     const box = (rect: MenuRect) => {
       if (
@@ -182,24 +190,16 @@ function assemble(
   }
   function projectCorners(width: number, height: number) {
     alive();
-    const quad = (root: THREE.Group, name: string): MenuQuad => {
-      const face = root.getObjectByName(name) as THREE.Mesh | undefined;
-      if (!face?.isMesh) throw new Error(`Menu environment is missing physical face ${name}`);
-      face.geometry.computeBoundingBox();
-      const b = face.geometry.boundingBox!;
-      return [
-        [b.min.x, b.max.y],
-        [b.max.x, b.max.y],
-        [b.max.x, b.min.y],
-        [b.min.x, b.min.y],
-      ].map(([x, y]) => {
-        const p = new THREE.Vector3(x, y, b.max.z).applyMatrix4(face.matrixWorld).project(camera);
+    const quad = (corners: readonly THREE.Vector3[]): MenuQuad => {
+      return corners.map((corner) => {
+        const p = corner.project(camera);
         return { x: ((p.x + 1) * width) / 2, y: ((1 - p.y) * height) / 2 };
       }) as unknown as MenuQuad;
     };
+    const corners = models.board.getCorners();
     return {
-      board: quad(models.board.root, 'board-frame/green'),
-      settings: quad(models.board.settingsRoot, 'settings-frame/wood'),
+      board: quad(corners.board),
+      settings: quad(corners.settings),
     };
   }
   function projectFrame(width: number, height: number) {
