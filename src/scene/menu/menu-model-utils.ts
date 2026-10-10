@@ -20,6 +20,7 @@ export const MENU_PALETTE = {
   woodDark: '#3d281b',
   brass: '#ae844d',
   paper: '#f4e8cf',
+  settingsPaper: '#f4e8cf',
   glass: '#adc5b5',
   warm: '#ffda90',
   stone: '#a99b87',
@@ -75,10 +76,17 @@ export function createMenuModelKit(
     if (disposed) throw new Error('Menu environment is disposed');
   }
 
-  function material(kind: MenuMaterial) {
+  function material(kind: MenuMaterial): THREE.MeshStandardMaterial {
     assertAlive();
+    if (
+      kind === 'settingsPaper' &&
+      surfaceMaps.settingsPaper === undefined &&
+      overrides.settingsPaper === undefined
+    )
+      return material('paper');
     let result = materials.get(kind);
     if (!result) {
+      const inherited = kind === 'settingsPaper' ? material('paper') : undefined;
       const override = Object.fromEntries(
         Object.entries(overrides[kind] ?? {}).filter(([, value]) => value !== undefined),
       ) as MenuSurfaceOptions;
@@ -115,12 +123,23 @@ export function createMenuModelKit(
         ...(kind === 'sky'
           ? { color: '#000000', emissive: MENU_PALETTE.sky, emissiveIntensity: 1 }
           : {}),
+        ...(inherited
+          ? {
+              color: inherited.color,
+              roughness: inherited.roughness,
+              metalness: inherited.metalness,
+              emissive: inherited.emissive,
+              emissiveIntensity: inherited.emissiveIntensity,
+            }
+          : {}),
         ...override,
       });
       result.name = `menu-surface/${kind}`;
       result.userData.menuSurface = kind;
       materials.set(kind, result);
-      const source = surfaceMaps[kind] ?? (kind === 'wood' ? wood : undefined);
+      const source =
+        surfaceMaps[kind] ??
+        (kind === 'settingsPaper' ? surfaceMaps.paper : kind === 'wood' ? wood : undefined);
       if (source) {
         const map = source.clone();
         map.colorSpace = THREE.SRGBColorSpace;
@@ -128,7 +147,7 @@ export function createMenuModelKit(
         textures.add(map);
         result.map = map;
         // New tiles carry base color; A08 legacy wood also gets a muted varnish tint.
-        if (override.color === undefined)
+        if (override.color === undefined && !inherited)
           result.color.set(kind === 'wood' && !surfaceMaps.wood ? '#ae9479' : '#ffffff');
       }
     }

@@ -127,7 +127,14 @@ export function buildMenuModels(art: MenuEnvironmentArt = {}): MenuModels {
     counter.bellAnchor.add(buildMenuBell(kit));
     counter.ticketTrayAnchor.add(buildMenuTicketHolder(kit));
 
-    const board = buildBoard(stationRoot, kit);
+    const board = buildBoard(
+      stationRoot,
+      kit,
+      art.surfaces?.settingsPaper !== undefined ||
+        art.materialOverrides?.settingsPaper !== undefined
+        ? 'settingsPaper'
+        : 'paper',
+    );
     const clock = buildMenuClock(kit, art.clockFace);
     clock.root.position.set(1.36, 1.3, -0.03);
     stationRoot.add(clock.root);
@@ -471,7 +478,11 @@ function buildInterior(root: THREE.Group, kit: MenuModelKit) {
   return interior;
 }
 
-function buildBoard(root: THREE.Group, kit: MenuModelKit): MenuModels['board'] {
+function buildBoard(
+  root: THREE.Group,
+  kit: MenuModelKit,
+  settingsPaper: 'paper' | 'settingsPaper',
+): MenuModels['board'] {
   const boardRoot = new THREE.Group();
   boardRoot.name = 'boardFrame';
   root.add(boardRoot);
@@ -728,7 +739,7 @@ function buildBoard(root: THREE.Group, kit: MenuModelKit): MenuModels['board'] {
         settingsPixel * 3,
       ),
     );
-    settings.add(extrude(paperFrame, 0.04, 0), 'paper', [0, 0, -0.04]);
+    settings.add(extrude(paperFrame, 0.04, 0), settingsPaper, [0, 0, -0.04]);
     settings.add(
       extrude(
         frameShape(
@@ -770,7 +781,7 @@ function buildBoard(root: THREE.Group, kit: MenuModelKit): MenuModels['board'] {
         ),
         4,
       ),
-      'paper',
+      settingsPaper,
       'settingsInnerPlane',
     );
     settings.flush();
