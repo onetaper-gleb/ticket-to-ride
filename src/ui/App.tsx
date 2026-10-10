@@ -22,6 +22,7 @@ import TutorialOverlay, { TutorialWelcome } from './TutorialOverlay';
 import { getTutorialLesson, getTutorialInputPolicy, tutorialCommandAllowed } from './tutorial';
 import { paymentMatches } from './payment';
 import { ROUTE_POINTS } from '../data/europe';
+import { rulesPages, type RulesIllustration } from './rules-pages';
 import './styles.css';
 
 const welcomeKey = 'europe-onboarding-v1';
@@ -71,63 +72,21 @@ const phaseNames = {
   tunnel: 'Доплата за тоннель',
   finished: 'Итоги партии',
 };
-const rulesPages = [
-  {
-    title: 'Цель и ход',
-    lines: [
-      'Соединяйте города из своих билетов своей сетью.',
-      'За ход: взять карты, занять маршрут, взять билеты или построить станцию.',
-      'Выполненный билет даёт его очки, невыполненный вычитает.',
-      'После действия нажмите «Завершить ход», чтобы передать ход соперникам.',
-    ],
-  },
-  {
-    title: 'Карты вагонов',
-    lines: [
-      'В начале: 4 карты, 45 вагонов и 3 станции.',
-      'Добор: две открытые или закрытые карты в любой комбинации.',
-      'Открытый локомотив занимает весь добор; вторым его брать нельзя.',
-      'Локомотив вслепую — обычный выбор. Лимита руки нет.',
-      'Если открыты 3 локомотива, все 5 карт рынка заменяются.',
-    ],
-  },
-  {
-    title: 'Занять маршрут',
-    lines: [
-      'Цена: по карте на клетку, одним цветом линии.',
-      'Серую линию оплачивают любым одним цветом; локомотив заменяет цвет.',
-      'Очки за длину 1/2/3/4/6/8: 1/2/4/7/15/21.',
-      'В 2–3 игрока доступна одна из двойных линий. Свою пару занимать нельзя.',
-    ],
-  },
-  {
-    title: 'Тоннели и паромы',
-    lines: [
-      'Для парома нужны локомотивы: столько, сколько значков на линии.',
-      'Тоннель: после базовой оплаты открываются 3 карты.',
-      'Каждый совпавший цвет или локомотив добавляет 1 к цене.',
-      'Доплатите тем же цветом или откажитесь: карты вернутся, ход потрачен.',
-    ],
-  },
-  {
-    title: 'Билеты и станции',
-    lines: [
-      'В начале оставьте не меньше 2 билетов из 4.',
-      'Позже: взять до 3 билетов и оставить не меньше 1.',
-      'Станции стоят 1, затем 2, затем 3 карты одного цвета.',
-      'Станция использует 1 чужой участок для билетов. Неиспользованная станция: +4.',
-    ],
-  },
-  {
-    title: 'Конец и управление',
-    lines: [
-      'Когда у игрока остаётся 0–2 вагона, каждый получает последний ход.',
-      'Самый длинный непрерывный путь: +10. Чужие линии сюда не входят.',
-      'Пробел: приблизить поле с курсором; повторный пробел: вернуться.',
-      'За столом направленный жест мышью переключает предметы. ЛКМ выбирает.',
-    ],
-  },
-];
+function RulesFigure({ illustration }: { illustration: RulesIllustration }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <figure className="rules-illustration">
+      {!failed && (
+        <img
+          src={`/rules-illustrations/${illustration.id}.svg`}
+          alt={illustration.alt}
+          onError={() => setFailed(true)}
+        />
+      )}
+      <figcaption>{illustration.caption}</figcaption>
+    </figure>
+  );
+}
 
 function Rules({ onClose }: { onClose: () => void }) {
   return (
@@ -159,6 +118,9 @@ function Rules({ onClose }: { onClose: () => void }) {
                   <li key={line}>{line}</li>
                 ))}
               </ul>
+              {page.illustrations?.map((illustration) => (
+                <RulesFigure key={illustration.id} illustration={illustration} />
+              ))}
             </section>
           ))}
         </div>
@@ -696,12 +658,11 @@ export default function App(props: AppProps) {
     notice = `Памятка · лист ${rulesPage + 1}/${rulesPages.length}`;
     detailLines = page.lines;
     controls.length = 0;
-    controls.push({
-      id: 'rulesPage',
-      label: rulesPage === rulesPages.length - 1 ? 'Первый лист' : 'Следующий лист',
-      enabled: true,
-    });
-    if (!props.tutorial) controls.push({ id: 'tutorial', label: 'Пройти обучение', enabled: true });
+    controls.push(
+      { id: 'rulesPrevious', label: 'Назад', enabled: rulesPage > 0 },
+      { id: 'rulesNext', label: 'Следующий лист', enabled: rulesPage < rulesPages.length - 1 },
+      { id: 'rulesClose', label: 'Вернуться к игре', enabled: true },
+    );
   }
   if (!rules && ownTurn && phase === 'action') {
     controls.push({
@@ -718,12 +679,18 @@ export default function App(props: AppProps) {
         placement: 'bell',
       });
   }
-  if (feedback && !['draw', 'tickets', 'setup', 'tunnel'].includes(phase)) notice = feedback;
-  if (props.error) {
+  if (!rules && feedback && !['draw', 'tickets', 'setup', 'tunnel'].includes(phase))
+    notice = feedback;
+  if (props.error && !rules) {
     notice = props.error;
     controls.push({ id: 'clearError', label: 'Понятно', enabled: true });
   }
-  if (observation.finalTurnsRemaining !== null && phase !== 'finished' && detailLines.length < 5)
+  if (
+    !rules &&
+    observation.finalTurnsRemaining !== null &&
+    phase !== 'finished' &&
+    detailLines.length < 5
+  )
     detailLines.push(`Последние ходы: ${observation.finalTurnsRemaining}.`);
   if (props.pendingTurn) {
     headline = 'Действие выполнено';
@@ -737,23 +704,30 @@ export default function App(props: AppProps) {
     controls.push({ id: 'endTurn', label: 'Завершить ход', enabled: true });
     if (props.error) controls.push({ id: 'clearError', label: 'Понятно', enabled: true });
   }
-  const inputPolicy = props.pendingTurn
-    ? {
-        allowedZones: (props.tutorial && !tutorialHidden && !lessonBase?.complete
-          ? ['paper']
-          : [
-              'neutral',
-              'paper',
-              'hand',
-              'goals',
-              'dock',
-            ]) as import('../scene/zone-input').FocusZone[],
-        boardAllowed: !props.tutorial || tutorialHidden || !!lessonBase?.complete,
-        returnZone: 'paper' as const,
-      }
-    : props.tutorial && !tutorialHidden && !lessonBase?.complete
-      ? getTutorialInputPolicy(observation)
-      : undefined;
+  const inputPolicy =
+    rules && !props.pendingTurn
+      ? {
+          allowedZones: ['paper'] as import('../scene/zone-input').FocusZone[],
+          boardAllowed: false,
+          returnZone: 'paper' as const,
+        }
+      : props.pendingTurn
+        ? {
+            allowedZones: (props.tutorial && !tutorialHidden && !lessonBase?.complete
+              ? ['paper']
+              : [
+                  'neutral',
+                  'paper',
+                  'hand',
+                  'goals',
+                  'dock',
+                ]) as import('../scene/zone-input').FocusZone[],
+            boardAllowed: !props.tutorial || tutorialHidden || !!lessonBase?.complete,
+            returnZone: 'paper' as const,
+          }
+        : props.tutorial && !tutorialHidden && !lessonBase?.complete
+          ? getTutorialInputPolicy(observation)
+          : undefined;
   if (!inputPolicy || inputPolicy.boardAllowed)
     controls.push({
       id: 'plan',
@@ -770,7 +744,7 @@ export default function App(props: AppProps) {
     });
   controls.push({
     id: 'menu',
-    label: 'Меню · Esc',
+    label: 'Меню',
     enabled: true,
     placement: inputPolicy ? 'paper' : 'dock',
   });
@@ -781,6 +755,9 @@ export default function App(props: AppProps) {
   if (previewTicket) highlightedCities = [previewTicket.a, previewTicket.b];
   const view: TableView = {
     awaitingHandoff: !!props.pendingTurn,
+    rulesOpen: rules && !props.pendingTurn,
+    rulesIllustrations:
+      rules && !props.pendingTurn ? rulesPages[rulesPage]!.illustrations : undefined,
     headline,
     notice,
     detailLines,
@@ -816,7 +793,7 @@ export default function App(props: AppProps) {
     revealedCards: observation.pendingTunnel?.revealed,
   };
   const interact = (intent: TableInteraction) => {
-    if (intent.kind !== 'control') setRules(false);
+    if (rules && intent.kind !== 'control') return;
     if (intent.kind === 'control') {
       if (!view.controls.some((control) => control.id === intent.id && control.enabled)) return;
       switch (intent.id) {
@@ -832,11 +809,18 @@ export default function App(props: AppProps) {
           props.onEndTurn({ sessionId: props.sessionId, revision: observation.revision });
           return;
         case 'rules':
-          setRules((value) => !value);
+          setRules(true);
           setRulesPage(0);
+          setTopView(false);
           return;
-        case 'rulesPage':
-          setRulesPage((value) => (value + 1) % rulesPages.length);
+        case 'rulesPrevious':
+          setRulesPage((value) => Math.max(0, value - 1));
+          return;
+        case 'rulesNext':
+          setRulesPage((value) => Math.min(rulesPages.length - 1, value + 1));
+          return;
+        case 'rulesClose':
+          setRules(false);
           return;
         case 'tutorial':
           props.onStartTutorial();

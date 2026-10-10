@@ -20,6 +20,8 @@ export type TableGoal = {
   long?: boolean;
 };
 export type TableView = {
+  rulesOpen?: boolean;
+  rulesIllustrations?: Array<{ id: string; caption: string; alt: string }>;
   awaitingHandoff?: boolean;
   headline: string;
   notice: string;
