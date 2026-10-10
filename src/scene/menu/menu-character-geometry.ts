@@ -249,9 +249,9 @@ function sculptedFace() {
   const eyeY = 0.15;
   const eyeWidth = 0.255;
   const eyeHeight = 0.17;
-  const mouthY = (x: number) => -0.71 + 0.12 * (x / 0.38) ** 2;
+  const mouthY = (x: number) => -0.8 + 0.12 * (x / 0.38) ** 2;
   const noseWidth = style.nose[0] * 0.96;
-  const noseY = -0.13;
+  const noseY = -0.18;
   const noseHeight = style.nose[1] * 0.77;
   const displacement = (x: number, y: number) => {
     // Wide cheek and jaw fields overlap the muzzle instead of forming circular cheek objects.
@@ -424,12 +424,31 @@ function faceRibbon(
   return geometry;
 }
 
+// Immutable CPU snapshots only; each bundle receives independent geometry attributes/index.
+let fringeBlueprint:
+  | {
+      positions: Float32Array;
+      normals: Float32Array;
+      index: Uint16Array | Uint32Array;
+    }
+  | undefined;
+
 /** A closed curved fringe follows the forehead and crown instead of floating as a flat plate. */
 function sweptFringe(face: FaceForm): THREE.BufferGeometry {
+  if (fringeBlueprint) {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute(
+      'position',
+      new THREE.BufferAttribute(fringeBlueprint.positions.slice(), 3),
+    );
+    geometry.setAttribute('normal', new THREE.BufferAttribute(fringeBlueprint.normals.slice(), 3));
+    geometry.setIndex(new THREE.BufferAttribute(fringeBlueprint.index.slice(), 1));
+    return geometry;
+  }
   const shape = new THREE.Shape();
   shape.moveTo(-1.08, 0.32);
   shape.bezierCurveTo(-1.12, 0.72, -1.05, 1.36, -0.61, 1.58);
-  shape.bezierCurveTo(-0.27, 1.64, 0.53, 1.58, 0.92, 1.3);
+  shape.bezierCurveTo(-0.27, 1.59, 0.53, 1.59, 0.92, 1.3);
   shape.quadraticCurveTo(0.98, 1.04, 0.86, 1.02);
   shape.bezierCurveTo(0.62, 0.99, 0.12, 1.04, -0.08, 0.88);
   shape.bezierCurveTo(-0.34, 0.61, -0.55, 0.24, -0.83, 0.27);
@@ -512,15 +531,51 @@ function sweptFringe(face: FaceForm): THREE.BufferGeometry {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
   const positions = geometry.getAttribute('position');
+  const surfaceZ = (x: number, y: number) => {
+    const crown = 0.88 * Math.sqrt(Math.max(0, 1 - (x / 1.36) ** 2 - (y / 1.75) ** 2));
+    return Math.max(face.front(x, y), crown) + 0.045;
+  };
+  let minZ = Infinity,
+    maxZ = -Infinity;
   for (let vertex = 0; vertex < positions.count; vertex++) {
     const x = positions.getX(vertex),
-      y = positions.getY(vertex);
-    const crown = 0.88 * Math.sqrt(Math.max(0, 1 - (x / 1.36) ** 2 - (y / 1.75) ** 2));
-    positions.setZ(vertex, Math.max(face.front(x, y), crown) + 0.045 + positions.getZ(vertex));
+      y = positions.getY(vertex),
+      z = positions.getZ(vertex);
+    minZ = Math.min(minZ, z);
+    maxZ = Math.max(maxZ, z);
+    positions.setZ(vertex, surfaceZ(x, y) + z);
   }
   const smooth = mergeVertices(geometry, 1e-5);
   geometry.dispose();
   smooth.computeVertexNormals();
+  // Curved caps use the authored surface derivative, independent of skinny triangulation.
+  const p = smooth.getAttribute('position'),
+    normals = smooth.getAttribute('normal');
+  const normal = new THREE.Vector3(),
+    epsilon = 0.0005;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i),
+      y = p.getY(i),
+      z = p.getZ(i) - surfaceZ(x, y);
+    const front = Math.abs(z - maxZ) < 1e-5,
+      back = Math.abs(z - minZ) < 1e-5;
+    if (!front && !back) continue;
+    normal
+      .set(
+        -(surfaceZ(x + epsilon, y) - surfaceZ(x - epsilon, y)) / (2 * epsilon),
+        -(surfaceZ(x, y + epsilon) - surfaceZ(x, y - epsilon)) / (2 * epsilon),
+        1,
+      )
+      .normalize()
+      .multiplyScalar(front ? 1 : -1);
+    normals.setXYZ(i, normal.x, normal.y, normal.z);
+  }
+  const index = smooth.index!.array;
+  fringeBlueprint = {
+    positions: new Float32Array(p.array),
+    normals: new Float32Array(normals.array),
+    index: index instanceof Uint16Array ? index.slice() : new Uint32Array(index),
+  };
   return smooth;
 }
 
@@ -723,7 +778,7 @@ function buildCashierClothes(person: THREE.Group, factory: Factory) {
         [0.15, -0.35],
       ],
       style.shirt,
-      [side * 0.29, 2.71, 0.87],
+      [side * 0.29, 2.91, 0.87],
       person,
       0.09,
     );
@@ -732,9 +787,9 @@ function buildCashierClothes(person: THREE.Group, factory: Factory) {
   for (const y of [1.14, 0.57])
     oval([0.055, 0.055, 0.04], MENU_CASHIER_PALETTE.gold, [0.13, y, 0.83]);
   round([0.66, 0.29, 0.08], style.trim, [-w * 0.58, 1.24, 0.81]).rotation.z = -0.08;
-  oval([0.225, 0.19, 0.13], MENU_CASHIER_PALETTE.gold, [0, 2.59, 1.01]);
+  oval([0.225, 0.19, 0.13], MENU_CASHIER_PALETTE.gold, [0, 2.79, 1.01]);
   for (const side of [-1, 1])
-    oval([0.36, 0.19, 0.14], MENU_CASHIER_PALETTE.gold, [side * 0.26, 2.54, 0.96]).rotation.z =
+    oval([0.36, 0.19, 0.14], MENU_CASHIER_PALETTE.gold, [side * 0.26, 2.74, 0.96]).rotation.z =
       side * 0.17;
 }
 
