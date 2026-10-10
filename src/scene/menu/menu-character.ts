@@ -50,8 +50,128 @@ function setPalmFlex(
   rig.skeleton.update();
 }
 
+/** Widen only this instance's outer resting knuckles; native cached surfaces stay untouched. */
+function widenRestingKnuckles(hand: THREE.Group) {
+  const geometry = getHandRig(hand)!.mesh.geometry;
+  const positions = geometry.getAttribute('position');
+  const normals = geometry.getAttribute('normal');
+  const smooth = (a: number, b: number, value: number) => {
+    const t = THREE.MathUtils.clamp((value - a) / (b - a), 0, 1);
+    return t * t * (3 - 2 * t);
+  };
+  const derivative = (a: number, b: number, value: number) => {
+    const t = (value - a) / (b - a);
+    return t > 0 && t < 1 ? (6 * t * (1 - t)) / (b - a) : 0;
+  };
+  const normal = new THREE.Vector3();
+  for (let i = 0; i < positions.count; i++) {
+    const x = positions.getX(i),
+      y = positions.getY(i);
+    const sx = smooth(0.05, 0.3, x),
+      sy = smooth(-0.25, 0.05, y);
+    const dx = 1 + 0.3 * derivative(0.05, 0.3, x) * sy;
+    const dy = 0.3 * sx * derivative(-0.25, 0.05, y);
+    positions.setX(i, x + 0.3 * sx * sy);
+    // Inverse-transpose of the warp Jacobian preserves the smooth native normals.
+    normal.fromBufferAttribute(normals, i);
+    normal.set(normal.x / dx, normal.y - (dy * normal.x) / dx, normal.z).normalize();
+    normals.setXYZ(i, normal.x, normal.y, normal.z);
+  }
+  positions.needsUpdate = true;
+  normals.needsUpdate = true;
+}
+
+/** Add volume above the resting finger contact without altering the frozen rig or its cache. */
+function roundRestingKnuckles(hand: THREE.Group, contactY: number) {
+  const lift = 0.012;
+  const rig = getHandRig(hand)!;
+  const mesh = rig.mesh,
+    geometry = mesh.geometry;
+  hand.updateMatrixWorld(true);
+  rig.skeleton.update();
+  const position = geometry.getAttribute('position') as THREE.BufferAttribute;
+  const normal = geometry.getAttribute('normal') as THREE.BufferAttribute;
+  const index = geometry.getAttribute('skinIndex') as THREE.BufferAttribute;
+  const weight = geometry.getAttribute('skinWeight') as THREE.BufferAttribute;
+  const smooth = (a: number, b: number, v: number) => {
+    const t = THREE.MathUtils.clamp((v - a) / (b - a), 0, 1);
+    return t * t * (3 - 2 * t);
+  };
+  const root = hand.parent!;
+  const rootFromMesh = root.matrixWorld.clone().invert().multiply(mesh.matrixWorld);
+  const transforms: THREE.Matrix4[] = [],
+    points: THREE.Vector3[] = [];
+  const keys: string[] = [],
+    changed = new Set<string>();
+  for (let i = 0; i < position.count; i++) {
+    const matrix = new THREE.Matrix4();
+    matrix.elements.fill(0);
+    let fingerWeight = 0;
+    for (let j = 0; j < 4; j++) {
+      const bone = index.getComponent(i, j),
+        amount = weight.getComponent(i, j);
+      for (let k = 0; k < 16; k++)
+        matrix.elements[k] += rig.skeleton.boneMatrices[bone * 16 + k] * amount;
+      if (bone >= 6) fingerWeight += amount;
+    }
+    matrix.premultiply(mesh.bindMatrixInverse).multiply(mesh.bindMatrix).premultiply(rootFromMesh);
+    if (Math.abs(matrix.determinant()) < 1e-7)
+      throw new Error('Resting hand skin transform is singular');
+    transforms.push(matrix);
+    const bind = new THREE.Vector3().fromBufferAttribute(position, i);
+    const key = bind
+      .toArray()
+      .map((v) => v.toFixed(7))
+      .join(':');
+    keys.push(key);
+    const point = bind.clone().applyMatrix4(matrix);
+    const delta =
+      lift *
+      fingerWeight *
+      smooth(0.28, 0.5, bind.y) *
+      smooth(contactY + 0.02, contactY + 0.04, point.y);
+    point.y += delta;
+    if (delta > 1e-10) changed.add(key);
+    points.push(point);
+    if (delta > 0) {
+      bind.copy(point).applyMatrix4(matrix.clone().invert());
+      position.setXYZ(i, bind.x, bind.y, bind.z);
+    }
+  }
+  // Area-weighted welded surface normals in the posed coordinates; transform back through
+  // the same skin linear map used by Three's normal shader. No topology or skin weights change.
+  const sums = new Map<string, THREE.Vector3>();
+  for (let i = 0; i < position.count; i += 3) {
+    const n = points[i + 1]
+      .clone()
+      .sub(points[i])
+      .cross(points[i + 2].clone().sub(points[i]));
+    for (let j = 0; j < 3; j++) {
+      const k = keys[i + j],
+        sum = sums.get(k) ?? new THREE.Vector3();
+      sum.add(n);
+      sums.set(k, sum);
+    }
+  }
+  for (let i = 0; i < position.count; i++)
+    if (changed.has(keys[i])) {
+      const n = sums
+        .get(keys[i])!
+        .clone()
+        .normalize()
+        .applyMatrix3(new THREE.Matrix3().setFromMatrix4(transforms[i]).invert())
+        .normalize();
+      normal.setXYZ(i, n.x, n.y, n.z);
+    }
+  position.needsUpdate = true;
+  normal.needsUpdate = true;
+}
+
 function setTicketPinch(hand: THREE.Group) {
-  setHandPose(hand, { curl: [0.725, 0.85, 0.1, 0.15, 0.2], thumbOpposition: 0.725 });
+  setHandPose(hand, {
+    curl: [0.725, 0.85, 0.1, 0.15, 0.2],
+    thumbOpposition: 0.725,
+  });
   setPalmFlex(hand, { index: 0.85, middle: 0.1, ring: 0.15, little: 0.2 });
 }
 
@@ -122,6 +242,7 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
   };
   const createHand = (side: -1 | 1, contact: THREE.Vector3, resting: boolean) => {
     const hand = buildCartoonHand(MENU_CASHIER_PALETTE.skin, side, false);
+    if (resting) widenRestingKnuckles(hand);
     hand.name = resting
       ? 'cashier anatomical left resting hand'
       : 'cashier anatomical right ticket hand';
@@ -130,10 +251,10 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
     if (resting) {
       hand.rotation.set(Math.PI / 2, 0, -0.08);
       setHandPose(hand, {
-        curl: [0.35, 1.3, 1.25, 1.3, 1.0],
+        curl: [0.35, 1.15, 1.25, 1.15, 0.8],
         thumbOpposition: 0.35,
       });
-      setPalmFlex(hand, { index: 1.3, middle: 1.25, ring: 1.3, little: 1.0 });
+      setPalmFlex(hand, { index: 1.15, middle: 1.25, ring: 1.15, little: 0.8 });
     } else {
       hand.rotation.set(-Math.PI / 2, -0.18, -0.18);
       hand.quaternion.premultiply(
@@ -150,6 +271,7 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
     root.updateMatrixWorld(true);
     hand.position.y += contact.y + 0.002 - posedBounds(hand).min.y;
     hand.updateMatrix();
+    if (resting) roundRestingKnuckles(hand, contact.y);
     return hand;
   };
   const left = createHand(1, leftContact, true);
@@ -159,18 +281,18 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
   const leftElbow = leftContact.clone().add(new THREE.Vector3(0.055, 0.06, -0.21));
   const rightElbow = rightContact.clone().add(new THREE.Vector3(-0.055, 0.06, -0.21));
   // Keep the elbow on its anatomical side when a supplied contact reaches across the counter.
-  rightElbow.x = Math.min(rightElbow.x, -0.24);
+  rightElbow.x = Math.min(rightElbow.x, -0.34);
   rightElbow.y += 0.015 * ticketReach;
   const leftCuffStart = leftElbow.clone().lerp(leftWrist, 0.7);
   addSleeve(
     root,
     [
-      new THREE.Vector3(0.345, 0.465, -0.27),
+      new THREE.Vector3(0.345, 0.505, -0.27),
       new THREE.Vector3(0.47486, 0.24, -0.17),
       leftElbow,
       leftCuffStart,
     ],
-    [0.135, 0.14, 0.088, 0.052],
+    [0.127, 0.14, 0.088, 0.052],
     materials.cloth,
     'left burgundy sleeve',
     leftContact.y,
@@ -185,8 +307,8 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
   );
   addSleeve(
     root,
-    [new THREE.Vector3(-0.345, 0.465, -0.27), new THREE.Vector3(-0.475, 0.24, -0.17), rightElbow],
-    [0.135, 0.14, 0.088],
+    [new THREE.Vector3(-0.345, 0.505, -0.27), new THREE.Vector3(-0.475, 0.24, -0.17), rightElbow],
+    [0.127, 0.14, 0.088],
     materials.cloth,
     'right static upper sleeve',
     rightContact.y,
@@ -198,21 +320,26 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
   root.updateMatrixWorld(true);
   forearmPivot.attach(right);
   const localWrist = rightWrist.clone().sub(rightElbow);
+  // The unreached pose needs fabric in front of the relaxed fingers.
+  const forearmClearance = new THREE.Vector3(0, 0, 0.05 * (1 - ticketReach));
   addSleeve(
     forearmPivot,
     [
       new THREE.Vector3(),
-      localWrist.clone().multiplyScalar(0.4),
-      localWrist.clone().multiplyScalar(0.7),
+      localWrist.clone().multiplyScalar(0.4).add(forearmClearance),
+      localWrist
+        .clone()
+        .multiplyScalar(THREE.MathUtils.lerp(0.7, 0.87, ticketReach))
+        .add(forearmClearance),
     ],
-    [0.088, 0.058, 0.05],
+    [0.088, THREE.MathUtils.lerp(0.058, 0.074, ticketReach), 0.05],
     materials.cloth,
     'right moving forearm sleeve',
     rightContact.y,
   );
   addSleeve(
     forearmPivot,
-    [localWrist.clone().multiplyScalar(0.68), localWrist],
+    [localWrist.clone().multiplyScalar(THREE.MathUtils.lerp(0.68, 0.86, ticketReach)), localWrist],
     [0.06, 0.049],
     materials.cuff,
     'right moving cream cuff',
