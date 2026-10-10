@@ -3,6 +3,7 @@ import type { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { CardColor, Observation } from '../shared/types';
 import type { TableInteraction, TableView } from './interaction';
 import { buildDispatcher } from './characters';
+import { buildCartoonHand } from './cartoon-hands';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { TABLE_LAYOUT } from './table-layout';
 import { presentationCities, routeLayouts, cityLabels } from './board-layout';
@@ -52,6 +53,7 @@ export type Engine = {
   }[];
   cardPickables: THREE.Object3D[];
   cards: CardMesh[];
+  grips: { group: THREE.Group; cardId: string | null; side: -1 | 1 }[];
   hoveredCard: string | null;
   center: THREE.Vector3;
   scale: number;
@@ -548,6 +550,7 @@ export function buildHand(eng: Engine, observation: Observation, selectedCardIds
   eng.hand.clear();
   eng.cardPickables = [];
   eng.cards = [];
+  eng.grips = [];
   const cards = observation.self.hand,
     count = cards.length;
   if (count > 0) {
@@ -662,32 +665,41 @@ export function buildHand(eng: Engine, observation: Observation, selectedCardIds
       baseZ: group.position.z,
     });
   }
-  const { mesh, box } = primitiveFactory(eng.hand);
-  for (const side of [-1, 1]) {
-    const hand = new THREE.Group();
-    hand.position.set(side * (count > 7 ? 2.25 : 1.84), -4.72, 0.48);
-    hand.rotation.z = side * -0.2;
-    eng.hand.add(hand);
-    box([0.9, 0.85, 0.43], '#344648', [side * 0.08, -0.51, -0.03], hand);
-    box([0.85, 0.16, 0.46], '#c3c7b1', [side * 0.04, -0.14, 0], hand);
-    mesh('sphere', [0.44, 0.49, 0.2], '#c8a583', [0, 0.21, 0.09], hand);
-    for (let i = 0; i < 4; i++) {
-      mesh(
-        'cylinder',
-        [0.069, 0.52 - Math.abs(i - 1.5) * 0.07, 0.08],
-        '#c6a180',
-        [side * (-0.28 + i * 0.17), 0.51, 0.11],
-        hand,
-      ).rotation.z = side * -0.1;
-      mesh(
-        'sphere',
-        [0.07, 0.075, 0.08],
-        '#c6a180',
-        [side * (-0.28 + i * 0.17), 0.74 - Math.abs(i - 1.5) * 0.07, 0.11],
-        hand,
-      );
-    }
-    mesh('sphere', [0.14, 0.34, 0.12], '#d0ad8a', [-side * 0.32, 0.45, 0.59], hand).rotation.z =
-      side * -0.45;
+  for (const side of [-1, 1] as const) {
+    const anchor = new THREE.Group();
+    const hand = buildCartoonHand('#cda58a', side, count > 0);
+    hand.scale.setScalar(0.85);
+    const sleeve = new THREE.Mesh(
+      new RoundedBoxGeometry(0.74, 1.1, 0.54, 3, 0.14),
+      new THREE.MeshStandardMaterial({ color: '#384e60', roughness: 0.92 }),
+    );
+    sleeve.position.set(0, -0.95, -0.05);
+    const cuff = new THREE.Mesh(
+      new RoundedBoxGeometry(0.58, 0.19, 0.46, 3, 0.07),
+      new THREE.MeshStandardMaterial({ color: '#d5cbb4', roughness: 0.94 }),
+    );
+    cuff.position.set(0, -0.52, -0.015);
+    anchor.add(hand, sleeve, cuff);
+    eng.hand.add(anchor);
+    const card = count > 0 ? eng.cards[side === -1 ? 0 : count - 1] : undefined;
+    anchor.position.set(side * 1.1, -4.65, 0.18);
+    anchor.rotation.z = side * -0.12;
+    eng.grips.push({ group: anchor, cardId: card?.cardId ?? null, side });
+  }
+}
+
+export function updateHandGrips(eng: Engine) {
+  for (const grip of eng.grips) {
+    const card = eng.cards.find((item) => item.cardId === grip.cardId);
+    if (!card) continue;
+    const angle = card.group.rotation.z;
+    const offsetX = grip.side * 0.62 * card.group.scale.x;
+    const offsetY = -0.68 * card.group.scale.y;
+    grip.group.position.set(
+      card.group.position.x + Math.cos(angle) * offsetX - Math.sin(angle) * offsetY,
+      card.group.position.y + Math.sin(angle) * offsetX + Math.cos(angle) * offsetY,
+      card.group.position.z + 0.15,
+    );
+    grip.group.rotation.z = angle - grip.side * 0.12;
   }
 }
