@@ -291,6 +291,10 @@ describe('room voice lifecycle and authenticated signaling', () => {
     f.receive(f.remote, { type: 'candidate', candidate, generation });
     await flush();
     expect(oldPc.addIceCandidate).not.toHaveBeenCalled();
+    expect(f.voice.getState().peers[0]?.diagnostics).toMatchObject({
+      receivedCandidates: 1,
+      appliedCandidates: 0,
+    });
     f.receive(f.remote, {
       type: 'description',
       description: { type: 'offer', sdp: 'v=0\r\na=ice-ufrag:remote\r\n' },
@@ -298,6 +302,7 @@ describe('room voice lifecycle and authenticated signaling', () => {
     });
     await flush();
     expect(oldPc.addIceCandidate).toHaveBeenCalledWith(candidate);
+    expect(f.voice.getState().peers[0]?.diagnostics.appliedCandidates).toBe(1);
     f.receive(f.remote, { type: 'state', enabled: false, generation: 'remote-new-session' });
     expect(oldPc.close).toHaveBeenCalledOnce();
     const newPc = f.pcs[1]!;
@@ -312,6 +317,202 @@ describe('room voice lifecycle and authenticated signaling', () => {
     expect(f.pcs).toHaveLength(2);
     expect(newPc.setRemoteDescription).not.toHaveBeenCalled();
     expect(newPc.addIceCandidate).not.toHaveBeenCalled();
+  });
+
+  it('does not discard delayed ICE from the accepted generation when a colliding offer is ignored', async () => {
+    const f = fixture('a');
+    f.handshake();
+    const pc = f.pcs[0]!;
+    const generation = f.voice.getState().peers[0]!.diagnostics.generation!;
+    const description = { type: 'offer' as const, sdp: 'v=0\r\na=ice-ufrag:current\r\n' };
+    f.receive(f.remote, { type: 'description', generation, description });
+    await flush();
+    pc.onnegotiationneeded?.();
+    await flush();
+    expect(pc.signalingState).toBe('have-local-offer');
+    f.receive(f.remote, { type: 'description', generation, description });
+    await flush();
+    const candidate = {
+      candidate: 'candidate:delayed',
+      usernameFragment: 'current',
+      sdpMid: 'audio',
+      sdpMLineIndex: 0,
+    };
+    f.receive(f.remote, { type: 'candidate', generation, candidate });
+    await flush();
+    expect(pc.addIceCandidate).toHaveBeenCalledWith(candidate);
+    f.receive(f.remote, {
+      type: 'description',
+      generation,
+      description: { ...description, type: 'answer' },
+    });
+    await flush();
+    expect(pc.signalingState).toBe('stable');
+    expect(f.voice.getState().peers[0]?.diagnostics.appliedCandidates).toBe(1);
+    expect(f.voice.getState().peers[0]?.error).toBeNull();
+  });
+
+  it('does not carry an old candidate flush into a replacement remote session', async () => {
+    const f = fixture();
+    f.handshake();
+    const oldPc = f.pcs[0]!;
+    const generation = f.voice.getState().peers[0]!.diagnostics.generation!;
+    f.receive(f.remote, {
+      type: 'candidate',
+      generation,
+      candidate: { candidate: 'candidate:accepted', usernameFragment: 'current' },
+    });
+    f.receive(f.remote, {
+      type: 'candidate',
+      generation,
+      candidate: { candidate: 'candidate:future', usernameFragment: 'future' },
+    });
+    await flush();
+    expect(f.voice.getState().peers[0]?.diagnostics.bufferedCandidates).toBe(2);
+    let release!: () => void;
+    oldPc.addIceCandidate.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    );
+    f.receive(f.remote, {
+      type: 'description',
+      generation,
+      description: { type: 'offer', sdp: 'v=0\r\na=ice-ufrag:current\r\n' },
+    });
+    await flush();
+    expect(oldPc.addIceCandidate).toHaveBeenCalledOnce();
+    f.receive(f.remote, {
+      type: 'state',
+      generation: 'replacement-remote-session',
+      enabled: false,
+    });
+    expect(f.pcs).toHaveLength(2);
+    release();
+    await flush();
+    expect(f.voice.getState().peers[0]?.diagnostics).toMatchObject({
+      bufferedCandidates: 0,
+      appliedCandidates: 0,
+      appliedDescriptions: 0,
+    });
+    expect(oldPc.setLocalDescription).not.toHaveBeenCalled();
+    expect(f.pcs[1]!.addIceCandidate).not.toHaveBeenCalled();
+    const replacement = f.voice.getState().peers[0]!.diagnostics.generation!;
+    f.receive(f.remote, {
+      type: 'description',
+      generation: replacement,
+      description: { type: 'offer', sdp: 'v=0\r\na=ice-ufrag:future\r\n' },
+    });
+    await flush();
+    expect(f.pcs[1]!.addIceCandidate).not.toHaveBeenCalled();
+    expect(f.pcs[1]!.setLocalDescription).toHaveBeenCalledOnce();
+  });
+
+  it('accepts ICE credentials reused by an accepted SDP after an ignored offer', async () => {
+    const f = fixture('a');
+    f.handshake();
+    const pc = f.pcs[0]!;
+    const generation = f.voice.getState().peers[0]!.diagnostics.generation!;
+    const description = (type: 'offer' | 'answer', fragment: string) => ({
+      type,
+      sdp: `v=0\r\na=ice-ufrag:${fragment}\r\n`,
+    });
+    f.receive(f.remote, {
+      type: 'description',
+      generation,
+      description: description('offer', 'current'),
+    });
+    await flush();
+    pc.onnegotiationneeded?.();
+    await flush();
+    f.receive(f.remote, {
+      type: 'description',
+      generation,
+      description: description('offer', 'future'),
+    });
+    f.receive(f.remote, {
+      type: 'candidate',
+      generation,
+      candidate: { candidate: 'candidate:ignored-offer', usernameFragment: 'future' },
+    });
+    await flush();
+    expect(f.voice.getState().peers[0]?.diagnostics.bufferedCandidates).toBe(1);
+    f.receive(f.remote, {
+      type: 'description',
+      generation,
+      description: description('answer', 'current'),
+    });
+    await flush();
+    expect(f.voice.getState().peers[0]?.diagnostics.bufferedCandidates).toBe(0);
+    f.receive(f.remote, {
+      type: 'description',
+      generation,
+      description: description('offer', 'future'),
+    });
+    const candidate = { candidate: 'candidate:accepted-reuse', usernameFragment: 'future' };
+    f.receive(f.remote, { type: 'candidate', generation, candidate });
+    await flush();
+    expect(pc.addIceCandidate).toHaveBeenCalledWith(candidate);
+    expect(f.voice.getState().peers[0]?.error).toBeNull();
+  });
+
+  it('reports the selected ICE pair without publishing candidate addresses or credentials', async () => {
+    const f = fixture();
+    f.handshake();
+    f.pcs[0]!.getStats.mockImplementation(
+      async () =>
+        new Map<string, any>([
+          ['transport', { type: 'transport', selectedCandidatePairId: 'pair' }],
+          [
+            'pair',
+            {
+              id: 'pair',
+              type: 'candidate-pair',
+              state: 'succeeded',
+              nominated: true,
+              localCandidateId: 'local',
+              remoteCandidateId: 'remote',
+            },
+          ],
+          [
+            'local',
+            {
+              id: 'local',
+              type: 'local-candidate',
+              candidateType: 'host',
+              address: '192.0.2.1',
+              port: 1234,
+              password: 'private-ice-password',
+            },
+          ],
+          [
+            'remote',
+            {
+              id: 'remote',
+              type: 'remote-candidate',
+              candidateType: 'relay',
+              address: '192.0.2.2',
+              port: 5678,
+              username: 'private-ice-user',
+            },
+          ],
+        ]),
+    );
+    vi.advanceTimersByTime(1000);
+    await flush();
+    const diagnostics = f.voice.getState().peers[0]!.diagnostics;
+    expect(diagnostics).toMatchObject({
+      candidatePairs: 1,
+      succeededPairs: 1,
+      nominatedPairs: 1,
+      selectedPairState: 'succeeded',
+      selectedLocalCandidateType: 'host',
+      selectedRemoteCandidateType: 'relay',
+    });
+    expect(JSON.stringify(diagnostics)).not.toMatch(
+      /192\.0\.2|1234|5678|private-ice|password|username/,
+    );
   });
 
   it.each(['a', 'b'])(

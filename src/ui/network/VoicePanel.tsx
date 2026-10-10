@@ -127,6 +127,19 @@ export function VoicePanel({ client, iceServers, allowTestTone = false }: VoiceP
             data-bytes-sent={peer.diagnostics.bytesSent}
             data-bytes-received={peer.diagnostics.bytesReceived}
             data-audio-energy={peer.diagnostics.totalAudioEnergy}
+            data-local-descriptions={peer.diagnostics.localDescriptions}
+            data-sent-descriptions={peer.diagnostics.sentDescriptions}
+            data-remote-descriptions={peer.diagnostics.remoteDescriptions}
+            data-applied-descriptions={peer.diagnostics.appliedDescriptions}
+            data-local-candidates={peer.diagnostics.localCandidates}
+            data-sent-candidates={peer.diagnostics.sentCandidates}
+            data-received-candidates={peer.diagnostics.receivedCandidates}
+            data-applied-candidates={peer.diagnostics.appliedCandidates}
+            data-buffered-candidates={peer.diagnostics.bufferedCandidates}
+            data-ignored-candidates={peer.diagnostics.ignoredCandidates}
+            data-candidate-errors={peer.diagnostics.candidateErrors}
+            data-candidate-pairs={peer.diagnostics.candidatePairs}
+            data-selected-pair-state={peer.diagnostics.selectedPairState}
           >
             <div className="room-voice-peer-title">
               <strong>{peer.name}</strong>
@@ -176,7 +189,34 @@ export function VoicePanel({ client, iceServers, allowTestTone = false }: VoiceP
                 </p>
                 <p>
                   ICE: {peer.diagnostics.iceConnectionState} · SDP:{' '}
-                  {peer.diagnostics.signalingState}
+                  {peer.diagnostics.signalingState} · Сбор ICE: {peer.diagnostics.iceGatheringState}
+                </p>
+                <p data-testid="voice-signaling-stats">
+                  SDP: создано {peer.diagnostics.localDescriptions} (
+                  {peer.diagnostics.localDescriptionType}), отправлено{' '}
+                  {peer.diagnostics.sentDescriptions}; получено{' '}
+                  {peer.diagnostics.remoteDescriptions}, применено{' '}
+                  {peer.diagnostics.appliedDescriptions} ({peer.diagnostics.remoteDescriptionType}).
+                </p>
+                <p data-testid="voice-candidate-stats">
+                  ICE кандидаты: собрано {peer.diagnostics.localCandidates}, отправлено{' '}
+                  {peer.diagnostics.sentCandidates}; получено {peer.diagnostics.receivedCandidates},
+                  применено {peer.diagnostics.appliedCandidates}; очередь{' '}
+                  {peer.diagnostics.bufferedCandidates}, проигнорировано{' '}
+                  {peer.diagnostics.ignoredCandidates}, ошибки {peer.diagnostics.candidateErrors}.
+                </p>
+                <p>
+                  Локальные типы: host {peer.diagnostics.localHostCandidates}, srflx{' '}
+                  {peer.diagnostics.localSrflxCandidates}, relay{' '}
+                  {peer.diagnostics.localRelayCandidates}.
+                </p>
+                <p data-testid="voice-pair-stats">
+                  Пары ICE: {peer.diagnostics.candidatePairs}, успешных{' '}
+                  {peer.diagnostics.succeededPairs}, сбойных {peer.diagnostics.failedPairs},
+                  nominated {peer.diagnostics.nominatedPairs}. Выбранная пара:{' '}
+                  {peer.diagnostics.selectedPairState} (
+                  {peer.diagnostics.selectedLocalCandidateType} ↔{' '}
+                  {peer.diagnostics.selectedRemoteCandidateType}).
                 </p>
               </details>
             )}
