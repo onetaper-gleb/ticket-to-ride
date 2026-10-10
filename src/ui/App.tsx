@@ -344,7 +344,7 @@ export interface AppCommandLifecycle {
   commandsAreAsync?: boolean;
   commandPending?: boolean;
   confirmedCommandId?: string | null;
-  /** Invalidates a held scene gesture without discarding payment or ticket drafts. */
+  /** Cancels held input while preserving the view, Pointer Lock, and local drafts. */
   interactionEpoch?: number;
 }
 
@@ -1026,7 +1026,8 @@ export default function App(props: AppProps & AppCommandLifecycle) {
           onInteract={interact}
           topView={topView}
           onBoardModeChange={setTopView}
-          reset={props.interactionEpoch ?? props.sessionId}
+          reset={props.sessionId}
+          intentEpoch={props.interactionEpoch}
           guidance={guidance}
           inputPolicy={inputPolicy}
         />
