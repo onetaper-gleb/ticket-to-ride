@@ -37,7 +37,16 @@ export default function NetworkGame({
   }, [roomOpen]);
   const back = () => (playing && client.getState().snapshot ? setRoomOpen(false) : onBack());
   return (
-    <div className="network-experience">
+    <div
+      className="network-experience"
+      onKeyDown={(event) => {
+        if (
+          event.target instanceof Element &&
+          event.target.closest('.network-room-surface, .network-bar')
+        )
+          event.stopPropagation();
+      }}
+    >
       {playing ? (
         <>
           <div inert={roomOpen}>
