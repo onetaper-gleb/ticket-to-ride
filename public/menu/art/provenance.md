@@ -1,18 +1,20 @@
 # Происхождение арта меню
 
-Создано 10 октября 2026; компоновка обновлена до версии3 в тот же день для выбранного варианта «Билетная касса». Производственные файлы перечислены с размерами и sha256 в inventory.json. Это локальный инвентарь для интегратора; общий docs/assets.json эта ветка не изменяет.
+Создано 10 октября 2026; компоновка и материалы обновлены до версии4 в тот же день для выбранного варианта «Билетная касса». Производственные файлы перечислены с размерами и sha256 в inventory.json. Это локальный инвентарь для интегратора; общий docs/assets.json эта ветка не изменяет.
 
 ## Авторские SVG и текстуры
 
-A01 icons/*.svg — пять собственных контуров, viewBox32, currentColor, stroke2.2. A02 europe-mark.svg — собственные буквы/path, без шрифтовых контуров или издательского логотипа. Для цвета вставлять inline SVG либо использовать mask; img не наследует currentColor. Реальный доступный заголовок остаётся DOM. В v3 удалены нижняя декоративная линия, ромб и точки; буквы/path и viewBox600×120 сохранены.
+A01 icons/*.svg — пять собственных печатных знаков, viewBox32, currentColor. В v4 используются заполненные paths с небольшими вырезами/контурами; aria-hidden, focusable=false. Сторонние icon packs не использованы. A02 europe-mark.svg — собственные буквы/path, без шрифтовых контуров или издательского логотипа. Для цвета вставлять inline SVG либо использовать mask; img не наследует currentColor. Реальный доступный заголовок остаётся DOM. В v3 удалены нижняя декоративная линия, ромб и точки; буквы/path и viewBox600×120 сохранены.
 
 A05 clock-face.svg —512², 12 часовых и48 минутных меток. Нет стрелок. Прозрачные поля16px; диск радиуса240px. A06 ticket-print.svg —512×256, непрозрачная кремовая бумага, собственные линии/эмблемы без городов, игровых обязательств и слов UI. Сохранять2:1. Для портретного билета повернуть весь Mesh бумаги на90° с неизменёнными локальными UV; если бумага сразу строится1:2, повернуть только UV на90°. Выбрать один способ. A07 luggage-stickers.svg —512² прозрачный atlas. Три crops224²: circle(16,16), diamond(272,16), shield(144,272). Верх SVG соответствует+Y лицевой плоскости+Z. При CanvasTexture стандартную ориентацию подтверждает владелец модели; не дублировать flip вручную и в texture.
 
-A03 board-paint.png/.webp и A08 wood-tile.png/.webp —256² RGB, периодические функции без входных изображений, детерминированный источник sources/generate-textures.py. PNG — редактируемый lossless мастер; WebP — runtime. Древесные волокна идут по X. PNG/WebP не загружать одновременно. Фон DOM непрозрачный; фактура board используется только с opacity≤0.025. Bump/normal не нужны.
+A03 board-paint.png/.webp и A08 wood-tile.png/.webp заменены на512² RGB материалы встроенного image_gen. Добавлены paper/leather/plaster/stone512². Lossless masters paper/leather/plaster/stone находятся в sources/, runtime WebP — в корне. Полные1254² результаты генерации сохранены в outputs/revision-v4/generated-masters. Созданы шесть новых плоских material swatches без reference edit; prompts сохранены verbatim в sources/generated-surfaces-prompts.json. Model/version/seed инструмент не сообщил. Это base-color без baked света, текста, объектов и физических краёв. Визуальное повторение2×2 проверено; строгая идентичность edge pixels не утверждается.
 
-A09 — матовые материалы цвет+roughness из спецификации, без файлов текстур. A10 distant-sky.svg —1024×512, собственный градиент и крупные силуэты; optional. Градиент камеры/простые массы предпочтительны, если они уже дают глубину. A11 steam-mask-p2.png —128² RGBA, собственная сумма трёх гауссовых масс; source в generate-textures.py. П2, выключен по умолчанию. White RGB, straight alpha, edgealpha0; blend opacity≤0.2, 2–3quads только у трубы. Генерация этой маски не использовала imagegen.
+Sharp0.35.5 только resize512², removeAlpha, PNG/WebPquality86/effort6. sources/encode-surfaces.cjs воспроизводит WebP из сохранённых512 PNG; --check сравнивает SHA256 без записи. Исторический generate-textures.py сохраняет рецепт прежних256² procedural tiles и П2 mask, не воспроизводит v4 generated maps. Не запускать его поверх текущих masters. Wood grain поX; woodDark переиспользует тот же файл с material multiplier. Новый API и карта slots описаны в sources/surface-slots.json и спецификации. В frozen316 новые physical surfaces ещё не wired, кроме legacy wood; native board/rows/settings используют paint/paper с цветовым приглушением для контраста.
 
-Контуры, SVG и периодические текстуры — project-original artwork; сторонние компоненты/модели/платные зависимости не использованы. Этот пакет не объявляет новую открытую лицензию проекта.
+A09 — именованные матовые поверхности: SRGB color maps плюс color/roughness по контракту c4746fb. Штукатурка, кожа и камень имеют отдельные файлы; metal/burgundy остаются параметрами владельцев 3D. A10 distant-sky.svg —1024×512, собственный градиент и крупные силуэты; optional. Градиент камеры/простые массы предпочтительны, если они уже дают глубину. A11 steam-mask-p2.png —128² RGBA, собственная сумма трёх гауссовых масс; source в generate-textures.py. П2, выключен по умолчанию. White RGB, straight alpha, edgealpha0; blend opacity≤0.2, 2–3quads только у трубы. Генерация этой маски не использовала imagegen.
+
+SVG и прежние procedural textures — project-original artwork. Новые растровые материалы — AI-generated project assets; сторонние source images, модели и icon packs не использованы. Этот пакет не объявляет новую открытую лицензию проекта.
 
 ## A12: сгенерированный draft
 
@@ -36,6 +38,14 @@ A04 тексты/states, CSS palette и формы — HTML-слой отдел�
 
 IBM Plex Sans Regular/Medium галереи скопированы без изменений из public/fonts фиксированной базы; SIL Open Font License1.1, полный LICENSE.txt рядом. Новый SVGзнак не использует эти шрифтовые контуры. Правила и иллюстрации галереи скопированы без изменений из src/ui/rules-pages.ts/public/rules-illustrations фиксированной базы bea9743; это project-original artwork с фактами Europe, новая памятка не рисовалась. Их копии нужны только portable gallery. Лицензия/источник runtime шрифтов уже находятся в общем manifest и не меняются.
 
-## Проверочный consumer v3
+## Проверочный consumer v3 (история)
 
 V3 не добавляет generated art. Desktop native подписи используют системный Georgia с fallback «Times New Roman», serif; пояснения и narrow/compact используют прежний Plex. Системные шрифты в пакет не копируются. Новый WebGL consumer использует read-only git archive candidate общей сцены0457437310e7ca0ba9212cf4e17d3ec10c4b46d6, ракурс27°. Точные SHA256 API-файлов указаны в outputs/revision-v3/common-api-input-manifest.json. Builders/compositor в арт-ветку не включены. Скриншоты v3 показывают настоящую контрольную сцену, пока с прежними 3D bundles; итоговые изменения лампы/геометрии принадлежат их владельцам.
+
+## Проверочный consumer v4 и открытый стек
+
+Frozen scene316f83085e4f1989779c57954f1014213b7fec0b получен обычным read-only git archive; API hashes находятся в outputs/revision-v4/common-api-input-manifest.json. Геометрия/свет/compositor в арт-ветку не менялись. Подписи Times New Roman→Georgia→serif системные; hints используют прежний Plex. Пакет сохраняет полноразмерные generated masters, шесть verbatim prompts, исходники consumer, screenshots и измерения; анимации закрыты.
+
+Публичное происхождение инструментов проверено по package metadata и поставляемым LICENSE: Three.js0.180.0 MIT ([официальная лицензия](https://github.com/mrdoob/three.js/blob/r180/LICENSE)); Vite7.3.7 MIT ([официальный репозиторий](https://github.com/vitejs/vite)); Sharp0.35.5 Apache-2.0 ([официальная лицензия](https://github.com/lovell/sharp/blob/main/LICENSE)). Полные LICENSE и сведения о версиях включены в outputs/revision-v4/licenses и source ZIP. Python/Pillow/numpy использовались только для чтения файлов/численной проверки, не для редактирования generated image. Node/Python предоставлены локальным bundled runtime; проект не добавляет новую зависимость в production package.
+
+Обязательное правило владельца закреплено в AGENTS.md и handoff: никаких источников, инструментов или навыков Аркадии/внутренней инфраструктуры Яндекса, включая чтение и косвенное использование через агентов. Только собственный код, обычный Git/GitHub и публичный open-source стек. Никаких внутренних credentials/endpoints в этом раунде не использовалось.

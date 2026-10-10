@@ -1,0 +1,37 @@
+{
+  "generator": "built-in image_gen",
+  "date": "2026-10-10",
+  "modelVersionSeed": "not reported by tool",
+  "assets": [
+    {
+      "name": "wood",
+      "prompt": "Use case: stylized-concept. Asset type: seamless repeating base-color texture for the wooden arch and counter of a warm European station ticket office in a polished stylized 3D board game. Generate a single flat square material swatch, edge-to-edge. Natural medium-dark warm walnut brown, approximate average sRGB #765039. Subtle irregular horizontal flowing wood grain with varied long fibers, occasional very faint broad growth curves; fine matte surface, quiet wear. Grain follows X. This must tile seamlessly on all four edges. Orthographic flat albedo under perfectly even neutral light. No highlights, no shadows, no perspective, no vignette, no boards/plank seams, no frames, no objects, no text, no straight periodic stripes or knots that will dominate repetition. Intended final tile512x512. Low contrast so repetition2x4 remains natural.",
+      "source": "wood-tile.png"
+    },
+    {
+      "name": "paint",
+      "prompt": "Use case: stylized-concept. Asset type: seamless repeating base-color texture of matte dark green painted wood/metal for a vintage railway menu notice board and its native action plates. Single flat square material swatch edge-to-edge. Warm muted forest green-gray, approximate average sRGB #263A30, tiny irregular paint pores and very subtle sparse age speckles, softly worn matte lacquer. Refined restrained patina, low contrast. Tile seamlessly on all four edges. Completely even neutral light, orthographic flat albedo. No directional illumination, shadows, highlights, vignette, cracks, scraped patches, grain stripes, seams, edges, fasteners, brass, objects, letters or text. Intended tile512x512, fine enough to sit behind readable dynamic cream type.",
+      "source": "board-paint.png"
+    },
+    {
+      "name": "paper",
+      "prompt": "Use case: stylized-concept. Asset type: seamless repeating base-color texture for a cream paper hanging settings plaque in a vintage station menu. Single flat square swatch edge-to-edge of warm uncoated cream paper, average sRGB #EBDABD. Tiny soft paper fibers, subtle random aged flecks, very low contrast and warm ivory variation, matte. Must tile seamlessly on every edge. Perfectly uniform neutral light, flat orthographic albedo. No paper edge, border, stains, tears, folds, dark spots, printed text, writing, fasteners, shadow, highlights, vignette or objects. Intended tile512x512; legible black dynamic text will be placed over this surface.",
+      "source": "sources/paper-tile.png"
+    },
+    {
+      "name": "leather",
+      "prompt": "Use case: stylized-concept. Asset type: seamless repeating base-color texture for worn vintage travel suitcase leather in a warm stylized 3D European railway station. Flat square material swatch edge-to-edge. Dark warm reddish chestnut brown leather, average sRGB #6B4330. Fine tiny irregular leather pores and soft subtle worn variation, matte, quiet antique patina, very low contrast. Tile seamlessly on all four sides. Uniform neutral flat orthographic albedo, no directional light, no specular highlights or shadows. No seams, stitches, straps, buckles, panels, wrinkles, creases, scars, large cracked spots, objects, lettering, logo, border, vignette or straight grain stripes. Intended final tile512x512.",
+      "source": "sources/leather-tile.png"
+    },
+    {
+      "name": "plaster",
+      "prompt": "Use case: stylized-concept. Asset type: seamless repeating base-color texture for warm cream plaster on a European railway ticket office wall in a polished stylized 3D board game. Single flat square swatch edge-to-edge. Warm muted sandy cream/beige, average sRGB #D3C1A1. Tiny irregular fine pores, subtle matte plaster grain and very faint softly uneven tone, low contrast. Must tile seamlessly on all four edges. Even neutral illumination, orthographic flat albedo. No directional shadows, highlights, vignette, cracks, peeling, streaks, dirt stains, masonry seams, drawn bricks, objects, paper fibers, border or lettering. Intended final tile512x512; texture should read as subtle plaster rather than noise.",
+      "source": "sources/plaster-tile.png"
+    },
+    {
+      "name": "stone",
+      "prompt": "Use case: stylized-concept. Asset type: seamless repeating base-color texture for warm gray sandstone station floor slabs and platform in a stylized 3D European station menu. Single flat square material swatch edge-to-edge. Muted warm gray-sand stone, average sRGB #AAA18D. Very fine irregular mineral grain and low-contrast uneven tone, matte gently worn, tiny subdued mineral specks. Tile seamlessly on all edges. Even neutral illumination, flat orthographic albedo; no shadows, highlights or vignette. No slab borders or grout lines, no tiles, cobbles, large flecks, cracks, footprint, perspective, objects or text. Geometry will provide floor seams. Intended final tile512x512.",
+      "source": "sources/stone-tile.png"
+    }
+  ]
+}

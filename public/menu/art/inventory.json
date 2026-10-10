@@ -1,263 +1,404 @@
 {
-  "version": 1,
+  "version": 4,
   "baseCommit": "bea9743c7622a7806a3d9b6824a9d912b0a41b65",
+  "previousArtCommit": "a1ab201ee0d6122c32ac99f7adcfe42a55650be6",
   "assets": [
     {
       "file": "board-paint.png",
-      "bytes": 19013,
-      "sha256": "0fca42aa7d6bbfd317fffad68dadb43188a8545e803448109b972938a8cdfec9",
+      "bytes": 381132,
+      "sha256": "f1b8317ad62e67575d7f6d96661f2cb7e2cd275bf637b86b39829dd217e8264b",
+      "role": "source",
+      "stage": "P1",
       "dimensions": [
-        256,
-        256
+        512,
+        512
       ],
       "alpha": false,
-      "source": "sources/generate-textures.py",
-      "rights": "project-original artwork, no new open license asserted",
-      "stage": "P1",
-      "role": "source"
+      "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
+      "rights": "AI-generated project material; no third-party source image"
     },
     {
       "file": "board-paint.webp",
-      "bytes": 1210,
-      "sha256": "6160485ed4b74407a158c58a2fd28ad9c41c18bf924fb056ee9001626dad1ae5",
+      "bytes": 24822,
+      "sha256": "32e138c90bcd50c119863c4139009de13696ac00b91fc7753d3955815efa3bcf",
+      "role": "runtime",
+      "stage": "P1",
       "dimensions": [
-        256,
-        256
+        512,
+        512
       ],
       "alpha": false,
-      "source": "sources/generate-textures.py",
-      "rights": "project-original artwork, no new open license asserted",
-      "stage": "P1",
-      "role": "runtime"
+      "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
+      "rights": "AI-generated project material; no third-party source image"
     },
     {
       "file": "clock-face.svg",
       "bytes": 4558,
       "sha256": "2a8f957922d79d2237607210c6f946196a197fcbe797646c0ce0b9a6c7d67735",
+      "role": "runtime",
+      "stage": "P1",
       "dimensions": [
         512,
         512
       ],
       "alpha": true,
-      "source": "project original SVG paths",
-      "rights": "project-original artwork, no new open license asserted",
-      "stage": "P1",
-      "role": "runtime"
+      "source": "project-original SVG paths",
+      "rights": "project-original artwork; no new project license asserted"
     },
     {
       "file": "distant-sky.svg",
       "bytes": 765,
       "sha256": "28181a738f9a06cc1b6aa4e800696b6f5b470bbb6cce1913163c4e3580f8ffdf",
+      "role": "runtime",
+      "stage": "P1",
       "dimensions": [
         1024,
         512
       ],
       "alpha": false,
-      "source": "project original SVG paths",
-      "rights": "project-original artwork, no new open license asserted",
-      "stage": "P1",
-      "role": "runtime"
+      "source": "project-original SVG paths",
+      "rights": "project-original artwork; no new project license asserted"
     },
     {
       "file": "europe-mark.svg",
       "bytes": 1097,
       "sha256": "55cfc472402afdf63c29db5fb74ac30a5ffc8fe41e4683e80f881fbee606f56f",
+      "role": "runtime",
+      "stage": "P1",
       "dimensions": [
         600,
         120
       ],
       "alpha": true,
-      "source": "project original SVG paths",
-      "rights": "project-original artwork, no new open license asserted",
-      "stage": "P1",
-      "role": "runtime"
+      "source": "project-original SVG paths",
+      "rights": "project-original artwork; no new project license asserted"
     },
     {
       "file": "fallback-draft-compact.webp",
       "bytes": 44410,
       "sha256": "8e805e624cf3bd372381b43af076a4f4e91ffa8ecea52c2a7cb8181110ed67e8",
+      "role": "runtime",
+      "stage": "draft",
       "dimensions": [
         720,
         960
       ],
       "alpha": false,
-      "source": "built-in image_gen, reference selected concept, WebP encoding Sharp",
-      "rights": "generated draft; replace with accepted scene render",
-      "stage": "draft",
-      "role": "runtime"
+      "source": "historical built-in image_gen draft; see provenance.md",
+      "rights": "generated draft; final fallback remains accepted scene render"
     },
     {
       "file": "fallback-draft-wide.webp",
       "bytes": 69238,
       "sha256": "f4c26d9dcccee31c44310ce47a3c66bf864c393e958bd9f55def06a2a77f3d2f",
+      "role": "runtime",
+      "stage": "draft",
       "dimensions": [
         1280,
         720
       ],
       "alpha": false,
-      "source": "built-in image_gen, reference selected concept, WebP encoding Sharp",
-      "rights": "generated draft; replace with accepted scene render",
-      "stage": "draft",
-      "role": "runtime"
+      "source": "historical built-in image_gen draft; see provenance.md",
+      "rights": "generated draft; final fallback remains accepted scene render"
     },
     {
       "file": "icons/continue.svg",
-      "bytes": 648,
-      "sha256": "51d2d2b415209da459b5cc4f4f12a2fc1b6c8b3dd3cb75cac8f75b37cafc6115",
+      "bytes": 418,
+      "sha256": "284f15aeee36a6a21346af5e97bfe064e605fc26e26ff76f49de683ff8f7a00d",
+      "role": "runtime",
+      "stage": "P1",
       "dimensions": [
         32,
         32
       ],
       "alpha": true,
-      "source": "project original SVG paths",
-      "rights": "project-original artwork, no new open license asserted",
-      "stage": "P1",
-      "role": "runtime"
+      "source": "project-original SVG paths",
+      "rights": "project-original artwork; no new project license asserted"
     },
     {
       "file": "icons/rules.svg",
-      "bytes": 469,
-      "sha256": "944b64b75e07d824e0cee7ee4a79708aeca2725965527ba9824fa1c135b5b6b0",
+      "bytes": 295,
+      "sha256": "e16f74f7239307c195b9e55e799f8ab44e9e45d730f4c72109e70e53ea469a6b",
+      "role": "runtime",
+      "stage": "P1",
       "dimensions": [
         32,
         32
       ],
       "alpha": true,
-      "source": "project original SVG paths",
-      "rights": "project-original artwork, no new open license asserted",
-      "stage": "P1",
-      "role": "runtime"
+      "source": "project-original SVG paths",
+      "rights": "project-original artwork; no new project license asserted"
     },
     {
       "file": "icons/settings.svg",
-      "bytes": 759,
-      "sha256": "5ac7133dda3523f915f27fe2d4a3aa79533ef7c6f31ef001469b9694c1c01a8e",
+      "bytes": 531,
+      "sha256": "9766350bd23417303ba646e249f5faa991161779749c0ea1ec37c1c103dd718b",
+      "role": "runtime",
+      "stage": "P1",
       "dimensions": [
         32,
         32
       ],
       "alpha": true,
-      "source": "project original SVG paths",
-      "rights": "project-original artwork, no new open license asserted",
-      "stage": "P1",
-      "role": "runtime"
+      "source": "project-original SVG paths",
+      "rights": "project-original artwork; no new project license asserted"
     },
     {
       "file": "icons/start.svg",
-      "bytes": 417,
-      "sha256": "8c6d6b41e798893a1d8aa4675483fa39c30543832cabaf15c403ca3ca138d173",
+      "bytes": 251,
+      "sha256": "bfbec7c009c4369208bbca4e0669a0c2518f0257dc82129e641a467039d41eda",
+      "role": "runtime",
+      "stage": "P1",
       "dimensions": [
         32,
         32
       ],
       "alpha": true,
-      "source": "project original SVG paths",
-      "rights": "project-original artwork, no new open license asserted",
-      "stage": "P1",
-      "role": "runtime"
+      "source": "project-original SVG paths",
+      "rights": "project-original artwork; no new project license asserted"
     },
     {
       "file": "icons/tutorial.svg",
-      "bytes": 522,
-      "sha256": "7acb6f0f02f7d1e0d6cc6660c6aea15fbcd045952be53a5a4f13bd0a98ca06c8",
+      "bytes": 433,
+      "sha256": "d8fddcda59b92bc9c7c5bd766eb4ef40d0c2f53dbc2a571d54a746289d776bbb",
+      "role": "runtime",
+      "stage": "P1",
       "dimensions": [
         32,
         32
       ],
       "alpha": true,
-      "source": "project original SVG paths",
-      "rights": "project-original artwork, no new open license asserted",
+      "source": "project-original SVG paths",
+      "rights": "project-original artwork; no new project license asserted"
+    },
+    {
+      "file": "leather-tile.webp",
+      "bytes": 62678,
+      "sha256": "e39432598c98404eb92bb9a95bf8f3f933c7e0d38aa72a0b2d0dc7335e7f9003",
+      "role": "runtime",
       "stage": "P1",
-      "role": "runtime"
+      "dimensions": [
+        512,
+        512
+      ],
+      "alpha": false,
+      "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
+      "rights": "AI-generated project material; no third-party source image"
     },
     {
       "file": "luggage-stickers.svg",
       "bytes": 2779,
-      "sha256": "1512467730b90e2083012203f0b7e6aef1356f63ede2d6bef0c2e92284250eae",
+      "sha256": "99fcffc2c69813608fe97248d60d63126f2a62baa10d853272de0707cf21aa7f",
+      "role": "runtime",
+      "stage": "P1",
       "dimensions": [
         512,
         512
       ],
       "alpha": true,
-      "source": "project original SVG paths",
-      "rights": "project-original artwork, no new open license asserted",
+      "source": "project-original SVG paths",
+      "rights": "project-original artwork; no new project license asserted"
+    },
+    {
+      "file": "paper-tile.webp",
+      "bytes": 21458,
+      "sha256": "7f49873ed09938365eb457bced5964a318a17bf231c0f5c106a9013385670687",
+      "role": "runtime",
       "stage": "P1",
-      "role": "runtime"
+      "dimensions": [
+        512,
+        512
+      ],
+      "alpha": false,
+      "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
+      "rights": "AI-generated project material; no third-party source image"
+    },
+    {
+      "file": "plaster-tile.webp",
+      "bytes": 45256,
+      "sha256": "8908285903728e51ae7ac04feb745678e4813e3362c351de2965bf5a7360d32a",
+      "role": "runtime",
+      "stage": "P1",
+      "dimensions": [
+        512,
+        512
+      ],
+      "alpha": false,
+      "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
+      "rights": "AI-generated project material; no third-party source image"
+    },
+    {
+      "file": "sources/encode-surfaces.cjs",
+      "bytes": 1224,
+      "sha256": "c96a7b2d51a2cca3bb54ddd777af4fefd4a21bae5b7f111e1d54ffa039724eec",
+      "role": "source",
+      "stage": "P1",
+      "source": "project-original source/provenance record",
+      "rights": "project-owned source; dependencies have public licenses recorded in provenance.md"
     },
     {
       "file": "sources/generate-textures.py",
       "bytes": 1624,
       "sha256": "c8040f2604bfca6e8d5cf104a958d59eb5fc49cd0df250e9bc3136c5e9dd3eec",
-      "source": "project original Python/Pillow math",
-      "rights": "project-original artwork, no new open license asserted",
+      "role": "source",
       "stage": "P1",
-      "role": "source"
+      "source": "project-original source/provenance record",
+      "rights": "project-owned source; dependencies have public licenses recorded in provenance.md"
+    },
+    {
+      "file": "sources/generated-surfaces-prompts.json",
+      "bytes": 5056,
+      "sha256": "da76aa48d2cedad357a187ea22d1f36d1cf70a3dab9323331f83b2a4fd31a3d4",
+      "role": "source",
+      "stage": "P1",
+      "source": "project-original source/provenance record",
+      "rights": "project-owned source; dependencies have public licenses recorded in provenance.md"
+    },
+    {
+      "file": "sources/leather-tile.png",
+      "bytes": 523547,
+      "sha256": "4752c88001104bba5cd45c731d8d791c9958f1c9e76a73873fac162112ce271a",
+      "role": "source",
+      "stage": "P1",
+      "dimensions": [
+        512,
+        512
+      ],
+      "alpha": false,
+      "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
+      "rights": "AI-generated project material; no third-party source image"
+    },
+    {
+      "file": "sources/paper-tile.png",
+      "bytes": 383861,
+      "sha256": "39732de75219ef1de70d5f586884f7bcc3a05552f501a2cfe92afff951e19ec0",
+      "role": "source",
+      "stage": "P1",
+      "dimensions": [
+        512,
+        512
+      ],
+      "alpha": false,
+      "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
+      "rights": "AI-generated project material; no third-party source image"
+    },
+    {
+      "file": "sources/plaster-tile.png",
+      "bytes": 441036,
+      "sha256": "516fb93e1b858d324aee9121178941d7abce36d0dbc43b72fafe3082fef47b1e",
+      "role": "source",
+      "stage": "P1",
+      "dimensions": [
+        512,
+        512
+      ],
+      "alpha": false,
+      "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
+      "rights": "AI-generated project material; no third-party source image"
+    },
+    {
+      "file": "sources/stone-tile.png",
+      "bytes": 474544,
+      "sha256": "1bd0473ec0801a164b6f8b9b6c0a3bdfc4a77561969067846f7d2981792d51a8",
+      "role": "source",
+      "stage": "P1",
+      "dimensions": [
+        512,
+        512
+      ],
+      "alpha": false,
+      "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
+      "rights": "AI-generated project material; no third-party source image"
+    },
+    {
+      "file": "sources/surface-slots.json",
+      "bytes": 1528,
+      "sha256": "8e14113ba2af78795815c37d668faca6d8d42053100e4cbcba96e9a7a75dc4cd",
+      "role": "source",
+      "stage": "P1",
+      "source": "project-original source/provenance record",
+      "rights": "project-owned source; dependencies have public licenses recorded in provenance.md"
     },
     {
       "file": "steam-mask-p2.png",
       "bytes": 3094,
       "sha256": "fa361e4341481bd6c5293bc05fd04cabb4e53cd4499bc1c7d4261874a60f08ac",
+      "role": "runtime",
+      "stage": "P2 disabled",
       "dimensions": [
         128,
         128
       ],
       "alpha": true,
-      "source": "sources/generate-textures.py",
-      "rights": "project-original artwork, no new open license asserted",
-      "stage": "P2 disabled",
-      "role": "runtime"
+      "source": "historical project-original Python/Pillow math",
+      "rights": "project-original artwork; no new project license asserted"
+    },
+    {
+      "file": "stone-tile.webp",
+      "bytes": 53536,
+      "sha256": "40292faf88d02c386d1215755a67ef5603106df19047e589e905183f47034baf",
+      "role": "runtime",
+      "stage": "P1",
+      "dimensions": [
+        512,
+        512
+      ],
+      "alpha": false,
+      "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
+      "rights": "AI-generated project material; no third-party source image"
     },
     {
       "file": "ticket-print.svg",
       "bytes": 2460,
       "sha256": "7cbb86e8ad0d5f0f9014ddd21432b4719e6de686b30855e84882336ce501e649",
+      "role": "runtime",
+      "stage": "P1",
       "dimensions": [
         512,
         256
       ],
       "alpha": false,
-      "source": "project original SVG paths",
-      "rights": "project-original artwork, no new open license asserted",
-      "stage": "P1",
-      "role": "runtime"
+      "source": "project-original SVG paths",
+      "rights": "project-original artwork; no new project license asserted"
     },
     {
       "file": "wood-tile.png",
-      "bytes": 7401,
-      "sha256": "2a573fe9cf0a3a595457b1a7937f1d3905208271ab299ac1fbda563e644769a3",
+      "bytes": 418120,
+      "sha256": "c597688d96f69b1e6db28a6b91dc18ddc6dc5eddb2292498cbdf43ff64382dd7",
+      "role": "source",
+      "stage": "P1",
       "dimensions": [
-        256,
-        256
+        512,
+        512
       ],
       "alpha": false,
-      "source": "sources/generate-textures.py",
-      "rights": "project-original artwork, no new open license asserted",
-      "stage": "P1",
-      "role": "source"
+      "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
+      "rights": "AI-generated project material; no third-party source image"
     },
     {
       "file": "wood-tile.webp",
-      "bytes": 876,
-      "sha256": "6b3976550ae9d8f07db1ec61488c40416d2c462f1743568b602afc1841afccb9",
+      "bytes": 24190,
+      "sha256": "7d16492aa17ed6b6dbb1361d45e49c9391889cded5774a6452ea8388b82104b1",
+      "role": "runtime",
+      "stage": "P1",
       "dimensions": [
-        256,
-        256
+        512,
+        512
       ],
       "alpha": false,
-      "source": "sources/generate-textures.py",
-      "rights": "project-original artwork, no new open license asserted",
-      "stage": "P1",
-      "role": "runtime"
+      "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
+      "rights": "AI-generated project material; no third-party source image"
     }
   ],
   "budget": {
-    "runtimeFileBytesIncludingSVG": 133302,
-    "runtimeRasterBytesBothFallbacks": 118828,
+    "runtimeFileBytesIncludingSVG": 362269,
+    "runtimeRasterBytesBothFallbacks": 348682,
     "runtimeRasterGoalBytes": 2000000,
     "fallbackEachGoalBytes": 400000,
-    "gpuEstimateMiBBothFallbacksAndAllTexturesWithMips": 14.953125,
-    "note": "Conservative RGBA mip estimate for scene textures plus both fallback rasters; excludes DOM icons/EUROPE, render targets, shadow/PMREM. Normal fallback is CSS, notGPU; normally no live-scene fallback texture. Full SVG+DOM texture rasterization is unnecessary.",
-    "sceneP1MiBWithoutFallbackWithoutSteam": 6.666666666666666
+    "allUniqueP1MapsMiBWithoutFallbackWithoutSteam": 14.0,
+    "allUniqueMapsBothFallbacksAndSteamMiB": 22.286458333333332,
+    "baseline316FourLoadedMapsMiB": 4.666666666666666,
+    "note": "RGBA8 full-mip estimate per unique image: six surface maps, clock, stickers, ticket and optional sky. Excludes duplicated GPU uploads of owned clones, DOM textures, render targets, shadows and PMREM; not renderer.info. Current 316 consumer loads only wood/clock/stickers/ticket plus native CSS paint/paper. New environment slots still require owner wiring."
   },
   "generation": {
     "tool": "built-in image_gen",
@@ -274,6 +415,62 @@
       {
         "name": "fallback-draft-compact-source.png",
         "sha256": "a2ee4572a8ce30ec481adf3f76ef54fd544fa1b41e006ba40d199a4b65121538"
+      }
+    ]
+  },
+  "surfaceGeneration": {
+    "tool": "built-in image_gen",
+    "mode": "six new material swatches, no image-edit reference",
+    "modelVersionSeed": "not reported",
+    "prompts": "sources/generated-surfaces-prompts.json",
+    "mastersInOutputPackage": [
+      {
+        "file": "generated-masters/wood-tile.png",
+        "dimensions": [
+          1254,
+          1254
+        ],
+        "sha256": "a69c0af0946bfa8adbb580c323a764c05fee502f6266f6940983b5077d2b30a6"
+      },
+      {
+        "file": "generated-masters/board-paint.png",
+        "dimensions": [
+          1254,
+          1254
+        ],
+        "sha256": "0dac40a662534650c6b75540b98046444b2344a6d26c3a04f913344453099695"
+      },
+      {
+        "file": "generated-masters/paper-tile.png",
+        "dimensions": [
+          1254,
+          1254
+        ],
+        "sha256": "6aaafabf080d0343c656ca1fc7cad08306e8f0a2aa7b9914302a43f8f553674c"
+      },
+      {
+        "file": "generated-masters/leather-tile.png",
+        "dimensions": [
+          1254,
+          1254
+        ],
+        "sha256": "1e71ecba18777192b22fbdb6e9ad5d6b1b80922f02e8e0b583409dcfbdc04bee"
+      },
+      {
+        "file": "generated-masters/plaster-tile.png",
+        "dimensions": [
+          1254,
+          1254
+        ],
+        "sha256": "5889481082df83951db19e7e0d7abf719fe21640960dcc1b473bde1fa3a684e5"
+      },
+      {
+        "file": "generated-masters/stone-tile.png",
+        "dimensions": [
+          1254,
+          1254
+        ],
+        "sha256": "733f7fc296d0806cd0e0a5c5a1768d050d9e03fe7a3c1a330d45ca2dd3fbc87c"
       }
     ]
   }
