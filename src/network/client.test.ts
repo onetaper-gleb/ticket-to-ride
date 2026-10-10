@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createGame, getObservation } from '../core';
+import { canReleasePress } from '../scene/zone-input';
 import { createNetworkClient, type NetworkSocket } from './client';
 import type {
   ClientPacket,
@@ -532,15 +533,91 @@ describe('authoritative WebSocket client', () => {
     });
   });
 
-  it('does not send a command when its durable tab journal cannot be written', () => {
+  it('invalidates a held press when command persistence fails synchronously and preserves the draft for a fresh click', () => {
     const { client, sockets, storage } = connected();
-    vi.spyOn(storage, 'setItem').mockImplementation(() => {
+    const before = client.getState();
+    const held = {
+      x: 100,
+      y: 100,
+      dragged: false,
+      revision: before.snapshot!.observation!.revision,
+      inputEpoch: before.intentEpoch,
+    };
+    const draft = {
+      type: 'chooseTickets' as const,
+      ticketIds: before
+        .snapshot!.observation!.self.ticketOptions.slice(0, 2)
+        .map((ticket) => ticket.id),
+    };
+    const originalDraft = structuredClone(draft);
+    let failedCommandId: string | undefined;
+    const write = vi.spyOn(storage, 'setItem').mockImplementation((_key, value) => {
+      failedCommandId = JSON.parse(value).pendingCommand.commandId;
       throw new Error('Storage blocked');
     });
-    expect(client.command({ type: 'draw', source: 'deck' }, expected(0))).toBe(false);
-    expect(client.getState().pendingCommand).toBeNull();
-    expect(client.getState().error).toContain('не отправлено');
+    expect(client.command(draft, expected(0))).toBe(false);
+    // Observe only the final state, as a render that coalesces pending -> failed does.
+    const failed = client.getState();
+    expect(failed.pendingCommand).toBeNull();
+    expect(failed.pendingRequest).toBeNull();
+    expect(failed.snapshot).toEqual(before.snapshot);
+    expect(failed.confirmedCommandId).toBe(before.confirmedCommandId);
+    expect(failed.error).toContain('не отправлено');
+    expect(failed.intentEpoch).toBe(before.intentEpoch + 1);
+    expect(canReleasePress(held, 100, 100, held.revision, failed.intentEpoch)).toBe(false);
+    expect(draft).toEqual(originalDraft);
+    expect(failedCommandId).toBeTruthy();
     expect(sockets[0]!.packets().filter((packet) => packet.type === 'command')).toHaveLength(0);
+    write.mockRestore();
+    expect(client.command(draft, expected(0))).toBe(true);
+    const retry = client.getState();
+    expect(retry.intentEpoch).toBe(failed.intentEpoch + 1);
+    expect(retry.pendingCommand?.commandId).not.toBe(failedCommandId);
+    expect(retry.snapshot).toEqual(before.snapshot);
+    expect(draft).toEqual(originalDraft);
+    const sent = sockets[0]!.packets().filter((packet) => packet.type === 'command');
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.envelope.command).toEqual(originalDraft);
+    expect(canReleasePress(held, 100, 100, held.revision, retry.intentEpoch)).toBe(false);
+  });
+
+  it('invalidates a held press after a synchronous room journal failure without an optimistic pause', () => {
+    const { client, sockets, storage } = connected();
+    const before = client.getState();
+    const held = {
+      x: 100,
+      y: 100,
+      dragged: false,
+      revision: before.snapshot!.observation!.revision,
+      inputEpoch: before.intentEpoch,
+    };
+    const capturedRoom = {
+      roomId: before.snapshot!.room.id,
+      revision: before.snapshot!.room.revision,
+    };
+    let failedRequestId: string | undefined;
+    const write = vi.spyOn(storage, 'setItem').mockImplementation((_key, value) => {
+      failedRequestId = JSON.parse(value).pendingRoom.requestId;
+      throw new Error('Storage blocked');
+    });
+    expect(client.roomAction({ type: 'pause', paused: true }, capturedRoom)).toBe(false);
+    const failed = client.getState();
+    expect(failed.pendingRequest).toBeNull();
+    expect(failed.pendingCommand).toBeNull();
+    expect(failed.snapshot).toEqual(before.snapshot);
+    expect(failed.snapshot?.room.paused).toBe(false);
+    expect(failed.intentEpoch).toBe(before.intentEpoch + 1);
+    expect(canReleasePress(held, 100, 100, held.revision, failed.intentEpoch)).toBe(false);
+    expect(failedRequestId).toBeTruthy();
+    expect(sockets[0]!.packets().filter((packet) => packet.type === 'room')).toHaveLength(0);
+    write.mockRestore();
+    expect(client.roomAction({ type: 'pause', paused: true }, capturedRoom)).toBe(true);
+    const retry = client.getState();
+    expect(retry.pendingRequest).not.toBe(failedRequestId);
+    expect(retry.intentEpoch).toBe(failed.intentEpoch + 1);
+    expect(retry.snapshot).toEqual(before.snapshot);
+    expect(sockets[0]!.packets().filter((packet) => packet.type === 'room')).toHaveLength(1);
+    expect(canReleasePress(held, 100, 100, held.revision, retry.intentEpoch)).toBe(false);
   });
 
   it('requires explicit End and blocks normal commands during the handoff pause', () => {

@@ -157,6 +157,8 @@ export type ServerPacket =
 export type ConnectionStatus =
   'idle' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'kicked';
 export interface NetworkClientState {
+  /** Local monotonic input cancellation token; survives coalesced pending/error updates. */
+  intentEpoch: number;
   connection: ConnectionStatus;
   snapshot: RoomSnapshot | null;
   pendingCommand: CommandEnvelope | null;

@@ -141,6 +141,7 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
     (fromId: string, signal: Extract<ServerPacket, { type: 'voice' }>['signal']) => void
   >();
   let state: NetworkClientState = {
+    intentEpoch: 0,
     connection: 'idle',
     snapshot: null,
     pendingCommand: null,
@@ -241,6 +242,9 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
     if (disposed) return;
     state = { ...state, ...update };
     for (const listener of listeners) listener();
+  }
+  function cancelHeldIntent() {
+    publish({ intentEpoch: state.intentEpoch + 1 });
   }
   function clearTimers() {
     if (reconnectTimer) clearTimeout(reconnectTimer);
@@ -506,6 +510,7 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
   }
   function connect(next: Handshake, reconnecting = false) {
     if (disposed) return;
+    cancelHeldIntent();
     clearTimers();
     detach();
     handshake = next;
@@ -649,9 +654,10 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
       else publish({ connection: 'idle', error: null, pendingRequest: null });
     },
     roomAction(action, expected) {
+      if (disposed) return false;
+      cancelHeldIntent();
       const snapshot = state.snapshot;
       if (
-        disposed ||
         !authenticated ||
         state.connection !== 'connected' ||
         state.pendingCommand ||
@@ -686,11 +692,12 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
       return true;
     },
     command(command, expected) {
+      if (disposed) return false;
+      cancelHeldIntent();
       const snapshot = state.snapshot;
       const authority = snapshot?.authority;
       const member = snapshot?.room.members.find((item) => item.id === snapshot.memberId);
       if (
-        disposed ||
         !authenticated ||
         state.connection !== 'connected' ||
         state.pendingCommand ||
