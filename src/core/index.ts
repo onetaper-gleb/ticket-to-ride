@@ -23,7 +23,8 @@ import {
   RULES_VERSION,
   TICKETS,
 } from '../data/europe';
-import { hashSeed, shuffle } from './random';
+import { hashSeed, shuffle, type CoreRandomness } from './random';
+export type { CoreRandomness } from './random';
 import { getLongestRouteLength, getTicketProgress } from './routing';
 export { getLongestRouteLength, getTicketProgress } from './routing';
 export { RULES_VERSION } from '../data/europe';
@@ -65,19 +66,19 @@ function publicPlayers(state: GameState): PublicPlayer[] {
 function boardFor(state: GameState): PublicBoard {
   return { cities: state.cities, edges: state.edges, players: publicPlayers(state) };
 }
-function drawCard(state: GameState): Card | undefined {
+function drawCard(state: GameState, randomness?: CoreRandomness): Card | undefined {
   if (!state.deck.length && state.discard.length) {
-    state.deck = shuffle(state.discard, state);
+    state.deck = shuffle(state.discard, state, randomness);
     state.discard = [];
   }
   return state.deck.shift();
 }
 
 /** Rejection sampling follows the three-locomotive reset, with a finite blind-only fallback. */
-function refillMarket(state: GameState): void {
+function refillMarket(state: GameState, randomness?: CoreRandomness): void {
   for (let attempt = 0; ; attempt++) {
     while (state.market.length < 5) {
-      const card = drawCard(state);
+      const card = drawCard(state, randomness);
       if (!card) break;
       state.market.push(card);
     }
@@ -97,7 +98,7 @@ function refillMarket(state: GameState): void {
     }
     if (attempt >= 999) {
       // Bounded safeguard for pathological PRNG cycles. All cards still occur exactly once.
-      const pool = shuffle([...state.deck, ...state.discard], state);
+      const pool = shuffle([...state.deck, ...state.discard], state, randomness);
       const regular = pool.filter((card) => card.color !== 'wild').slice(0, requiredRegular);
       const ids = new Set(regular.map((card) => card.id));
       const remainder = pool.filter((card) => !ids.has(card.id));
@@ -109,7 +110,7 @@ function refillMarket(state: GameState): void {
   }
 }
 
-export function createGame(options: GameOptions = {}): GameState {
+export function createGame(options: GameOptions = {}, randomness?: CoreRandomness): GameState {
   const playerCount = options.playerCount ?? 3;
   if (![2, 3, 4, 5].includes(playerCount)) throw new Error('В партии участвуют 2–5 игроков.');
   const seed = options.seed?.trim() || 'europe-default';
@@ -144,14 +145,16 @@ export function createGame(options: GameOptions = {}): GameState {
   cards.push(
     ...Array.from({ length: 14 }, (_, i) => ({ id: `wild-${i + 1}`, color: 'wild' as const })),
   );
-  state.deck = shuffle(cards, state);
+  state.deck = shuffle(cards, state, randomness);
   const long = shuffle(
     TICKETS.filter((ticket) => ticket.long),
     state,
+    randomness,
   );
   state.ticketDeck = shuffle(
     TICKETS.filter((ticket) => !ticket.long),
     state,
+    randomness,
   );
   for (let id = 0; id < playerCount; id++) {
     state.players.push({
@@ -168,7 +171,7 @@ export function createGame(options: GameOptions = {}): GameState {
     });
   }
   state.unusedTickets = long;
-  refillMarket(state);
+  refillMarket(state, randomness);
   emit(
     state,
     'setup',
@@ -356,7 +359,7 @@ function removeCards(player: Player, cards: Card[]): void {
   const ids = new Set(cards.map((card) => card.id));
   player.hand = player.hand.filter((card) => !ids.has(card.id));
 }
-function finishAction(state: GameState, passed = false): void {
+function finishAction(state: GameState, randomness?: CoreRandomness, passed = false): void {
   state.drawsRemaining = 0;
   state.pendingTunnel = null;
   state.consecutivePasses = passed ? state.consecutivePasses + 1 : 0;
@@ -389,7 +392,7 @@ function finishAction(state: GameState, passed = false): void {
   state.turn++;
   if (state.activePlayer === 0) state.round++;
   state.phase = 'action';
-  refillMarket(state);
+  refillMarket(state, randomness);
 }
 function claimRoute(state: GameState, edge: Edge, cards: Card[]): void {
   const player = active(state);
@@ -407,7 +410,11 @@ function claimRoute(state: GameState, edge: Edge, cards: Card[]): void {
   });
 }
 
-export function applyCommand(input: GameState, command: GameCommand): Transition {
+export function applyCommand(
+  input: GameState,
+  command: GameCommand,
+  randomness?: CoreRandomness,
+): Transition {
   const state = clone(input);
   const priorEvent = state.events.at(-1)?.id ?? 0;
   try {
@@ -440,14 +447,14 @@ export function applyCommand(input: GameState, command: GameCommand): Transition
         } else state.activePlayer++;
       } else {
         state.ticketDeck.push(...returned);
-        finishAction(state);
+        finishAction(state, randomness);
       }
     } else if (command.type === 'draw') {
       if (state.phase !== 'action' && state.phase !== 'draw')
         fail('Сначала завершите текущее действие.');
       const second = state.phase === 'draw';
       let card: Card | undefined;
-      if (command.source === 'deck') card = drawCard(state);
+      if (command.source === 'deck') card = drawCard(state, randomness);
       else {
         if (!Number.isInteger(command.source) || command.source < 0)
           fail('Такой карты на рынке нет.');
@@ -456,7 +463,7 @@ export function applyCommand(input: GameState, command: GameCommand): Transition
         if (second && card.color === 'wild')
           fail('Вторым добором открытый локомотив брать нельзя.');
         state.market.splice(command.source, 1);
-        const replacement = drawCard(state);
+        const replacement = drawCard(state, randomness);
         if (replacement) state.market.splice(command.source, 0, replacement);
       }
       if (!card) fail('Колода и сброс пусты. Выберите другое действие.');
@@ -467,12 +474,12 @@ export function applyCommand(input: GameState, command: GameCommand): Transition
         `${player.name} берёт карту${command.source === 'deck' ? ' вслепую' : ' с рынка'}.`,
         { playerId: player.id },
       );
-      refillMarket(state);
+      refillMarket(state, randomness);
       if (!second && !(command.source !== 'deck' && card.color === 'wild')) {
         state.phase = 'draw';
         state.drawsRemaining = 1;
-        if (!drawCommands(getObservation(state, player.id)).length) finishAction(state);
-      } else finishAction(state);
+        if (!drawCommands(getObservation(state, player.id)).length) finishAction(state, randomness);
+      } else finishAction(state, randomness);
     } else if (command.type === 'drawTickets') {
       if (state.phase !== 'action') fail('Сначала завершите текущее действие.');
       if (!state.ticketDeck.length) fail('Все билеты уже разобраны.');
@@ -493,7 +500,7 @@ export function applyCommand(input: GameState, command: GameCommand): Transition
       if (edge.tunnel) {
         const revealed: Card[] = [];
         for (let i = 0; i < 3; i++) {
-          const card = drawCard(state);
+          const card = drawCard(state, randomness);
           if (card) revealed.push(card);
         }
         const extraCost = revealed.filter(
@@ -510,11 +517,11 @@ export function applyCommand(input: GameState, command: GameCommand): Transition
         if (!extraCost) {
           claimRoute(state, edge, cards);
           state.discard.push(...revealed);
-          finishAction(state);
+          finishAction(state, randomness);
         }
       } else {
         claimRoute(state, edge, cards);
-        finishAction(state);
+        finishAction(state, randomness);
       }
     } else if (command.type === 'resolveTunnel') {
       if (state.phase !== 'tunnel' || !state.pendingTunnel)
@@ -535,7 +542,7 @@ export function applyCommand(input: GameState, command: GameCommand): Transition
         });
       }
       state.discard.push(...pending.revealed);
-      finishAction(state);
+      finishAction(state, randomness);
     } else if (command.type === 'buildStation') {
       if (state.phase !== 'action') fail('Сначала завершите текущее действие.');
       if (!state.cities.some((city) => city.id === command.cityId)) fail('Такого города нет.');
@@ -554,7 +561,7 @@ export function applyCommand(input: GameState, command: GameCommand): Transition
         `${player.name} строит станцию. В финале она позволит использовать один чужой соседний участок для билетов.`,
         { playerId: player.id, cityId: command.cityId },
       );
-      finishAction(state);
+      finishAction(state, randomness);
     } else if (command.type === 'pass') {
       if (
         state.phase !== 'action' ||
@@ -562,7 +569,7 @@ export function applyCommand(input: GameState, command: GameCommand): Transition
       )
         fail('Пропустить ход можно только когда нет ни одного допустимого действия.');
       emit(state, 'pass', `${player.name}: нет допустимого действия.`, { playerId: player.id });
-      finishAction(state, true);
+      finishAction(state, randomness, true);
     } else {
       fail('Неизвестная команда.');
     }
