@@ -158,13 +158,14 @@ function assemble(
   const railFill = new THREE.SpotLight('#ffe2b1', 40, 12, 0.42, 0.9, 2);
   railFill.position.set(1.6, 2, 1.5);
   scene.add(fill, keyLight, softFill, railFill, railFill.target);
-  const lampLights = models.parts.lamps.map((fixture, index) => {
-    const windowLamp = index === 1;
+  const lampLights = models.parts.lamps.map((fixture) => {
+    const windowLamp = fixture.name === 'lamp-window';
+    const distantLamp = fixture.name === 'lamp-distant';
     const light = new THREE.SpotLight(
       '#ffcf83',
-      windowLamp ? 4 : 12,
-      windowLamp ? 3 : 5,
-      windowLamp ? 1.1 : 0.9,
+      windowLamp ? 4 : distantLamp ? 4 : 12,
+      windowLamp ? 3 : distantLamp ? 3.5 : 5,
+      windowLamp ? 1.1 : distantLamp ? 0.8 : 0.9,
       0.75,
       2,
     );
@@ -172,7 +173,11 @@ function assemble(
     light.position.set(0, -fixture.userData.contact.height - 0.02, 0.015);
     const target = new THREE.Object3D();
     target.name = `${fixture.name}-light-target`;
-    target.position.set(0, light.position.y - (windowLamp ? 1 : 1.5), windowLamp ? 0.3 : -0.5);
+    target.position.set(
+      0,
+      light.position.y - (windowLamp ? 1 : 1.5),
+      windowLamp ? 0.3 : distantLamp ? -0.2 : -0.5,
+    );
     fixture.add(light, target);
     light.target = target;
     light.castShadow = windowLamp;
