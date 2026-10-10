@@ -14,6 +14,30 @@ export interface VoicePeerState {
     generation: string | null;
     signalingState: RTCSignalingState | 'waiting';
     iceConnectionState: RTCIceConnectionState | 'waiting';
+    iceGatheringState: RTCIceGatheringState | 'waiting';
+    localDescriptions: number;
+    sentDescriptions: number;
+    remoteDescriptions: number;
+    appliedDescriptions: number;
+    localDescriptionType: 'none' | 'offer' | 'answer';
+    remoteDescriptionType: 'none' | 'offer' | 'answer';
+    localCandidates: number;
+    sentCandidates: number;
+    receivedCandidates: number;
+    appliedCandidates: number;
+    bufferedCandidates: number;
+    ignoredCandidates: number;
+    candidateErrors: number;
+    localHostCandidates: number;
+    localSrflxCandidates: number;
+    localRelayCandidates: number;
+    candidatePairs: number;
+    succeededPairs: number;
+    failedPairs: number;
+    nominatedPairs: number;
+    selectedPairState: string;
+    selectedLocalCandidateType: string;
+    selectedRemoteCandidateType: string;
     bytesSent: number;
     bytesReceived: number;
     totalAudioEnergy: number;
@@ -85,9 +109,10 @@ type Peer = {
   makingOffer: boolean;
   settingRemoteAnswer: boolean;
   ignoreOffer: boolean;
-  pendingCandidates: Array<RTCIceCandidateInit | null>;
+  pendingCandidates: Array<{ candidate: RTCIceCandidateInit | null; suppressErrors: boolean }>;
   remoteUfrags: Set<string>;
   retiredUfrags: Set<string>;
+  ignoredUfrags: Set<string>;
   queue: Promise<void>;
   alive: boolean;
 };
@@ -127,6 +152,49 @@ const rms = (meter: Meter | null): number => {
     meter.samples.reduce((sum, value) => sum + value * value, 0) / meter.samples.length,
   );
 };
+const count = (value: number) => Math.min(1_000_000, value + 1);
+const candidateType = (value: unknown) =>
+  typeof value === 'string' && ['host', 'srflx', 'prflx', 'relay'].includes(value)
+    ? value
+    : 'unknown';
+const pairState = (value: unknown) =>
+  typeof value === 'string' &&
+  ['frozen', 'waiting', 'in-progress', 'failed', 'succeeded'].includes(value)
+    ? value
+    : 'unknown';
+const emptyDiagnostics = (): VoicePeerState['diagnostics'] => ({
+  generation: null,
+  signalingState: 'waiting',
+  iceConnectionState: 'waiting',
+  iceGatheringState: 'waiting',
+  localDescriptions: 0,
+  sentDescriptions: 0,
+  remoteDescriptions: 0,
+  appliedDescriptions: 0,
+  localDescriptionType: 'none',
+  remoteDescriptionType: 'none',
+  localCandidates: 0,
+  sentCandidates: 0,
+  receivedCandidates: 0,
+  appliedCandidates: 0,
+  bufferedCandidates: 0,
+  ignoredCandidates: 0,
+  candidateErrors: 0,
+  localHostCandidates: 0,
+  localSrflxCandidates: 0,
+  localRelayCandidates: 0,
+  candidatePairs: 0,
+  succeededPairs: 0,
+  failedPairs: 0,
+  nominatedPairs: 0,
+  selectedPairState: 'none',
+  selectedLocalCandidateType: 'none',
+  selectedRemoteCandidateType: 'none',
+  bytesSent: 0,
+  bytesReceived: 0,
+  totalAudioEnergy: 0,
+  audioLevel: 0,
+});
 
 /** Audio mesh for authenticated, connected room members. No microphone access on construction. */
 export function createRoomVoice(
@@ -176,7 +244,7 @@ export function createRoomVoice(
     );
   };
   const send = (peer: Peer, signal: VoiceSignal) => {
-    if (canSignal(peer)) client.sendVoice(peer.member.id, signal);
+    return canSignal(peer) && client.sendVoice(peer.member.id, signal);
   };
   const sendState = (peer: Peer) =>
     send(peer, { type: 'state', enabled: state.microphoneEnabled, generation: localSession });
@@ -225,20 +293,13 @@ export function createRoomVoice(
     peer.pendingCandidates = [];
     peer.remoteUfrags.clear();
     peer.retiredUfrags.clear();
+    peer.ignoredUfrags.clear();
     peer.queue = Promise.resolve();
     peer.makingOffer = peer.settingRemoteAnswer = peer.ignoreOffer = false;
     peer.state.speaking = false;
     peer.state.connection = 'waiting';
     peer.state.playbackBlocked = false;
-    peer.state.diagnostics = {
-      generation: null,
-      signalingState: 'waiting',
-      iceConnectionState: 'waiting',
-      bytesSent: 0,
-      bytesReceived: 0,
-      totalAudioEnergy: 0,
-      audioLevel: 0,
-    };
+    peer.state.diagnostics = emptyDiagnostics();
   };
   const closePeer = (peer: Peer) => {
     if (peer.remoteSession) peer.retiredSessions.add(peer.remoteSession);
@@ -334,20 +395,45 @@ export function createRoomVoice(
     if (localStream)
       void peer.sender.replaceTrack(localStream.getAudioTracks()[0] ?? null).catch(() => {});
     pc.onicecandidate = (event) => {
-      if (live(peer) && peer.pc === pc)
-        send(peer, { type: 'candidate', candidate: event.candidate?.toJSON() ?? null, generation });
+      if (!live(peer) || peer.pc !== pc) return;
+      const diagnostics = peer.state.diagnostics;
+      if (event.candidate) {
+        diagnostics.localCandidates = count(diagnostics.localCandidates);
+        const type = candidateType(event.candidate.type);
+        if (type === 'host')
+          diagnostics.localHostCandidates = count(diagnostics.localHostCandidates);
+        if (type === 'srflx')
+          diagnostics.localSrflxCandidates = count(diagnostics.localSrflxCandidates);
+        if (type === 'relay')
+          diagnostics.localRelayCandidates = count(diagnostics.localRelayCandidates);
+      }
+      const sent = send(peer, {
+        type: 'candidate',
+        candidate: event.candidate?.toJSON() ?? null,
+        generation,
+      });
+      if (sent && event.candidate) diagnostics.sentCandidates = count(diagnostics.sentCandidates);
+      diagnostics.iceGatheringState = pc.iceGatheringState;
+      publish();
     };
     pc.onnegotiationneeded = () =>
       queue(peer, async (current, currentGeneration) => {
         try {
           peer.makingOffer = true;
           await current.setLocalDescription();
-          if (live(peer) && peer.pc === current && current.localDescription)
-            send(peer, {
+          if (live(peer) && peer.pc === current && current.localDescription) {
+            const diagnostics = peer.state.diagnostics;
+            diagnostics.localDescriptions = count(diagnostics.localDescriptions);
+            diagnostics.localDescriptionType =
+              current.localDescription.type === 'offer' ? 'offer' : 'answer';
+            const sent = send(peer, {
               type: 'description',
               description: current.localDescription.toJSON(),
               generation: currentGeneration,
             });
+            if (sent) diagnostics.sentDescriptions = count(diagnostics.sentDescriptions);
+            publish();
+          }
         } finally {
           if (peer.pc === current) peer.makingOffer = false;
         }
@@ -368,6 +454,7 @@ export function createRoomVoice(
       peer.state.connection = pc.connectionState;
       peer.state.diagnostics.signalingState = pc.signalingState;
       peer.state.diagnostics.iceConnectionState = pc.iceConnectionState;
+      peer.state.diagnostics.iceGatheringState = pc.iceGatheringState;
       if (pc.connectionState === 'failed')
         peer.state.error =
           'Голосовое соединение не установлено. Для внешней сети может потребоваться TURN.';
@@ -383,13 +470,26 @@ export function createRoomVoice(
     peer: Peer,
     pc: RTCPeerConnection,
     candidate: RTCIceCandidateInit | null,
+    suppressErrors = false,
   ) => {
-    if (!candidate) {
-      await pc.addIceCandidate();
-      return;
+    if (candidate?.usernameFragment && peer.retiredUfrags.has(candidate.usernameFragment)) return;
+    try {
+      if (candidate) await pc.addIceCandidate(candidate);
+      else await pc.addIceCandidate();
+      if (candidate && live(peer) && peer.pc === pc)
+        peer.state.diagnostics.appliedCandidates = count(peer.state.diagnostics.appliedCandidates);
+    } catch (error) {
+      if (!live(peer) || peer.pc !== pc) return;
+      if (suppressErrors) {
+        if (candidate)
+          peer.state.diagnostics.ignoredCandidates = count(
+            peer.state.diagnostics.ignoredCandidates,
+          );
+        return;
+      }
+      peer.state.diagnostics.candidateErrors = count(peer.state.diagnostics.candidateErrors);
+      throw error;
     }
-    if (candidate.usernameFragment && peer.retiredUfrags.has(candidate.usernameFragment)) return;
-    await pc.addIceCandidate(candidate);
   };
   const receive = (fromId: string, signal: VoiceSignal) => {
     const peer = peers.get(fromId);
@@ -432,16 +532,35 @@ export function createRoomVoice(
       return;
     }
     if (signal.generation !== peer.generation) return;
+    if (signal.type === 'candidate' && signal.candidate)
+      peer.state.diagnostics.receivedCandidates = count(peer.state.diagnostics.receivedCandidates);
+    if (signal.type === 'description')
+      peer.state.diagnostics.remoteDescriptions = count(peer.state.diagnostics.remoteDescriptions);
     queue(peer, async (pc, generation) => {
       if (signal.type === 'candidate') {
-        if (peer.ignoreOffer) return;
         const fragment = signal.candidate?.usernameFragment;
-        if (fragment && peer.retiredUfrags.has(fragment)) return;
-        if (!pc.remoteDescription || (fragment && !peer.remoteUfrags.has(fragment))) {
-          if (peer.pendingCandidates.length < 128) peer.pendingCandidates.push(signal.candidate);
+        if (fragment && peer.retiredUfrags.has(fragment)) {
+          if (signal.candidate)
+            peer.state.diagnostics.ignoredCandidates = count(
+              peer.state.diagnostics.ignoredCandidates,
+            );
+          publish();
           return;
         }
-        await addCandidate(peer, pc, signal.candidate);
+        if (!pc.remoteDescription || (fragment && !peer.remoteUfrags.has(fragment))) {
+          if (peer.pendingCandidates.length < 128)
+            peer.pendingCandidates.push({
+              candidate: signal.candidate,
+              suppressErrors: fragment ? peer.ignoredUfrags.has(fragment) : peer.ignoreOffer,
+            });
+          peer.state.diagnostics.bufferedCandidates = peer.pendingCandidates.length;
+          publish();
+          return;
+        }
+        // Ignoring a colliding offer must not discard late ICE for the accepted remote SDP.
+        // Candidates without a ufrag are tried against that SDP; glare errors stay optional.
+        await addCandidate(peer, pc, signal.candidate, !fragment && peer.ignoreOffer);
+        publish();
         return;
       }
       const description = signal.description;
@@ -451,7 +570,11 @@ export function createRoomVoice(
       const collision = description.type === 'offer' && !readyForOffer;
       const polite = memberId!.localeCompare(peer.member.id) > 0;
       peer.ignoreOffer = !polite && collision;
-      if (peer.ignoreOffer) return;
+      if (peer.ignoreOffer) {
+        for (const fragment of ufrags(description.sdp))
+          if (!peer.remoteUfrags.has(fragment)) peer.ignoredUfrags.add(fragment);
+        return;
+      }
       peer.settingRemoteAnswer = description.type === 'answer';
       try {
         await pc.setRemoteDescription(description);
@@ -459,24 +582,48 @@ export function createRoomVoice(
         if (peer.pc === pc) peer.settingRemoteAnswer = false;
       }
       if (!live(peer) || peer.pc !== pc || peer.generation !== generation) return;
+      peer.state.diagnostics.appliedDescriptions = count(
+        peer.state.diagnostics.appliedDescriptions,
+      );
+      peer.state.diagnostics.remoteDescriptionType = description.type;
       const currentUfrags = ufrags(description.sdp);
+      // An accepted SDP may reuse credentials from an offer previously rolled back or ignored.
+      for (const current of currentUfrags) peer.retiredUfrags.delete(current);
       for (const old of peer.remoteUfrags) if (!currentUfrags.has(old)) peer.retiredUfrags.add(old);
+      for (const ignored of peer.ignoredUfrags)
+        if (!currentUfrags.has(ignored)) peer.retiredUfrags.add(ignored);
+      peer.ignoredUfrags.clear();
       peer.remoteUfrags = currentUfrags;
       const pending = peer.pendingCandidates;
       peer.pendingCandidates = [];
-      for (const candidate of pending) {
+      for (const item of pending) {
+        if (!live(peer) || peer.pc !== pc || peer.generation !== generation) return;
+        const candidate = item.candidate;
         const fragment = candidate?.usernameFragment;
-        if (!fragment || currentUfrags.has(fragment)) await addCandidate(peer, pc, candidate);
-        else if (!peer.retiredUfrags.has(fragment)) peer.pendingCandidates.push(candidate);
+        if (!fragment || currentUfrags.has(fragment))
+          await addCandidate(peer, pc, candidate, !fragment && item.suppressErrors);
+        else if (!peer.retiredUfrags.has(fragment)) peer.pendingCandidates.push(item);
+        else if (candidate)
+          peer.state.diagnostics.ignoredCandidates = count(
+            peer.state.diagnostics.ignoredCandidates,
+          );
       }
+      if (!live(peer) || peer.pc !== pc || peer.generation !== generation) return;
+      peer.state.diagnostics.bufferedCandidates = peer.pendingCandidates.length;
       if (description.type === 'offer') {
         await pc.setLocalDescription();
-        if (live(peer) && peer.pc === pc && pc.localDescription)
-          send(peer, {
+        if (live(peer) && peer.pc === pc && pc.localDescription) {
+          const diagnostics = peer.state.diagnostics;
+          diagnostics.localDescriptions = count(diagnostics.localDescriptions);
+          diagnostics.localDescriptionType =
+            pc.localDescription.type === 'offer' ? 'offer' : 'answer';
+          const sent = send(peer, {
             type: 'description',
             description: pc.localDescription.toJSON(),
             generation,
           });
+          if (sent) diagnostics.sentDescriptions = count(diagnostics.sentDescriptions);
+        }
       }
       publish();
     });
@@ -492,7 +639,28 @@ export function createRoomVoice(
         bytesReceived = 0,
         energy = 0,
         audioLevel = 0;
+      const pairs: Array<{
+        id: string;
+        state: unknown;
+        nominated: boolean;
+        localCandidateId: string;
+        remoteCandidateId: string;
+      }> = [];
+      const types = new Map<string, string>();
+      let selectedPairId: string | null = null;
       report.forEach((stat) => {
+        if (stat.type === 'transport' && typeof stat.selectedCandidatePairId === 'string')
+          selectedPairId = stat.selectedCandidatePairId;
+        if (stat.type === 'candidate-pair')
+          pairs.push({
+            id: stat.id,
+            state: stat.state,
+            nominated: stat.nominated === true,
+            localCandidateId: stat.localCandidateId,
+            remoteCandidateId: stat.remoteCandidateId,
+          });
+        if (stat.type === 'local-candidate' || stat.type === 'remote-candidate')
+          types.set(stat.id, candidateType(stat.candidateType));
         if ((stat.kind ?? stat.mediaType) !== 'audio') return;
         if (stat.type === 'outbound-rtp') bytesSent += stat.bytesSent ?? 0;
         if (stat.type === 'inbound-rtp') {
@@ -501,11 +669,30 @@ export function createRoomVoice(
           audioLevel = Math.max(audioLevel, stat.audioLevel ?? 0);
         }
       });
+      const selected =
+        pairs.find((pair) => pair.id === selectedPairId) ??
+        pairs.find((pair) => pair.nominated && pair.state === 'succeeded');
       Object.assign(peer.state.diagnostics, {
         bytesSent,
         bytesReceived,
         totalAudioEnergy: energy,
         audioLevel,
+        iceGatheringState: pc.iceGatheringState,
+        bufferedCandidates: peer.pendingCandidates.length,
+        candidatePairs: Math.min(1_000_000, pairs.length),
+        succeededPairs: Math.min(
+          1_000_000,
+          pairs.filter((pair) => pair.state === 'succeeded').length,
+        ),
+        failedPairs: Math.min(1_000_000, pairs.filter((pair) => pair.state === 'failed').length),
+        nominatedPairs: Math.min(1_000_000, pairs.filter((pair) => pair.nominated).length),
+        selectedPairState: selected ? pairState(selected.state) : 'none',
+        selectedLocalCandidateType: selected
+          ? (types.get(selected.localCandidateId) ?? 'unknown')
+          : 'none',
+        selectedRemoteCandidateType: selected
+          ? (types.get(selected.remoteCandidateId) ?? 'unknown')
+          : 'none',
       });
       publish();
     } catch {
@@ -571,15 +758,7 @@ export function createRoomVoice(
           connection: 'waiting',
           error: null,
           playbackBlocked: false,
-          diagnostics: {
-            generation: null,
-            signalingState: 'waiting',
-            iceConnectionState: 'waiting',
-            bytesSent: 0,
-            bytesReceived: 0,
-            totalAudioEnergy: 0,
-            audioLevel: 0,
-          },
+          diagnostics: emptyDiagnostics(),
         },
         remoteSession: null,
         retiredSessions: new Set(retiredSessionsByMember.get(member.id)),
@@ -594,6 +773,7 @@ export function createRoomVoice(
         pendingCandidates: [],
         remoteUfrags: new Set(),
         retiredUfrags: new Set(),
+        ignoredUfrags: new Set(),
         queue: Promise.resolve(),
         alive: true,
       };
