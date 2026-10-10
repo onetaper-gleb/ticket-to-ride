@@ -1,0 +1,62 @@
+{
+  "version": 5,
+  "status": "Source-only proposal for root/compositor/environment; not applied to candidate or production",
+  "basis": "1bab208aa1871f93a7af15265ad2053dff6db312",
+  "settingsPrint": {
+    "file": "sources/settings-edge-print.svg",
+    "dimensions": [
+      512,
+      128
+    ],
+    "transparent": true,
+    "nativeFitRect": {
+      "width": 390,
+      "height": 98
+    },
+    "aspectRatioDifferencePercent": 0.512820512820511,
+    "protectedTextRectSource": {
+      "x": 32,
+      "y": 18,
+      "width": 448,
+      "height": 92
+    },
+    "scale": "Scale the single printed layer to current whole settings native face; roughly6px outer inset at1672. Ink and icon remain native.",
+    "integrationOwner": "compositor",
+    "integration": "Replace existing .settings::after rectangular print border with the irregular SVG print. Use one background print layer above the neutral overlay/map and below native text. Keep pointer-events:none and all native bounds/padding/fonts. Do not retain both printed borders.",
+    "physicalEdgeOwner": "environment",
+    "physicalEdge": "Existing paper thickness/irregular physical edge/hooks remain separate; print contains no geometry, cast shadow or hook drawing.",
+    "costCurrent": "source-only; zero current render uploads/calls",
+    "costIfNativeBackground": "one512x128 browser image decode; CSS paint cost unmeasured. It does not add a Three texture. If a future physical front map is chosen instead, unique RGBA8 full-mip upper estimate .333333MiB; owned clone/material draw cost must be measured there. Never apply this print to all box sides automatically."
+  },
+  "settingsGrading": {
+    "owner": "compositor",
+    "currentNativeOverlay": "#D69F7C96",
+    "proposedNativeOverlay": "#D6C9AB96",
+    "currentPhysicalSettingsPaper": "#F2D5BD",
+    "proposedPhysicalSettingsPaper": "#F1E3CA",
+    "roughness": 0.95,
+    "reason": "New paper map is neutraler but frozen native overlay and physical tint retain a pink cast. These are starting trial values for paired grading in owner scene, not an accepted result.",
+    "layoutChanges": false,
+    "primaryInkTrial": {
+      "current": "#342B1E",
+      "proposed": "#2B2418",
+      "reason": "Preserve font/layout; improve small hint contrast on rare dark paper pixels. Source-only numeric proposal, compositor owns native implementation."
+    }
+  },
+  "boardGoldLine": {
+    "owner": "environment/compositor",
+    "request": "Refine existing retained inner brass line and corner hardware under common light; keep one physical line and retained frame. No second CSS frame or new border map.",
+    "targetAt1672": {
+      "apparentStrokePixels": 1.25,
+      "brassSRGB": "#AD8B57",
+      "safeZoneMinPixels": 8
+    },
+    "integration": "Use existing brass material/edge geometry, restrained patchy surface wear; evaluate with same camera/light. Preserve actual getCorners and native action/title insets. Geometry dimensions and material adjustment belong to their owner."
+  },
+  "icon": {
+    "file": "icons/continue.svg",
+    "actualCandidate": true,
+    "changes": "More compact rounded train front/cap and slimmer rails; same32 viewBox/currentColor/decorative semantics. Other five icons preserved."
+  },
+  "titleFonts": "Canonical six EUROPE paths and readable existing native labels preserved; no new font proposed."
+}

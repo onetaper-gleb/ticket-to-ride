@@ -1,7 +1,7 @@
 {
-  "version": 4,
+  "version": 5,
   "baseCommit": "bea9743c7622a7806a3d9b6824a9d912b0a41b65",
-  "previousArtCommit": "82a61576330d3f279aadec45b964ffc4b31bde62",
+  "previousArtCommit": "9e6a6b250135fef2f59cc3a5ba95bfb6a7419ce2",
   "assets": [
     {
       "file": "board-paint.png",
@@ -33,8 +33,8 @@
     },
     {
       "file": "clock-face.svg",
-      "bytes": 4558,
-      "sha256": "2a8f957922d79d2237607210c6f946196a197fcbe797646c0ce0b9a6c7d67735",
+      "bytes": 4696,
+      "sha256": "c5215bfde8d7a31efbe2cd5a1a4c55181ccadf1be8a1a5ccd984ae9d9d59aebe",
       "role": "runtime",
       "stage": "P1",
       "dimensions": [
@@ -42,13 +42,13 @@
         512
       ],
       "alpha": true,
-      "source": "project-original SVG paths",
+      "source": "project-original SVG round5 warm dial/compact train refinement; existing slots retained",
       "rights": "project-original artwork; no new project license asserted"
     },
     {
       "file": "distant-sky.svg",
-      "bytes": 1025,
-      "sha256": "6e388e7b3b86d0d1b2e87a00052f558ee5deda2b8a0770ab690da494369237f1",
+      "bytes": 1577,
+      "sha256": "c9c4768c539e7f499086b1ce8ae252eb1ee581b796c96e116bc926065cbe4fbe",
       "role": "runtime",
       "stage": "P1",
       "dimensions": [
@@ -56,7 +56,7 @@
         512
       ],
       "alpha": false,
-      "source": "project-original blue gradient, two diffuse cloud paths and abstract atmosphere; optional, not wired into frozen e9c95c2",
+      "source": "project-original blue gradient and diffuse cloud paths positioned for actual frozen1bab sky UV; no station/trees",
       "rights": "project-original artwork; no new project license asserted"
     },
     {
@@ -103,8 +103,8 @@
     },
     {
       "file": "icons/continue.svg",
-      "bytes": 438,
-      "sha256": "37e2627cfa5d13f1f0cbffcf5525e9a89c5206cba05149fc5e3a451ae4dddfc5",
+      "bytes": 449,
+      "sha256": "947cce29f54993747e565a26b6c53a550b84ec7fd21cb05d4b80f5a8bf473428",
       "role": "runtime",
       "stage": "P1",
       "dimensions": [
@@ -112,7 +112,7 @@
         32
       ],
       "alpha": true,
-      "source": "project-original SVG print refinement on accepted82; dimensions and existing slots retained",
+      "source": "project-original SVG round5 warm dial/compact train refinement; existing slots retained",
       "rights": "project-original artwork; no new project license asserted"
     },
     {
@@ -187,8 +187,8 @@
     },
     {
       "file": "leather-tile.webp",
-      "bytes": 62678,
-      "sha256": "e39432598c98404eb92bb9a95bf8f3f933c7e0d38aa72a0b2d0dc7335e7f9003",
+      "bytes": 70262,
+      "sha256": "d9ae2b7086ce7367a2278745be49bbceedc517b7ff8ad239de33ae9f456f0b03",
       "role": "runtime",
       "stage": "P1",
       "dimensions": [
@@ -196,7 +196,7 @@
         512
       ],
       "alpha": false,
-      "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
+      "source": "built-in image_gen round5 edit of accepted9e6 project-generated material; PNG512 RGB and WebP encoding Sharp0.35.5",
       "rights": "AI-generated project material; no third-party source image"
     },
     {
@@ -215,8 +215,8 @@
     },
     {
       "file": "paper-tile.webp",
-      "bytes": 21458,
-      "sha256": "7f49873ed09938365eb457bced5964a318a17bf231c0f5c106a9013385670687",
+      "bytes": 16428,
+      "sha256": "98ee88058cdddd4b6552a6b4e769583317c63cc140aeaf6320a0fe8f96bedc4e",
       "role": "runtime",
       "stage": "P1",
       "dimensions": [
@@ -224,13 +224,13 @@
         512
       ],
       "alpha": false,
-      "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
+      "source": "built-in image_gen round5 edit of accepted9e6 project-generated material; PNG512 RGB and WebP encoding Sharp0.35.5",
       "rights": "AI-generated project material; no third-party source image"
     },
     {
       "file": "plaster-tile.webp",
-      "bytes": 45256,
-      "sha256": "8908285903728e51ae7ac04feb745678e4813e3362c351de2965bf5a7360d32a",
+      "bytes": 41314,
+      "sha256": "bdd7a22209d5f4b78da3a8b7d6e2e6155585835aaa114313f7bd9a63a00b3773",
       "role": "runtime",
       "stage": "P1",
       "dimensions": [
@@ -238,8 +238,26 @@
         512
       ],
       "alpha": false,
-      "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
+      "source": "built-in image_gen round5 edit of accepted9e6 project-generated material; PNG512 RGB and WebP encoding Sharp0.35.5",
       "rights": "AI-generated project material; no third-party source image"
+    },
+    {
+      "file": "sources/desktop-fit-round4.json",
+      "bytes": 33969,
+      "sha256": "c7f598b0ff91183afa723fb3795a41102b637b02bf6aef042e092ac6ad043c0b",
+      "role": "source",
+      "stage": "proposal",
+      "source": "project-original specification measured with immutable common77 fixture",
+      "rights": "project-owned source; no new distributed font, dependency or artwork"
+    },
+    {
+      "file": "sources/desktop-print-round4.css",
+      "bytes": 2080,
+      "sha256": "d827391a75f3f845f5b46df635e4a8823da7818e55a5447589d74b2ba1384994",
+      "role": "source",
+      "stage": "proposal",
+      "source": "project-original specification measured with immutable common77 fixture",
+      "rights": "project-owned source; no new distributed font, dependency or artwork"
     },
     {
       "file": "sources/encode-surfaces.cjs",
@@ -275,8 +293,8 @@
     },
     {
       "file": "sources/generated-surfaces-prompts.json",
-      "bytes": 5056,
-      "sha256": "da76aa48d2cedad357a187ea22d1f36d1cf70a3dab9323331f83b2a4fd31a3d4",
+      "bytes": 17367,
+      "sha256": "bbd48e0ee1e81b5bbc2c3c8926255d5647bfe7f1479a64e2d1a294107baee1a9",
       "role": "source",
       "stage": "P1",
       "source": "project-original source/provenance record",
@@ -284,8 +302,8 @@
     },
     {
       "file": "sources/leather-tile.png",
-      "bytes": 523547,
-      "sha256": "4752c88001104bba5cd45c731d8d791c9958f1c9e76a73873fac162112ce271a",
+      "bytes": 528656,
+      "sha256": "b58ddb3df2e1b0a64f66e2d32251f3f6bc9e7e0d2005a4e6774acdec778a3c58",
       "role": "source",
       "stage": "P1",
       "dimensions": [
@@ -293,13 +311,13 @@
         512
       ],
       "alpha": false,
-      "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
+      "source": "built-in image_gen round5 edit of accepted9e6 project-generated material; PNG512 RGB and WebP encoding Sharp0.35.5",
       "rights": "AI-generated project material; no third-party source image"
     },
     {
       "file": "sources/paper-tile.png",
-      "bytes": 383861,
-      "sha256": "39732de75219ef1de70d5f586884f7bcc3a05552f501a2cfe92afff951e19ec0",
+      "bytes": 351889,
+      "sha256": "15642d0315d51c0abd48e355ad89de32752446e8a316b1448859117b0f46780e",
       "role": "source",
       "stage": "P1",
       "dimensions": [
@@ -307,13 +325,13 @@
         512
       ],
       "alpha": false,
-      "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
+      "source": "built-in image_gen round5 edit of accepted9e6 project-generated material; PNG512 RGB and WebP encoding Sharp0.35.5",
       "rights": "AI-generated project material; no third-party source image"
     },
     {
       "file": "sources/plaster-tile.png",
-      "bytes": 441036,
-      "sha256": "516fb93e1b858d324aee9121178941d7abce36d0dbc43b72fafe3082fef47b1e",
+      "bytes": 405064,
+      "sha256": "18c916a21859309e916037a9589f351365b1c82a13afd24fafb6f44681c8c7ec",
       "role": "source",
       "stage": "P1",
       "dimensions": [
@@ -321,7 +339,7 @@
         512
       ],
       "alpha": false,
-      "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
+      "source": "built-in image_gen round5 edit of accepted9e6 project-generated material; PNG512 RGB and WebP encoding Sharp0.35.5",
       "rights": "AI-generated project material; no third-party source image"
     },
     {
@@ -334,9 +352,59 @@
       "rights": "project-original artwork; no new project license asserted"
     },
     {
+      "file": "sources/refine-surfaces-round5.cjs",
+      "bytes": 1567,
+      "sha256": "12cbe24632aff19820614279167c0ecef710bd073818a7888676d27c75f69602",
+      "role": "source",
+      "stage": "P1",
+      "source": "project-original encoding/specification/vector source; not an added runtime slot",
+      "rights": "project-owned source; existing public dependency licenses recorded in provenance.md"
+    },
+    {
+      "file": "sources/round5-material-contract.json",
+      "bytes": 9589,
+      "sha256": "973327ebf312f8a76e64a051d6c3f86048068f3b78913aee5977f3d2d18bb7f1",
+      "role": "source",
+      "stage": "P1",
+      "source": "project-original encoding/specification/vector source; not an added runtime slot",
+      "rights": "project-owned source; existing public dependency licenses recorded in provenance.md"
+    },
+    {
+      "file": "sources/round5-print-proposals.json",
+      "bytes": 3339,
+      "sha256": "5bf4ef356ca263736640fcfd82e397b7ab0dfbdca841f56e77086415fba2d5b8",
+      "role": "source",
+      "stage": "proposal",
+      "source": "project-original encoding/specification/vector source; not an added runtime slot",
+      "rights": "project-owned source; existing public dependency licenses recorded in provenance.md"
+    },
+    {
+      "file": "sources/settings-edge-print.svg",
+      "bytes": 950,
+      "sha256": "d032dd02d4c8d15eb0478937a33f4cfc8fe22507138aa06ac288dd23ae50af6e",
+      "role": "source",
+      "stage": "proposal",
+      "source": "project-original encoding/specification/vector source; not an added runtime slot",
+      "rights": "project-owned source; existing public dependency licenses recorded in provenance.md",
+      "dimensions": [
+        512,
+        128
+      ],
+      "alpha": true
+    },
+    {
+      "file": "sources/settings-paper-proposal.json",
+      "bytes": 2609,
+      "sha256": "577b15deb206a7862b3545800286b0ac691bfaca3818823193b0e0f809fd5b22",
+      "role": "source",
+      "stage": "proposal",
+      "source": "project-original specification measured with immutable common77 fixture",
+      "rights": "project-owned source; no new distributed font, dependency or artwork"
+    },
+    {
       "file": "sources/stone-tile.png",
-      "bytes": 474544,
-      "sha256": "1bd0473ec0801a164b6f8b9b6c0a3bdfc4a77561969067846f7d2981792d51a8",
+      "bytes": 436319,
+      "sha256": "5917862b8f6be287d626e6318db740cea3824cbcc86c6022f54abe44dfdd8ca9",
       "role": "source",
       "stage": "P1",
       "dimensions": [
@@ -344,7 +412,7 @@
         512
       ],
       "alpha": false,
-      "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
+      "source": "built-in image_gen round5 edit of accepted9e6 project-generated material; PNG512 RGB and WebP encoding Sharp0.35.5",
       "rights": "AI-generated project material; no third-party source image"
     },
     {
@@ -372,8 +440,8 @@
     },
     {
       "file": "stone-tile.webp",
-      "bytes": 53536,
-      "sha256": "40292faf88d02c386d1215755a67ef5603106df19047e589e905183f47034baf",
+      "bytes": 49706,
+      "sha256": "8df07877e285a79636299d028297b420a365f7ebc7eba7433abe2f0b922ecd18",
       "role": "runtime",
       "stage": "P1",
       "dimensions": [
@@ -381,7 +449,7 @@
         512
       ],
       "alpha": false,
-      "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
+      "source": "built-in image_gen round5 edit of accepted9e6 project-generated material; PNG512 RGB and WebP encoding Sharp0.35.5",
       "rights": "AI-generated project material; no third-party source image"
     },
     {
@@ -400,8 +468,8 @@
     },
     {
       "file": "wood-tile.png",
-      "bytes": 418120,
-      "sha256": "c597688d96f69b1e6db28a6b91dc18ddc6dc5eddb2292498cbdf43ff64382dd7",
+      "bytes": 396120,
+      "sha256": "27784e949d9eee5913dda8e42aad9361f97a40804641ee947c4ea543746a8146",
       "role": "source",
       "stage": "P1",
       "dimensions": [
@@ -409,13 +477,13 @@
         512
       ],
       "alpha": false,
-      "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
+      "source": "built-in image_gen round5 edit of accepted9e6 project-generated material; PNG512 RGB and WebP encoding Sharp0.35.5",
       "rights": "AI-generated project material; no third-party source image"
     },
     {
       "file": "wood-tile.webp",
-      "bytes": 24190,
-      "sha256": "7d16492aa17ed6b6dbb1361d45e49c9391889cded5774a6452ea8388b82104b1",
+      "bytes": 23538,
+      "sha256": "c482d522f21e744b2a5915a56d0db82a6fb523a3fb8a4cfff33519669cf894dd",
       "role": "runtime",
       "stage": "P1",
       "dimensions": [
@@ -423,46 +491,19 @@
         512
       ],
       "alpha": false,
-      "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
+      "source": "built-in image_gen round5 edit of accepted9e6 project-generated material; PNG512 RGB and WebP encoding Sharp0.35.5",
       "rights": "AI-generated project material; no third-party source image"
-    },
-    {
-      "file": "sources/desktop-fit-round4.json",
-      "bytes": 33969,
-      "sha256": "c7f598b0ff91183afa723fb3795a41102b637b02bf6aef042e092ac6ad043c0b",
-      "role": "source",
-      "stage": "proposal",
-      "source": "project-original specification measured with immutable common77 fixture",
-      "rights": "project-owned source; no new distributed font, dependency or artwork"
-    },
-    {
-      "file": "sources/desktop-print-round4.css",
-      "bytes": 2080,
-      "sha256": "d827391a75f3f845f5b46df635e4a8823da7818e55a5447589d74b2ba1384994",
-      "role": "source",
-      "stage": "proposal",
-      "source": "project-original specification measured with immutable common77 fixture",
-      "rights": "project-owned source; no new distributed font, dependency or artwork"
-    },
-    {
-      "file": "sources/settings-paper-proposal.json",
-      "bytes": 2609,
-      "sha256": "577b15deb206a7862b3545800286b0ac691bfaca3818823193b0e0f809fd5b22",
-      "role": "source",
-      "stage": "proposal",
-      "source": "project-original specification measured with immutable common77 fixture",
-      "rights": "project-owned source; no new distributed font, dependency or artwork"
     }
   ],
   "budget": {
-    "runtimeFileBytesIncludingSVG": 363750,
-    "runtimeRasterBytesBothFallbacks": 348682,
+    "runtimeFileBytesIncludingSVG": 358581,
+    "runtimeRasterBytesBothFallbacks": 342812,
     "runtimeRasterGoalBytes": 2000000,
     "fallbackEachGoalBytes": 400000,
     "allUniqueP1MapsMiBWithoutFallbackWithoutSteam": 14.0,
     "allUniqueMapsBothFallbacksAndSteamMiB": 22.286458333333332,
     "baseline316FourLoadedMapsMiB": 4.666666666666666,
-    "note": "RGBA8 full-mip estimate per unique image: six surface maps, clock, stickers, ticket and optional sky. Source-only shape SVG is excluded. Excludes duplicated GPU uploads of owned clones, DOM textures, render targets, shadows and PMREM; not renderer.info. Historical316 loads wood/clock/stickers/ticket. Frozen e9c95c2 routes the agreed environment surfaces through MenuCompositionArt/buildMenuModels; optional sky is not loaded. Round4 preserves all unique image dimensions and raster bytes. The desktop token/CSS/settings API records are source-only proposals. Actual common77 full static render: calls433, triangles681587, geometries121, textures23 before and after; no FPS/VRAM claim."
+    "note": "Unique RGBA8 full-mip estimates14MiB scene maps/22.286458MiB including both fallback rasters and disabled steam remain unchanged because all runtime image dimensions/slots remain. Excludes clones, DOM/CSS images, render targets, shadows and PMREM; not measured VRAM. Source-only EUROPE and settings-edge SVG excluded. Actual frozen1bab static counters before/after446calls/750627triangles/122geometries/23textures; not FPS. Source-only print proposal has no current Three cost."
   },
   "generation": {
     "tool": "built-in image_gen",
@@ -480,7 +521,8 @@
         "name": "fallback-draft-compact-source.png",
         "sha256": "a2ee4572a8ce30ec481adf3f76ef54fd544fa1b41e006ba40d199a4b65121538"
       }
-    ]
+    ],
+    "status": "Historical draft generation; source master names belong to the original draft package."
   },
   "surfaceGeneration": {
     "tool": "built-in image_gen",
@@ -536,8 +578,58 @@
         ],
         "sha256": "733f7fc296d0806cd0e0a5c5a1768d050d9e03fe7a3c1a330d45ca2dd3fbc87c"
       }
-    ]
+    ],
+    "status": "Historical version4 generation; mastersInOutputPackage refers to that version4 package, not round5. Current selected masters are in round5SurfaceGeneration."
   },
-  "revision": "desktop-reference-print-round4",
-  "artVersion": "4.3-proposal"
+  "revision": "material-and-print-round5",
+  "artVersion": "5.0-proposal",
+  "commonFixture": "1bab208aa1871f93a7af15265ad2053dff6db312",
+  "round5SurfaceGeneration": {
+    "tool": "built-in image_gen",
+    "mode": "five edits of accepted9e6 material targets; board-paint retained",
+    "modelVersionSeed": "not reported",
+    "prompts": "sources/generated-surfaces-prompts.json#round5Edits",
+    "mastersInOutputPackage": [
+      {
+        "file": "generated-masters/wood-tile.png",
+        "sha256": "a0745d7c122f8d3d3533a92e1d01dfab763b219255c92ac10df64080370808e7",
+        "dimensions": [
+          1254,
+          1254
+        ]
+      },
+      {
+        "file": "generated-masters/stone-tile.png",
+        "sha256": "6e23fc30fce7aca4d428e33e51a6284f97007ae4ec7107ec9438fb5fdff4684e",
+        "dimensions": [
+          1254,
+          1254
+        ]
+      },
+      {
+        "file": "generated-masters/plaster-tile.png",
+        "sha256": "dcf7fc0210279f6c921583f8474167c43b518cbcad3fbf34742431696fb7858f",
+        "dimensions": [
+          1254,
+          1254
+        ]
+      },
+      {
+        "file": "generated-masters/leather-tile.png",
+        "sha256": "99d26d2a32eb3abffdad8bc2b53adbeb5e869de580f78bd0e4ea11743c37e4d6",
+        "dimensions": [
+          1254,
+          1254
+        ]
+      },
+      {
+        "file": "generated-masters/paper-tile.png",
+        "sha256": "99275b56b22d01437fa3a0356dbf8181870d9bf04c8e839d7a48e0623264500f",
+        "dimensions": [
+          1254,
+          1254
+        ]
+      }
+    ]
+  }
 }
