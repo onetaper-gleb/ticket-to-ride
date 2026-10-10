@@ -23,6 +23,7 @@ export type MenuCashier = {
 };
 
 const HAND_SCALE = 0.16;
+const RESTING_HAND_SCALE = 0.218;
 const TICKET_WIDTH = 1.1;
 const TICKET_HEIGHT = 2.1;
 const TICKET_THICKNESS = 0.006;
@@ -124,12 +125,16 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
     hand.name = resting
       ? 'cashier anatomical left resting hand'
       : 'cashier anatomical right ticket hand';
-    hand.scale.setScalar(HAND_SCALE);
+    hand.scale.setScalar(resting ? RESTING_HAND_SCALE : HAND_SCALE);
     hand.position.copy(contact);
     if (resting) {
-      hand.rotation.set(Math.PI / 2, 0, -0.08);
-      setHandPose(hand, { curl: [0.35, 0.9, 0.85, 0.88, 1.0], thumbOpposition: 0.35 });
-      setPalmFlex(hand, { index: 0.9, middle: 0.85, ring: 0.88, little: 1.0 });
+      hand.rotation.set(Math.PI / 2, 0, -0.35);
+      setHandPose(hand, {
+        curl: [0.8, 1.3, 1.25, 1.3, 1.0],
+        thumbOpposition: 0.8,
+        spread: [-0.35, 0, 0, 0, 0],
+      });
+      setPalmFlex(hand, { index: 1.3, middle: 1.25, ring: 1.3, little: 1.0 });
     } else {
       hand.rotation.set(-Math.PI / 2, -0.18, -0.18);
       hand.quaternion.premultiply(
@@ -138,8 +143,10 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
       setTicketPinch(hand);
     }
     const handMaterial = getHandRig(hand)!.mesh.material;
-    for (const material of Array.isArray(handMaterial) ? handMaterial : [handMaterial])
+    for (const material of Array.isArray(handMaterial) ? handMaterial : [handMaterial]) {
       material.userData.menuCashierRole = 'skin-hand';
+      if (resting && material instanceof THREE.MeshStandardMaterial) material.roughness = 1;
+    }
     root.add(hand);
     root.updateMatrixWorld(true);
     hand.position.y += contact.y + 0.002 - posedBounds(hand).min.y;
@@ -159,8 +166,8 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
   addSleeve(
     root,
     [
-      new THREE.Vector3(0.32, 0.395, -0.27),
-      new THREE.Vector3(0.47, 0.24, -0.17),
+      new THREE.Vector3(0.345, 0.465, -0.27),
+      new THREE.Vector3(0.47296, 0.24, -0.17),
       leftElbow,
       leftCuffStart,
     ],
@@ -179,7 +186,7 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
   );
   addSleeve(
     root,
-    [new THREE.Vector3(-0.32, 0.395, -0.27), new THREE.Vector3(-0.475, 0.24, -0.17), rightElbow],
+    [new THREE.Vector3(-0.345, 0.465, -0.27), new THREE.Vector3(-0.475, 0.24, -0.17), rightElbow],
     [0.135, 0.14, 0.088],
     materials.cloth,
     'right static upper sleeve',
