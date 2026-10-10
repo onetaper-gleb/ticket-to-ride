@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -60,6 +60,8 @@ interface Props {
   topView: boolean;
   onBoardModeChange: (active: boolean) => void;
   reset: number;
+  /** Cancel a held intention while preserving the current view and Pointer Lock. */
+  intentEpoch?: number;
   guidance?: { key: string; target: TableInteraction };
   inputPolicy?: InputPolicy;
 }
@@ -336,6 +338,7 @@ export default function Diorama({
   topView,
   onBoardModeChange,
   reset,
+  intentEpoch,
   guidance,
   inputPolicy,
 }: Props) {
@@ -358,6 +361,7 @@ export default function Diorama({
   const focusObject = useRef<(interaction: TableInteraction | null) => void>(() => {});
   const resetBoardView = useRef<() => void>(() => {});
   const synchronizeView = useRef<(resetChanged?: boolean) => void>(() => {});
+  const cancelHeldIntent = useRef<() => void>(() => {});
   const applyInputPolicy = useRef<() => void>(() => {});
   const inputPolicyRef = useRef(inputPolicy);
   inputPolicyRef.current = inputPolicy;
@@ -366,6 +370,7 @@ export default function Diorama({
     : '';
   const keyboardObject = useRef<TableInteraction | null>(null);
   const previousReset = useRef(reset);
+  const previousIntentEpoch = useRef(intentEpoch);
   const [fallback, setFallback] = useState(false);
   const [ready, setReady] = useState(false);
   const [lockState, setLockState] = useState<PointerLockState>('released');
@@ -862,6 +867,21 @@ export default function Diorama({
       )
         renderer.domElement.releasePointerCapture(capturedId);
     };
+    cancelHeldIntent.current = () => {
+      inputEpoch++;
+      acquisition = null;
+      const capturedId = down?.pointerId;
+      down = null;
+      eng.pressedInteraction = null;
+      movement = emptyGesture();
+      lastPointer = null;
+      if (
+        capturedId !== undefined &&
+        capturedId >= 0 &&
+        renderer.domElement.hasPointerCapture(capturedId)
+      )
+        renderer.domElement.releasePointerCapture(capturedId);
+    };
     const resetPointerInput = () => {
       pointerInside = false;
       acquisition = null;
@@ -1277,6 +1297,7 @@ export default function Diorama({
       focusObject.current = () => {};
       resetBoardView.current = () => {};
       synchronizeView.current = () => {};
+      cancelHeldIntent.current = () => {};
       applyInputPolicy.current = () => {};
     };
   }, [fallback]);
@@ -1299,6 +1320,11 @@ export default function Diorama({
     previousReset.current = reset;
     synchronizeView.current(resetChanged);
   }, [topView, reset, ready]);
+  useLayoutEffect(() => {
+    if (previousIntentEpoch.current === intentEpoch) return;
+    previousIntentEpoch.current = intentEpoch;
+    cancelHeldIntent.current();
+  }, [intentEpoch, ready]);
   useEffect(() => {
     if (ready) applyInputPolicy.current();
   }, [inputPolicyKey, view.rulesOpen, ready]);
