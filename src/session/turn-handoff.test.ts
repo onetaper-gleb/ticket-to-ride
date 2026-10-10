@@ -3,8 +3,8 @@ import { applyCommand, createGame, getLegalCommands, getObservation } from '../c
 import type { GameCommand, GameState } from '../shared/types';
 import { getTurnAcknowledgement, restoreTurnAcknowledgement } from './turn-handoff';
 
-function start(): GameState {
-  let state = createGame({ seed: 'europe-first-route-v1', playerCount: 2 });
+function start(playerCount: 2 | 3 | 4 | 5 = 2): GameState {
+  let state = createGame({ seed: 'europe-first-route-v1', playerCount });
   while (state.phase === 'setup') {
     state = applyCommand(state, {
       type: 'chooseTickets',
@@ -17,6 +17,66 @@ function start(): GameState {
 }
 
 describe('explicit UI turn handoff', () => {
+  it.each([0, 1, 2, 3, 4])(
+    'preserves the explicit handoff of human seat %i through a saved complete draw',
+    (playerId) => {
+      let state = start(5);
+      while (state.activePlayer !== playerId) {
+        state = applyCommand(state, { type: 'draw', source: 'deck' }).state;
+        state = applyCommand(state, { type: 'draw', source: 'deck' }).state;
+      }
+      const first = applyCommand(state, { type: 'draw', source: 'deck' });
+      expect(first.error).toBeUndefined();
+      expect(first.state.activePlayer).toBe(playerId);
+      expect(first.state.phase).toBe('draw');
+      expect(getTurnAcknowledgement(state, first, playerId)).toBeNull();
+      const second = applyCommand(first.state, { type: 'draw', source: 'deck' });
+      expect(second.error).toBeUndefined();
+      expect(second.state.activePlayer).toBe((playerId + 1) % 5);
+      const pending = getTurnAcknowledgement(first.state, second, playerId);
+      expect(pending).toEqual({ revision: second.state.revision, message: 'Добор карт завершён.' });
+      expect(getTurnAcknowledgement(first.state, second, (playerId + 1) % 5)).toBeNull();
+      const saved = JSON.parse(JSON.stringify({ state: second.state, pending }));
+      expect(restoreTurnAcknowledgement(saved.state, saved.pending, playerId)).toEqual(pending);
+      expect(
+        restoreTurnAcknowledgement(
+          { ...saved.state, revision: saved.state.revision + 1 },
+          saved.pending,
+          playerId,
+        ),
+      ).toBeNull();
+      if (playerId !== 0) expect(getTurnAcknowledgement(first.state, second)).toBeNull();
+    },
+  );
+  it('uses the acting human seat for a route message and leaves the final result unpaused', () => {
+    let state = start(5);
+    while (state.activePlayer !== 4) {
+      state = applyCommand(state, { type: 'draw', source: 'deck' }).state;
+      state = applyCommand(state, { type: 'draw', source: 'deck' }).state;
+    }
+    const command = getLegalCommands(getObservation(state, 4)).find(
+      (item) =>
+        item.type === 'claim' && !state.edges.find((edge) => edge.id === item.edgeId)?.tunnel,
+    )!;
+    const accepted = applyCommand(state, command);
+    expect(accepted.error).toBeUndefined();
+    const event = accepted.events.find((item) => item.kind === 'claim' && item.playerId === 4)!;
+    expect(getTurnAcknowledgement(state, accepted, 4)).toEqual({
+      revision: accepted.state.revision,
+      message: event.message,
+    });
+    const finalState = { ...state, finalTurnsRemaining: 1 };
+    const finished = applyCommand(finalState, command);
+    expect(finished.state.phase).toBe('finished');
+    expect(getTurnAcknowledgement(finalState, finished, 4)).toBeNull();
+    expect(
+      restoreTurnAcknowledgement(
+        finished.state,
+        { revision: finished.state.revision, message: event.message },
+        4,
+      ),
+    ).toBeNull();
+  });
   it('pauses only after the complete draw and restores that pause with the accepted match', () => {
     const state = start();
     const first = applyCommand(state, { type: 'draw', source: 'deck' });
