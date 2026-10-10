@@ -74,8 +74,8 @@ export async function createMenuComposition(
       materialOverrides: {
         woodDark: { color: '#887660' },
         leather: { roughness: 0.9 },
-        cream: { roughness: 0.95 },
-        stone: { roughness: 0.92 },
+        cream: { color: '#c6cbd1', roughness: 0.95 },
+        stone: { color: '#ada4b0', roughness: 0.92 },
         boardPaint: { roughness: 0.88 },
         paper: { roughness: 0.95 },
         iron: { color: '#3d454a', roughness: 0.6, metalness: 0.25 },
@@ -131,8 +131,8 @@ function assemble(
   scene.background = new THREE.Color('#a4c5e7');
   scene.add(models.root);
   const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 80);
-  const fill = new THREE.HemisphereLight('#bed0e2', '#65503b', 0.7);
-  const keyLight = new THREE.DirectionalLight('#fff0d4', 2.2);
+  const fill = new THREE.HemisphereLight('#bed0e2', '#777a7c', 1.1);
+  const keyLight = new THREE.DirectionalLight('#fff2df', 1.5);
   keyLight.position.set(6, 8, 2);
   keyLight.castShadow = true;
   keyLight.shadow.mapSize.set(2048, 2048);
@@ -146,13 +146,14 @@ function assemble(
   });
   keyLight.shadow.normalBias = 0.004;
   keyLight.shadow.bias = -0.00015;
-  keyLight.shadow.radius = 5;
+  keyLight.shadow.radius = 8;
+  keyLight.shadow.intensity = 0.8;
   // Three.js owns the shared LTC lookup tables; each renderer owns their GPU upload.
   if (!areaLightsReady) {
     RectAreaLightUniformsLib.init();
     areaLightsReady = true;
   }
-  const softFill = new THREE.RectAreaLight('#ffe9c8', 3, 5, 4);
+  const softFill = new THREE.RectAreaLight('#fff1dd', 4, 5, 4);
   softFill.position.set(2, 3, 4);
   softFill.lookAt(0, 0.5, 0);
   const railFill = new THREE.SpotLight('#ffe2b1', 200, 12, 0.3, 0.9, 2);
