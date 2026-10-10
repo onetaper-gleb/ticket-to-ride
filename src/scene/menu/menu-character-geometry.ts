@@ -2,9 +2,9 @@
  * Menu-only adaptation of this project's original cashier, kind 1.
  * Provenance: src/scene/characters.ts at bea9743c7622a7806a3d9b6824a9d912b0a41b65:
  * loft, curvedVolume, softPatch, characterFactory, sculptedFace/facePatch/faceRibbon,
- * buildHead, buildClothes and consolidateCharacter. The authored face and clothing
- * proportions are retained; only the burgundy cashier and her visible upper body
- * are built. This isolated snapshot does not import evolving gameplay characters.
+ * buildHead, buildClothes and consolidateCharacter. The authored facial features
+ * are retained, with proportions adapted to the menu frame; only her visible upper body
+ * is built. This isolated snapshot does not import evolving gameplay characters.
  * Chair, badge, cards, arms and gameplay state are intentionally not constructed.
  * The body uses a uniform 0.20 scale, then translation (0, -0.08, -0.26), baked
  * into vertex positions. All Object3D transforms in the returned group are identity.
@@ -25,13 +25,16 @@ const CASHIER_STYLE = {
   cloth: '#974a52',
   trim: '#71363e',
   shirt: '#efe0c6',
-  width: 1.66,
+  width: 1.98,
   headWidth: 1.24,
   headHeight: 1.33,
   nose: [0.3, 0.31, 0.37] as Point,
 };
 const MENU_BODY_SCALE = 0.2;
 const MENU_BODY_OFFSET = new THREE.Vector3(0, -0.08, -0.26);
+const MENU_HEAD_SCALE = new THREE.Vector3(1.32, 1.2, 1.32);
+const MENU_NECK_PIVOT = new THREE.Vector3(0, 2.71, 0.02);
+const MENU_HEAD_LIFT = 0.525; // Authoring units: 0.105 after the body's baked scale.
 
 function loft(rings: Ring[], exponent = 2.5, sides = 32) {
   const positions: number[] = [];
@@ -421,7 +424,14 @@ function buildCashierHead(person: THREE.Group, factory: Factory) {
   const style = CASHIER_STYLE;
   const { mesh, oval, round, patch } = factory;
   const head = new THREE.Group();
-  head.position.set(-0.07, 4.05, 0.04);
+  // Fit the broad head to the reference frame while retaining overlap with the neck.
+  head.position
+    .set(-0.07, 4.05, 0.04)
+    .sub(MENU_NECK_PIVOT)
+    .multiply(MENU_HEAD_SCALE)
+    .add(MENU_NECK_PIVOT);
+  head.position.y += MENU_HEAD_LIFT;
+  head.scale.copy(MENU_HEAD_SCALE);
   head.rotation.set(-0.075, -0.055, 0.05);
   person.add(head);
   const w = style.headWidth;

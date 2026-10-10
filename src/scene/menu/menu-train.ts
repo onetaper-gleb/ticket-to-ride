@@ -17,6 +17,10 @@ export type MenuTrain = {
 
 const HALF_PI = Math.PI / 2;
 const COACH_Z = -2.55;
+const BOILER_SECTION = 1.4;
+const BOILER_RADIUS = 0.285 * BOILER_SECTION;
+const BOILER_Y = 0.95;
+const BOILER_TOP = BOILER_Y + BOILER_RADIUS;
 
 /** Front is +Z. Wheel pivots rotate about +X; their bind rotation is zero. The kit owns all resources. */
 export function buildMenuTrain(kit: MenuModelKit): MenuTrain {
@@ -39,7 +43,7 @@ export function buildMenuTrain(kit: MenuModelKit): MenuTrain {
     );
   }
 
-  const chimneyAnchor = menuAnchor(root, 'train-chimney', [0, 1.66, 0.61]);
+  const chimneyAnchor = menuAnchor(root, 'train-chimney', [0, BOILER_TOP + 0.485, 0.61]);
   return { root, chimneyAnchor, wheels };
 }
 
@@ -120,34 +124,74 @@ function addArchedRoof(
 
 function addLocomotive(batch: TrainBatch) {
   addBox(batch, 'iron', [0.76, 0.15, 2.08], [0, 0.37, -0.04], 0.025);
-  addBox(batch, 'green', [0.81, 0.09, 1.93], [0, 0.49, -0.1], 0.025);
-  addCylinder(batch, 'green', 0.285, 0.285, 1.17, [0, 0.89, 0.25], [HALF_PI, 0, 0], 32);
-  addCylinder(batch, 'iron', 0.289, 0.289, 0.16, [0, 0.89, 0.895], [HALF_PI, 0, 0], 32);
-  addCylinder(batch, 'iron', 0.243, 0.243, 0.035, [0, 0.89, 0.991], [HALF_PI, 0, 0], 32);
+  addBox(batch, 'green', [0.92, 0.09, 1.93], [0, 0.49, -0.1], 0.025);
+  addCylinder(
+    batch,
+    'green',
+    BOILER_RADIUS,
+    BOILER_RADIUS,
+    1.17,
+    [0, BOILER_Y, 0.25],
+    [HALF_PI, 0, 0],
+    32,
+  );
+  addCylinder(
+    batch,
+    'iron',
+    0.289 * BOILER_SECTION,
+    0.289 * BOILER_SECTION,
+    0.16,
+    [0, BOILER_Y, 0.895],
+    [HALF_PI, 0, 0],
+    32,
+  );
+  addCylinder(
+    batch,
+    'iron',
+    0.243 * BOILER_SECTION,
+    0.243 * BOILER_SECTION,
+    0.035,
+    [0, BOILER_Y, 0.991],
+    [HALF_PI, 0, 0],
+    32,
+  );
 
   for (const z of [-0.24, 0.27, 0.73]) {
-    batch.add(new THREE.TorusGeometry(0.287, 0.018, 6, 32), 'brass', [0, 0.89, z]);
+    batch.add(new THREE.TorusGeometry(0.287 * BOILER_SECTION, 0.018, 6, 32), 'brass', [
+      0,
+      BOILER_Y,
+      z,
+    ]);
   }
-  addCylinder(batch, 'brass', 0.096, 0.08, 0.15, [0, 1.23, 0.045], [0, 0, 0], 20);
-  batch.add(
-    new THREE.SphereGeometry(0.096, 20, 10, 0, Math.PI * 2, 0, HALF_PI),
-    'brass',
-    [0, 1.305, 0.045],
-  );
-  addCylinder(batch, 'iron', 0.093, 0.067, 0.45, [0, 1.355, 0.61], [0, 0, 0], 24);
-  addCylinder(batch, 'brass', 0.124, 0.095, 0.075, [0, 1.6125, 0.61], [0, 0, 0], 24);
-  addCylinder(batch, 'iron', 0.102, 0.102, 0.012, [0, 1.653, 0.61], [0, 0, 0], 24);
+  addCylinder(batch, 'brass', 0.1, 0.084, 0.15, [0, BOILER_TOP + 0.055, 0.045], [0, 0, 0], 20);
+  batch.add(new THREE.SphereGeometry(0.1, 20, 10, 0, Math.PI * 2, 0, HALF_PI), 'brass', [
+    0,
+    BOILER_TOP + 0.13,
+    0.045,
+  ]);
+  addCylinder(batch, 'iron', 0.104, 0.075, 0.45, [0, BOILER_TOP + 0.18, 0.61], [0, 0, 0], 24);
+  addCylinder(batch, 'brass', 0.139, 0.106, 0.075, [0, BOILER_TOP + 0.4375, 0.61], [0, 0, 0], 24);
+  addCylinder(batch, 'iron', 0.114, 0.114, 0.012, [0, BOILER_TOP + 0.478, 0.61], [0, 0, 0], 24);
   addCab(batch);
 
-  addBox(batch, 'wood', [0.92, 0.18, 0.13], [0, 0.375, 1.045], 0.025);
+  addBox(batch, 'burgundy', [0.92, 0.18, 0.13], [0, 0.375, 1.045], 0.025);
   for (const x of [-0.3, 0.3]) {
     addCylinder(batch, 'iron', 0.067, 0.067, 0.19, [x, 0.38, 1.19], [HALF_PI, 0, 0], 16);
     addCylinder(batch, 'brass', 0.07, 0.07, 0.018, [x, 0.38, 1.285], [HALF_PI, 0, 0], 16);
   }
-  addCylinder(batch, 'iron', 0.095, 0.095, 0.075, [0, 0.91, 1.047], [HALF_PI, 0, 0], 20);
-  addCylinder(batch, 'brass', 0.077, 0.077, 0.013, [0, 0.91, 1.091], [HALF_PI, 0, 0], 20);
-  addCylinder(batch, 'warm', 0.06, 0.06, 0.015, [0, 0.91, 1.103], [HALF_PI, 0, 0], 20);
-  addBox(batch, 'iron', [0.11, 0.038, 0.11], [0, 0.799, 1.04]);
+  addCylinder(batch, 'iron', 0.095, 0.095, 0.075, [0, BOILER_Y + 0.02, 1.047], [HALF_PI, 0, 0], 20);
+  addCylinder(
+    batch,
+    'brass',
+    0.077,
+    0.077,
+    0.013,
+    [0, BOILER_Y + 0.02, 1.091],
+    [HALF_PI, 0, 0],
+    20,
+  );
+  addCylinder(batch, 'warm', 0.06, 0.06, 0.015, [0, BOILER_Y + 0.02, 1.103], [HALF_PI, 0, 0], 20);
+  addBox(batch, 'iron', [0.11, 0.038, 0.11], [0, BOILER_Y - 0.091, 1.04]);
 
   for (let i = 0; i < 9; i += 1) {
     const x = (i - 4) * 0.088;
@@ -156,31 +200,38 @@ function addLocomotive(batch: TrainBatch) {
   addBar(batch, 'iron', [-0.385, 0.09, 1.39], [0.385, 0.09, 1.39], 0.021);
   for (const x of [-0.455, 0.455]) {
     addBar(batch, 'iron', [x, 0.28, -0.55], [x, 0.28, 0.39], 0.02);
-    addBar(batch, 'brass', [x * 0.82, 1.01, -0.28], [x * 0.82, 1.01, 0.78], 0.013);
     addBox(batch, 'iron', [0.06, 0.08, 0.3], [x, 0.52, 0.77], 0.012);
+  }
+  for (const side of [-1, 1]) {
+    const railY = BOILER_Y + 0.15;
+    addBar(batch, 'brass', [side * 0.43, railY, -0.28], [side * 0.43, railY, 0.78], 0.013);
+    for (const z of [-0.2, 0.64]) {
+      addBar(batch, 'brass', [side * 0.365, railY, z], [side * 0.43, railY, z], 0.011);
+    }
   }
   addBox(batch, 'iron', [0.07, 0.06, 0.36], [0, 0.285, -1.2]);
 }
 
 function addCab(batch: TrainBatch) {
-  addBox(batch, 'green', [0.77, 0.28, 0.63], [0, 0.68, -0.77], 0.025);
-  addBox(batch, 'woodDark', [0.69, 0.05, 0.55], [0, 0.837, -0.77]);
-  addBox(batch, 'green', [0.77, 0.09, 0.64], [0, 1.292, -0.77], 0.018);
-  for (const x of [-0.35, 0.35]) {
+  addBox(batch, 'green', [0.88, 0.28, 0.63], [0, 0.68, -0.77], 0.025);
+  addBox(batch, 'woodDark', [0.79, 0.05, 0.55], [0, 0.837, -0.77]);
+  addBox(batch, 'green', [0.88, 0.09, 0.64], [0, 1.372, -0.77], 0.018);
+  for (const side of [-1, 1]) {
+    const x = side * 0.4075;
     for (const z of [-1.06, -0.48]) {
-      addBox(batch, 'green', [0.065, 0.39, 0.075], [x, 1.057, z]);
+      addBox(batch, 'green', [0.065, 0.47, 0.075], [x, 1.097, z]);
     }
-    addBox(batch, 'glass', [0.018, 0.33, 0.45], [x, 1.058, -0.77], 0.006);
-    addBox(batch, 'brass', [0.025, 0.026, 0.46], [x * 1.057, 0.881, -0.77]);
-    addBox(batch, 'brass', [0.025, 0.026, 0.46], [x * 1.057, 1.235, -0.77]);
-    addBox(batch, 'green', [0.025, 0.33, 0.024], [x * 1.06, 1.058, -0.76]);
-    addBox(batch, 'iron', [0.19, 0.06, 0.36], [x * 1.12, 0.455, -0.77], 0.012);
+    addBox(batch, 'glass', [0.018, 0.41, 0.45], [side * 0.425, 1.098, -0.77], 0.006);
+    addBox(batch, 'brass', [0.025, 0.026, 0.46], [side * 0.438, 0.881, -0.77]);
+    addBox(batch, 'brass', [0.025, 0.026, 0.46], [side * 0.438, 1.315, -0.77]);
+    addBox(batch, 'green', [0.025, 0.41, 0.024], [side * 0.44, 1.098, -0.76]);
+    addBox(batch, 'iron', [0.19, 0.06, 0.36], [side * 0.392, 0.455, -0.77], 0.012);
   }
   for (const z of [-1.075, -0.465]) {
-    addBox(batch, 'glass', [0.61, 0.33, 0.018], [0, 1.058, z], 0.006);
-    addBox(batch, 'green', [0.055, 0.39, 0.04], [0, 1.055, z]);
+    addBox(batch, 'glass', [0.73, 0.41, 0.018], [0, 1.098, z], 0.006);
+    addBox(batch, 'green', [0.055, 0.47, 0.04], [0, 1.095, z]);
   }
-  addArchedRoof(batch, 'iron', 0.88, 0.145, 0.76, [0, 1.32, -0.77]);
+  addArchedRoof(batch, 'iron', 1.0, 0.145, 0.76, [0, 1.4, -0.77]);
   addBox(batch, 'brass', [0.36, 0.025, 0.021], [0, 0.69, -1.094]);
 }
 
@@ -238,6 +289,12 @@ function addWheelAxle(
       'iron',
       [x, 0, 0],
       [0, HALF_PI, 0],
+    );
+    batch.add(
+      new THREE.CylinderGeometry(radius, radius, 0.034, 24, 1, true),
+      'iron',
+      [x, 0, 0],
+      [0, 0, HALF_PI],
     );
     addCylinder(batch, 'iron', radius * 0.27, radius * 0.27, 0.075, [x, 0, 0], [0, 0, HALF_PI], 16);
     for (let spoke = 0; spoke < spokes; spoke += 1) {
