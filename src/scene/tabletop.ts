@@ -65,9 +65,11 @@ export function disposeObjects(root: THREE.Object3D) {
   const geometries = new Set<THREE.BufferGeometry>();
   const materials = new Set<THREE.Material>();
   const textures = new Set<THREE.Texture>();
+  const skeletons = new Set<THREE.Skeleton>();
   root.traverse((object) => {
     if (!(object instanceof THREE.Mesh)) return;
     if (object instanceof THREE.InstancedMesh) object.dispose();
+    if (object instanceof THREE.SkinnedMesh) skeletons.add(object.skeleton);
     geometries.add(object.geometry);
     for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
       materials.add(material);
@@ -78,6 +80,7 @@ export function disposeObjects(root: THREE.Object3D) {
   textures.forEach((texture) => texture.dispose());
   materials.forEach((material) => material.dispose());
   geometries.forEach((geometry) => geometry.dispose());
+  skeletons.forEach((skeleton) => skeleton.dispose());
 }
 
 export function roundedShape(width: number, height: number, radius: number) {

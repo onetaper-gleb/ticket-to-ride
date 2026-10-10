@@ -216,6 +216,232 @@ function characterFactory(parent: THREE.Group) {
 
 type Factory = ReturnType<typeof characterFactory>;
 
+type FaceForm = ReturnType<typeof sculptedFace>;
+
+/** The face is one closed surface; facial volumes are displacements of that surface. */
+function sculptedFace(style: CharacterStyle, kind: number) {
+  const w = style.headWidth;
+  const h = style.headHeight;
+  const exponent = kind === 2 ? 2.65 : 2.3;
+  const profile = [
+    [-1, 0, 0, 0],
+    [-0.92, 0.36, 0.43, 0.34],
+    [-0.76, kind === 2 ? 0.76 : 0.67, 0.67, 0.54],
+    [-0.5, kind === 2 ? 0.95 : 0.88, 0.77, 0.74],
+    [-0.18, 1, 0.81, 0.87],
+    [0.18, 1, 0.79, 0.92],
+    [0.52, 0.94, 0.74, 0.87],
+    [0.79, 0.76, 0.58, 0.7],
+    [0.95, 0.35, 0.29, 0.36],
+    [1, 0, 0, 0],
+  ];
+  const section = (y: number) => {
+    const t = THREE.MathUtils.clamp(y / h, -1, 1);
+    let index = 0;
+    while (index < profile.length - 2 && profile[index + 1][0] < t) index++;
+    const a = profile[index];
+    const b = profile[index + 1];
+    const before = profile[Math.max(0, index - 1)];
+    const after = profile[Math.min(profile.length - 1, index + 2)];
+    const length = b[0] - a[0];
+    const u = (t - a[0]) / length;
+    const u2 = u * u;
+    const u3 = u2 * u;
+    return [1, 2, 3].map((component) => {
+      const firstSlope = (b[component] - before[component]) / (b[0] - before[0]);
+      const lastSlope = (after[component] - a[component]) / (after[0] - a[0]);
+      return Math.max(
+        0,
+        (2 * u3 - 3 * u2 + 1) * a[component] +
+          (u3 - 2 * u2 + u) * length * firstSlope +
+          (-2 * u3 + 3 * u2) * b[component] +
+          (u3 - u2) * length * lastSlope,
+      );
+    });
+  };
+  const gaussian = (x: number, y: number, cx: number, cy: number, rx: number, ry: number) =>
+    Math.exp(-(((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2));
+  const eyeX = w * 0.41;
+  const eyeY = kind === 2 ? 0.13 : 0.19;
+  const eyeWidth = kind === 1 ? 0.255 : 0.265;
+  const eyeHeight = kind === 2 ? 0.135 : kind === 1 ? 0.16 : 0.15;
+  const mouthY = (x: number) => -0.7 + (kind === 1 || kind === 3 ? 0.095 : 0.035) * (x / 0.36) ** 2;
+  const noseWidth = style.nose[0] * (kind === 2 ? 1.11 : kind === 1 ? 0.96 : 1.03);
+  const noseY = kind === 1 ? -0.13 : kind === 3 ? -0.265 : -0.2;
+  const noseHeight = style.nose[1] * (kind === 2 ? 0.79 : kind === 1 ? 0.77 : 0.88);
+  const displacement = (x: number, y: number) => {
+    // Wide cheek and jaw fields overlap the muzzle instead of forming circular cheek objects.
+    let result = 0.085 * gaussian(x, y, 0, -0.99, w * 0.56, 0.29);
+    result += 0.045 * gaussian(x, y, 0, -0.6, 0.58, 0.31);
+    for (const side of [-1, 1]) {
+      result += (kind === 1 ? 0.115 : 0.14) * gaussian(x, y, side * w * 0.56, -0.37, w * 0.42, 0.4);
+      result += 0.055 * gaussian(x, y, side * w * 0.64, -0.05, w * 0.36, 0.4);
+      result -= 0.09 * gaussian(x, y, side * eyeX, eyeY, 0.31, 0.235);
+      const ex = (x - side * eyeX) / (eyeWidth * 1.12);
+      const ey = (y - eyeY) / (eyeHeight * 1.34);
+      const radius = Math.hypot(ex, ey);
+      result += 0.035 * Math.exp(-(((radius - 1.05) / 0.26) ** 2));
+      result += 0.06 * gaussian(x, y, side * eyeX, eyeY + 0.24, 0.38, 0.15);
+    }
+    // Bridge, broad tip, alae and columella all belong to the same skin mesh.
+    result +=
+      (kind === 3 ? 0.21 : kind === 1 ? 0.13 : 0.18) *
+      gaussian(x, y, 0, 0.16, noseWidth * 0.69, kind === 3 ? 0.57 : 0.49);
+    result += (style.nose[2] + 0.1) * gaussian(x, y, 0, noseY, noseWidth, noseHeight);
+    for (const side of [-1, 1])
+      result +=
+        0.065 * gaussian(x, y, side * noseWidth * 0.7, noseY - 0.075, noseWidth * 0.57, 0.17);
+    result += 0.055 * gaussian(x, y, 0, noseY - 0.19, noseWidth * 0.46, 0.15);
+    const lipY = mouthY(x);
+    const lipMask = Math.exp(-((x / 0.39) ** 4));
+    result += lipMask * (0.035 * Math.exp(-(((y - lipY - 0.045) / 0.06) ** 2)));
+    result += lipMask * (0.038 * Math.exp(-(((y - lipY + 0.06) / 0.075) ** 2)));
+    result -= lipMask * (0.022 * Math.exp(-(((y - lipY) / 0.025) ** 2)));
+    return result;
+  };
+  const front = (x: number, y: number) => {
+    const [width, depth] = section(y);
+    const contour =
+      Math.max(0, 1 - (Math.abs(x) / Math.max(0.001, width * w)) ** exponent) ** (1 / exponent);
+    return depth * contour + displacement(x, y) * THREE.MathUtils.smoothstep(contour, 0, 0.3);
+  };
+  const positions: number[] = [0, -h, 0];
+  const colors: number[] = [];
+  const skin = new THREE.Color(style.skin);
+  const blush = new THREE.Color(style.cheek);
+  const colorAt = (x: number, y: number, facing: number) => {
+    const warmth =
+      0.18 *
+      (gaussian(x, y, w * 0.58, -0.35, 0.49, 0.37) + gaussian(x, y, -w * 0.58, -0.35, 0.49, 0.37)) *
+      Math.max(0, facing);
+    const color = skin.clone().lerp(blush, warmth);
+    colors.push(color.r, color.g, color.b);
+  };
+  colorAt(0, -h, 0);
+  const sides = 128;
+  const levels = 80;
+  const indices: number[] = [];
+  for (let level = 1; level < levels; level++) {
+    const y = -Math.cos((level / levels) * Math.PI) * h;
+    const [width, faceDepth, backDepth] = section(y);
+    for (let side = 0; side < sides; side++) {
+      const angle = (side / sides) * Math.PI * 2;
+      const sine = Math.sin(angle);
+      const cosine = Math.cos(angle);
+      const x = Math.sign(sine) * Math.abs(sine) ** (2 / exponent) * width * w;
+      const contour = Math.sign(cosine) * Math.abs(cosine) ** (2 / exponent);
+      const z = cosine > 0 ? front(x, y) : contour * backDepth;
+      positions.push(x, y, z);
+      colorAt(x, y, cosine);
+    }
+  }
+  const top = positions.length / 3;
+  positions.push(0, h, 0);
+  colorAt(0, h, 0);
+  for (let side = 0; side < sides; side++) {
+    const next = (side + 1) % sides;
+    indices.push(0, 1 + next, 1 + side);
+    for (let level = 0; level < levels - 2; level++) {
+      const a = 1 + level * sides + side;
+      const b = 1 + level * sides + next;
+      const c = b + sides;
+      const d = a + sides;
+      indices.push(a, b, c, a, c, d);
+    }
+    const last = 1 + (levels - 2) * sides;
+    indices.push(last + side, last + next, top);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return { geometry, front, eyeX, eyeY, eyeWidth, eyeHeight, mouthY };
+}
+
+/** A shaped surface patch follows the sculpt rather than intersecting it as a sphere. */
+function facePatch(
+  face: FaceForm,
+  center: [number, number],
+  size: [number, number],
+  offset: number,
+  almond = false,
+) {
+  const positions: number[] = [center[0], center[1], face.front(...center) + offset];
+  const indices: number[] = [];
+  const sides = 48;
+  const rings = 6;
+  for (let ring = 1; ring <= rings; ring++) {
+    const r = ring / rings;
+    for (let side = 0; side < sides; side++) {
+      const theta = (side / sides) * Math.PI * 2;
+      const x = center[0] + Math.cos(theta) * size[0] * r;
+      const y =
+        center[1] +
+        Math.sin(theta) * size[1] * r * (almond ? 1 - 0.28 * Math.abs(Math.cos(theta)) : 1);
+      positions.push(x, y, face.front(x, y) + offset + 0.006 * (1 - r * r));
+    }
+  }
+  for (let side = 0; side < sides; side++) {
+    const next = (side + 1) % sides;
+    indices.push(0, 1 + side, 1 + next);
+    for (let ring = 0; ring < rings - 1; ring++) {
+      const a = 1 + ring * sides + side;
+      const b = 1 + ring * sides + next;
+      const c = b + sides;
+      const d = a + sides;
+      indices.push(a, d, c, a, c, b);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+/** Tapered sculpted ridges stay embedded in the face along both edges. */
+function faceRibbon(
+  face: FaceForm,
+  points: [number, number][],
+  widths: number[],
+  height: number,
+  segments = 28,
+) {
+  const curve = new THREE.CatmullRomCurve3(points.map(([x, y]) => new THREE.Vector3(x, y, 0)));
+  const positions: number[] = [];
+  const indices: number[] = [];
+  const across = 8;
+  for (let level = 0; level <= segments; level++) {
+    const t = level / segments;
+    const center = curve.getPointAt(t);
+    const tangent = curve.getTangentAt(t);
+    const sample = t * (widths.length - 1);
+    const index = Math.min(widths.length - 2, Math.floor(sample));
+    const width = THREE.MathUtils.lerp(widths[index], widths[index + 1], sample - index);
+    for (let step = 0; step <= across; step++) {
+      const u = (step / across) * 2 - 1;
+      const x = center.x - tangent.y * width * u;
+      const y = center.y + tangent.x * width * u;
+      positions.push(x, y, face.front(x, y) + 0.007 + height * (1 - u * u));
+    }
+  }
+  for (let level = 0; level < segments; level++) {
+    for (let step = 0; step < across; step++) {
+      const a = level * (across + 1) + step;
+      const b = a + 1;
+      const c = b + across + 1;
+      const d = a + across + 1;
+      indices.push(a, d, c, a, c, b);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 function buildHead(person: THREE.Group, style: CharacterStyle, kind: number, factory: Factory) {
   const { mesh, oval, round, patch } = factory;
   const head = new THREE.Group();
@@ -228,79 +454,140 @@ function buildHead(person: THREE.Group, style: CharacterStyle, kind: number, fac
   person.add(head);
   const w = style.headWidth;
   const h = style.headHeight;
-  mesh(
-    loft(
-      [
-        { y: -h, width: w * 0.18, front: 0.27, back: 0.3 },
-        { y: -h * 0.86, width: w * 0.58, front: 0.61, back: 0.56 },
-        { y: -h * 0.58, width: w * 0.86, front: 0.78, back: 0.72 },
-        { y: -h * 0.23, width: w, front: 0.85, back: 0.85 },
-        { y: h * 0.18, width: w * 1.02, front: 0.82, back: 0.92 },
-        { y: h * 0.53, width: w * 0.95, front: 0.76, back: 0.86 },
-        { y: h * 0.8, width: w * 0.73, front: 0.59, back: 0.65 },
-        { y: h * 0.96, width: w * 0.35, front: 0.31, back: 0.36 },
-        { y: h, width: 0.035, front: 0.035 },
-      ],
-      kind === 2 ? 2.7 : 2.35,
-    ),
-    style.skin,
-    [0, 0, 0],
-    head,
-  );
+  const face = sculptedFace(style, kind);
+  const faceMaterial = new THREE.MeshStandardMaterial({
+    color: '#ffffff',
+    vertexColors: true,
+    roughness: 0.94,
+    metalness: 0,
+  });
+  faceMaterial.name = 'Скульптура лица: ' + style.name;
+  const skinMesh = new THREE.Mesh(face.geometry, faceMaterial);
+  skinMesh.name = 'Цельная скульптура головы';
+  skinMesh.castShadow = true;
+  skinMesh.receiveShadow = true;
+  head.add(skinMesh);
   for (const side of [-1, 1]) {
-    oval([0.26, 0.41, 0.28], style.skin, [side * w * 1.02, -0.02, -0.02], head);
-    oval([0.13, 0.24, 0.07], style.cheek, [side * w * 1.085, -0.01, 0.21], head);
-    oval([0.33, 0.27, 0.16], style.cheek, [side * w * 0.62, -0.37, 0.72], head);
-    // Small matte eyes sit below broad brows, leaving the nose as the main facial volume.
-    oval([0.15, kind === 1 ? 0.2 : 0.16, 0.085], '#292d2e', [side * w * 0.4, 0.16, 0.822], head);
-    const brow = mesh(
-      curvedVolume(
-        [
-          [-0.34, 0, 0],
-          [-0.2, 0.085, 0.025],
-          [0.12, 0.07, 0.02],
-          [0.33, -0.025, 0],
-        ],
-        [0.075, kind === 2 ? 0.16 : 0.12, 0.12, 0.065],
-        [0.07, 0.1, 0.1, 0.06],
-        12,
-      ),
-      style.hair,
-      [side * w * 0.42, 0.42, 0.87],
+    const ear = new THREE.SphereGeometry(1, 40, 28);
+    const position = ear.getAttribute('position');
+    for (let vertex = 0; vertex < position.count; vertex++) {
+      const x = position.getX(vertex),
+        y = position.getY(vertex),
+        z = position.getZ(vertex);
+      const bowl = Math.exp(-((x / 0.55) ** 2 + (y / 0.65) ** 2));
+      position.setXYZ(
+        vertex,
+        x * 0.235 * (1 - y * 0.12),
+        y * 0.395,
+        z >= 0
+          ? 0.08 + 0.1 * z - 0.075 * bowl * THREE.MathUtils.smoothstep(z, 0, 0.35)
+          : 0.08 + 0.24 * z,
+      );
+    }
+    ear.computeVertexNormals();
+    mesh(ear, style.skin, [side * w * 1.015, -0.035, -0.08], head);
+    const cx = side * face.eyeX;
+    const cy = face.eyeY;
+    mesh(
+      facePatch(face, [cx, cy], [face.eyeWidth, face.eyeHeight], 0.014, true),
+      '#e2dac9',
+      [0, 0, 0],
       head,
     );
-    brow.rotation.z = side * (kind === 1 ? 0.1 : kind === 2 ? -0.16 : -0.04);
+    const pupilX = cx - side * 0.035;
+    mesh(
+      facePatch(face, [pupilX, cy - 0.009], [0.135, face.eyeHeight * 0.9], 0.026),
+      '#24272a',
+      [0, 0, 0],
+      head,
+    );
+    mesh(
+      facePatch(face, [pupilX - 0.028, cy + 0.035], [0.024, 0.026], 0.036),
+      '#f0e6d2',
+      [0, 0, 0],
+      head,
+    );
+    // The eyelid volume is part of the head; only the narrow upper lash line is a patch.
+    mesh(
+      faceRibbon(
+        face,
+        [
+          [cx - face.eyeWidth * 0.96, cy],
+          [cx - face.eyeWidth * 0.44, cy + face.eyeHeight * 0.85],
+          [cx + face.eyeWidth * 0.42, cy + face.eyeHeight * 0.85],
+          [cx + face.eyeWidth * 0.96, cy],
+        ],
+        [0.003, 0.015, 0.014, 0.003],
+        0.004,
+      ),
+      '#604a3c',
+      [0, 0, 0],
+      head,
+    );
+    const browY = cy + (kind === 2 ? 0.22 : 0.27);
+    mesh(
+      faceRibbon(
+        face,
+        [
+          [side * (face.eyeX - 0.29), browY - 0.025],
+          [side * (face.eyeX - 0.13), browY + (kind === 2 ? 0.045 : 0.07)],
+          [side * (face.eyeX + 0.13), browY + 0.045],
+          [side * (face.eyeX + 0.32), browY - 0.07],
+        ],
+        [0.015, kind === 2 ? 0.12 : 0.105, 0.09, 0.012],
+        0.065,
+      ),
+      style.hair,
+      [0, 0, 0],
+      head,
+    );
   }
-  oval(style.nose, style.skin, [0, -0.13, 1.055], head);
-  const smile = kind === 1 || kind === 3;
+  const mouthPoints: [number, number][] = [-0.36, -0.2, 0, 0.2, 0.36].map((x) => [
+    x,
+    face.mouthY(x),
+  ]);
   mesh(
-    curvedVolume(
-      [
-        [-0.3, smile ? 0.025 : 0, 0],
-        [0, smile ? -0.07 : -0.025, 0.03],
-        [0.3, 0.025, 0],
-      ],
-      [0.026, 0.042, 0.025],
-      [0.025, 0.03, 0.025],
-      12,
-    ),
-    '#745041',
-    [0, -0.68, 0.79],
+    faceRibbon(face, mouthPoints, [0.005, 0.016, 0.021, 0.016, 0.005], 0.004),
+    '#775044',
+    [0, 0, 0],
     head,
   );
   if (kind === 0 || kind === 2) {
     for (const side of [-1, 1]) {
-      const moustache = oval(
-        [kind === 0 ? 0.48 : 0.36, kind === 0 ? 0.21 : 0.18, 0.19],
+      mesh(
+        faceRibbon(
+          face,
+          [
+            [side * 0.055, -0.465],
+            [side * 0.24, -0.51],
+            [side * 0.47, -0.565],
+            [side * (kind === 0 ? 0.73 : 0.62), -0.51],
+          ],
+          [0.065, 0.145, 0.14, 0.008],
+          kind === 0 ? 0.12 : 0.1,
+        ),
         style.hair,
-        [side * 0.33, -0.48, 0.99],
+        [0, 0, 0],
         head,
       );
-      moustache.rotation.z = side * -0.15;
     }
     if (kind === 0) {
       for (const side of [-1, 1])
-        oval([0.21, 0.48, 0.18], style.hair, [side * w * 0.88, -0.48, 0.42], head);
+        mesh(
+          faceRibbon(
+            face,
+            [
+              [side * w * 0.86, -0.17],
+              [side * w * 0.9, -0.43],
+              [side * w * 0.84, -0.72],
+            ],
+            [0.04, 0.09, 0.015],
+            0.035,
+          ),
+          style.hair,
+          [0, 0, 0],
+          head,
+        );
       mesh(
         loft(
           [
@@ -336,7 +623,21 @@ function buildHead(person: THREE.Group, style: CharacterStyle, kind: number, fac
         head,
       );
       oval([0.87, 0.12, 0.43], '#6c543e', [0, h * 0.65, 0.72], head);
-      oval([0.41, 0.23, 0.14], style.hair, [0, -1.04, 0.52], head);
+      mesh(
+        faceRibbon(
+          face,
+          [
+            [-0.24, -0.97],
+            [0, -1.035],
+            [0.24, -0.97],
+          ],
+          [0.015, 0.105, 0.015],
+          0.025,
+        ),
+        style.hair,
+        [0, 0, 0],
+        head,
+      );
     }
   } else if (kind === 1) {
     mesh(
@@ -473,10 +774,15 @@ function attachHand(
   hand.position.set(...position);
   hand.rotation.set(...rotation);
   hand.scale.setScalar(1.04);
-  // Both hands use the same skin material so they consolidate into one static draw call.
+  // Rigged skin keeps its vertex colours and material; only static pieces share the palette.
   const replaced = new Set<THREE.Material>();
   hand.traverse((object) => {
-    if (!(object instanceof THREE.Mesh) || Array.isArray(object.material)) return;
+    if (
+      !(object instanceof THREE.Mesh) ||
+      object instanceof THREE.SkinnedMesh ||
+      Array.isArray(object.material)
+    )
+      return;
     replaced.add(object.material);
     object.material = factory.material(style.skin, 0.88);
   });
@@ -515,17 +821,22 @@ function consolidateCharacter(person: THREE.Group) {
     { geometry: THREE.BufferGeometry; object: THREE.Mesh }[]
   >();
   person.traverse((object) => {
-    if (!(object instanceof THREE.Mesh) || Array.isArray(object.material)) return;
+    if (
+      !(object instanceof THREE.Mesh) ||
+      object instanceof THREE.SkinnedMesh ||
+      Array.isArray(object.material)
+    )
+      return;
     if (!(object.material instanceof THREE.MeshStandardMaterial) || object.material.map) return;
     const geometry = object.geometry.index
       ? object.geometry.toNonIndexed()
       : object.geometry.clone();
     for (const key of Object.keys(geometry.attributes))
-      if (key !== 'position' && key !== 'normal') geometry.deleteAttribute(key);
+      if (key !== 'position' && key !== 'normal' && key !== 'color') geometry.deleteAttribute(key);
     const transform = inverseRoot.clone().multiply(object.matrixWorld);
     geometry.applyMatrix4(transform);
     if (transform.determinant() < 0) {
-      for (const key of ['position', 'normal']) {
+      for (const key of Object.keys(geometry.attributes)) {
         const attribute = geometry.getAttribute(key) as THREE.BufferAttribute;
         for (let vertex = 0; vertex < attribute.count; vertex += 3) {
           for (let component = 0; component < attribute.itemSize; component++) {
