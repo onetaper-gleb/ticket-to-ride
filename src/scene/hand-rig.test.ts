@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { buildCartoonHand, createHandAnimation, getHandRig, setHandPose } from './cartoon-hands';
+import {
+  buildCartoonHand,
+  createHandAnimation,
+  getHandRig,
+  setHandPose,
+  type HandPose,
+} from './cartoon-hands';
 import { buildDispatcher } from './characters';
 import { disposeObjects } from './tabletop';
 
@@ -21,7 +27,230 @@ function maxDistance(a: ArrayLike<number>, b: ArrayLike<number>) {
   return max;
 }
 
+function skinPatch(mesh: THREE.SkinnedMesh, include: (vertex: number) => boolean) {
+  const source = mesh.geometry.getAttribute('position');
+  const keys: string[][] = [];
+  const vertices: number[] = [];
+  for (let i = 0; i < source.count; i += 3) {
+    if (![i, i + 1, i + 2].every(include)) continue;
+    keys.push(
+      [i, i + 1, i + 2].map((vertex) =>
+        new THREE.Vector3()
+          .fromBufferAttribute(source, vertex)
+          .toArray()
+          .map((c) => Math.round(c * 1e7))
+          .join(','),
+      ),
+    );
+    for (const vertex of [i, i + 1, i + 2])
+      vertices.push(...mesh.getVertexPosition(vertex, new THREE.Vector3()).toArray());
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+  const patch = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+  patch.updateMatrixWorld(true);
+  return { mesh: patch, keys };
+}
+
+function hasSkinCrossing(a: ReturnType<typeof skinPatch>, b = a) {
+  const positions = a.mesh.geometry.getAttribute('position'),
+    ray = new THREE.Raycaster();
+  for (let face = 0; face < a.keys.length; face++)
+    for (let edge = 0; edge < 3; edge++) {
+      const next = (edge + 1) % 3;
+      const start = new THREE.Vector3().fromBufferAttribute(positions, face * 3 + edge);
+      const end = new THREE.Vector3().fromBufferAttribute(positions, face * 3 + next);
+      const direction = end.sub(start),
+        length = direction.length();
+      if (length < 2e-6) continue;
+      ray.set(start, direction.multiplyScalar(1 / length));
+      ray.near = 1e-6;
+      ray.far = length - 1e-6;
+      if (
+        ray
+          .intersectObject(b.mesh)
+          .some(
+            (hit) =>
+              !b.keys[hit.faceIndex!].some(
+                (key) => key === a.keys[face][edge] || key === a.keys[face][next],
+              ),
+          )
+      )
+        return true;
+    }
+  return false;
+}
+
 describe('hand animation contract', () => {
+  it('keeps the inner joint skin and opposing fingertips from crossing in authored grips', () => {
+    const hand = buildCartoonHand('#cda58a', 1, false),
+      rig = getHandRig(hand)!;
+    setHandPose(hand, 'bind');
+    const pivots = Object.fromEntries(
+      Object.entries(rig.fingers).map(([name, chain]) => [
+        name,
+        chain.map((bone) => bone.getWorldPosition(new THREE.Vector3())),
+      ]),
+    );
+    const indices = rig.mesh.geometry.getAttribute('skinIndex'),
+      weights = rig.mesh.geometry.getAttribute('skinWeight');
+    const boneWeight = (vertex: number, bones: readonly THREE.Bone[]) => {
+      const ids = bones.map((bone) => rig.skeleton.bones.indexOf(bone));
+      let weight = 0;
+      for (let i = 0; i < 4; i++)
+        if (ids.includes(indices.getComponent(vertex, i)))
+          weight += weights.getComponent(vertex, i);
+      return weight;
+    };
+    for (const pose of ['grip', 'fist', 'card'] as const) {
+      setHandPose(hand, pose);
+      for (const name of Object.keys(rig.fingers)) {
+        const patch = skinPatch(
+          rig.mesh,
+          (vertex) =>
+            new THREE.Vector3()
+              .fromBufferAttribute(rig.mesh.geometry.getAttribute('position'), vertex)
+              .distanceTo(pivots[name][0]) < 0.165,
+        );
+        expect(patch.keys.length).toBeGreaterThan(100);
+        expect(hasSkinCrossing(patch), `${pose} ${name} root`).toBe(false);
+        disposeObjects(patch.mesh);
+      }
+      for (const [name, chain] of Object.entries(rig.fingers))
+        for (const joint of [1, 2]) {
+          const center = pivots[name][joint],
+            tangent = pivots[name][joint + 1]
+              .clone()
+              .sub(pivots[name][joint - 1])
+              .normalize();
+          const patch = skinPatch(rig.mesh, (vertex) => {
+            const point = new THREE.Vector3().fromBufferAttribute(
+              rig.mesh.geometry.getAttribute('position'),
+              vertex,
+            );
+            return (
+              boneWeight(vertex, chain.slice(0, 3)) > 0.8 &&
+              Math.abs(point.sub(center).dot(tangent)) < 0.105
+            );
+          });
+          expect(patch.keys.length).toBeGreaterThan(100);
+          expect(hasSkinCrossing(patch), `${pose} ${name} joint ${joint}`).toBe(false);
+          disposeObjects(patch.mesh);
+        }
+      if (pose === 'card') {
+        // The thenar web must not fold into the thumb MCP when the thumb opposes paper.
+        const thumbWeb = skinPatch(
+          rig.mesh,
+          (vertex) =>
+            new THREE.Vector3()
+              .fromBufferAttribute(rig.mesh.geometry.getAttribute('position'), vertex)
+              .distanceTo(pivots.thumb[1]) < 0.165,
+        );
+        expect(hasSkinCrossing(thumbWeb), 'card thumb MCP and thenar web').toBe(false);
+        disposeObjects(thumbWeb.mesh);
+      }
+      const thumb = skinPatch(
+        rig.mesh,
+        (vertex) => boneWeight(vertex, [rig.fingers.thumb[2]]) > 0.98,
+      );
+      const index = skinPatch(
+        rig.mesh,
+        (vertex) => boneWeight(vertex, [rig.fingers.index[2]]) > 0.98,
+      );
+      expect(hasSkinCrossing(index, thumb), `${pose} opposing tips`).toBe(false);
+      disposeObjects(thumb.mesh);
+      disposeObjects(index.mesh);
+    }
+    disposeObjects(hand);
+  });
+
+  it('flexes each finger hinge towards the palm without moving the upstream dorsal shaft', () => {
+    const names = ['thumb', 'index', 'middle', 'ring', 'little'] as const;
+    for (const side of [-1, 1] as const) {
+      const hand = buildCartoonHand('#cda58a', side, false);
+      const rig = getHandRig(hand)!;
+      setHandPose(hand, 'bind');
+      const geometry = rig.mesh.geometry;
+      const source = geometry.getAttribute('position');
+      const weights = geometry.getAttribute('skinWeight');
+      const indices = geometry.getAttribute('skinIndex');
+      const restPoints = names.map((name) =>
+        rig.fingers[name].map((bone) => bone.getWorldPosition(new THREE.Vector3())),
+      );
+      for (let finger = 0; finger < names.length; finger++) {
+        const chain = rig.fingers[names[finger]];
+        const points = restPoints[finger];
+        const ids = chain.slice(0, 3).map((bone) => rig.skeleton.bones.indexOf(bone));
+        for (let joint = 0; joint < 3; joint++) {
+          const flexion = Array.from({ length: 5 }, () => [0, 0, 0]);
+          flexion[finger][joint] = 0.45;
+          setHandPose(hand, {
+            curl: [0, 0, 0, 0, 0],
+            flexion: flexion as unknown as HandPose['flexion'],
+          });
+          expect(
+            chain[joint].getWorldPosition(new THREE.Vector3()).distanceTo(points[joint]),
+          ).toBeLessThan(1e-7);
+          expect(
+            chain[joint + 1].getWorldPosition(new THREE.Vector3()).z - points[joint + 1].z,
+          ).toBeGreaterThan(0.02);
+          if (joint === 0) continue;
+          // The dorsal shaft remains rigid; palmar skin has a wider finite compression band.
+          const start = points[joint - 1],
+            tangent = points[joint].clone().sub(start);
+          let samples = 0;
+          for (let vertex = 0; vertex < source.count; vertex++) {
+            let fingerWeight = 0;
+            for (let slot = 0; slot < 4; slot++)
+              if (ids.includes(indices.getComponent(vertex, slot)))
+                fingerWeight += weights.getComponent(vertex, slot);
+            if (fingerWeight < 0.95) continue;
+            const original = new THREE.Vector3().fromBufferAttribute(source, vertex);
+            if (original.z > points[joint].z - 0.04) continue;
+            const t = original.clone().sub(start).dot(tangent) / tangent.lengthSq();
+            if (t < 0.35 || t > 0.65) continue;
+            expect(
+              rig.mesh.getVertexPosition(vertex, new THREE.Vector3()).distanceTo(original),
+            ).toBeLessThan(1e-6);
+            samples++;
+          }
+          expect(samples).toBeGreaterThan(8);
+        }
+      }
+      disposeObjects(hand);
+    }
+  });
+
+  it('prevents reverse finger flexion and preserves mirrored authored thumb contact poses', () => {
+    const hands = [-1, 1].map((side) => buildCartoonHand('#cda58a', side as -1 | 1, false));
+    const reverse: HandPose = {
+      curl: [0, 0, 0, 0, 0],
+      flexion: Array.from({ length: 5 }, () => [-1, -1, -1]) as unknown as HandPose['flexion'],
+    };
+    for (const hand of hands) {
+      const rig = getHandRig(hand)!;
+      setHandPose(hand, 'bind');
+      const bind = positions(rig.mesh);
+      setHandPose(hand, reverse);
+      expect(maxDistance(positions(rig.mesh), bind)).toBeLessThan(1e-7);
+      expect(rig.fingers.thumb.map((bone) => bone.name)).toEqual([
+        'hand_thumb_cmc',
+        'hand_thumb_mcp',
+        'hand_thumb_ip',
+        'hand_thumb_tip',
+      ]);
+      setHandPose(hand, 'fist');
+    }
+    const left = getHandRig(hands[0])!,
+      right = getHandRig(hands[1])!;
+    for (const name of ['thumb', 'index', 'middle', 'ring', 'little'] as const) {
+      const a = left.fingers[name][3].getWorldPosition(new THREE.Vector3());
+      const b = right.fingers[name][3].getWorldPosition(new THREE.Vector3());
+      expect(a.distanceTo(new THREE.Vector3(-b.x, b.y, b.z))).toBeLessThan(1e-7);
+    }
+    hands.forEach(disposeObjects);
+  });
+
   it('has finite, normalized weights and restores bind pose after moving the whole hand', () => {
     const hand = buildCartoonHand('#cda58a', 1);
     const rig = getHandRig(hand)!;
@@ -89,6 +318,98 @@ describe('hand animation contract', () => {
     disposeObjects(hand);
   });
 
+  it('holds one card and a fan between the thumb and fingers without cutting the paper', () => {
+    for (const count of [1, 5]) {
+      const scene = new THREE.Group();
+      const character = buildDispatcher(
+        scene,
+        {
+          id: 1,
+          name: 'Test',
+          color: '#5588aa',
+          handCount: count,
+          ticketCount: 2,
+          trainsRemaining: 45,
+          stationsRemaining: 3,
+          stations: [],
+          score: 0,
+        },
+        0.5,
+        -15,
+        0,
+        new THREE.Texture(),
+      );
+      scene.updateMatrixWorld(true);
+      const hand = character.getObjectByName('Кисть с картами') as THREE.Group;
+      const rig = getHandRig(hand)!;
+      rig.skeleton.update();
+      const skin = rig.mesh;
+      const source = skin.geometry.getAttribute('position');
+      const indices = skin.geometry.getAttribute('skinIndex');
+      const weights = skin.geometry.getAttribute('skinWeight');
+      const boneWeight = (vertex: number, name: 'thumb' | 'middle') => {
+        const ids = rig.fingers[name].slice(0, 3).map((b) => rig.skeleton.bones.indexOf(b));
+        let total = 0;
+        for (let c = 0; c < 4; c++)
+          if (ids.includes(indices.getComponent(vertex, c)))
+            total += weights.getComponent(vertex, c);
+        return total;
+      };
+      const cards: THREE.Mesh[] = [];
+      character.traverse((o) => {
+        if (o instanceof THREE.Mesh && o.name === 'Закрытая карта') cards.push(o);
+      });
+      expect(cards).toHaveLength(count);
+      let thumbGap = Infinity,
+        supportGap = Infinity;
+      for (const card of cards) {
+        card.geometry.computeBoundingBox();
+        const box = card.geometry.boundingBox!;
+        const transform = card.matrixWorld.clone().invert().multiply(skin.matrixWorld);
+        const points = Array.from({ length: source.count }, (_, i) =>
+          skin.getVertexPosition(i, new THREE.Vector3()).applyMatrix4(transform),
+        );
+        for (let i = 0; i < points.length; i++) {
+          const p = points[i];
+          const depth = Math.min(
+            p.x - box.min.x,
+            box.max.x - p.x,
+            p.y - box.min.y,
+            box.max.y - p.y,
+            p.z - box.min.z,
+            box.max.z - p.z,
+          );
+          expect(depth, `${count} cards: skin inside paper`).toBeLessThanOrEqual(1e-5);
+          if (p.z >= box.max.z && boneWeight(i, 'thumb') > 0.8)
+            thumbGap = Math.min(thumbGap, box.distanceToPoint(p));
+          if (p.z <= box.min.z && boneWeight(i, 'middle') > 0.8)
+            supportGap = Math.min(supportGap, box.distanceToPoint(p));
+        }
+        const ray = new THREE.Ray();
+        for (let i = 0; i < points.length; i += 3)
+          for (let edge = 0; edge < 3; edge++) {
+            const start = points[i + edge],
+              end = points[i + ((edge + 1) % 3)];
+            const direction = end.clone().sub(start),
+              length = direction.length();
+            if (length < 2e-5) continue;
+            ray.set(start, direction.multiplyScalar(1 / length));
+            const hit = ray.intersectBox(box, new THREE.Vector3());
+            if (hit) {
+              const distance = hit.distanceTo(start);
+              expect(
+                distance > 1e-5 && distance < length - 1e-5,
+                `${count} cards: skin edge cuts paper`,
+              ).toBe(false);
+            }
+          }
+      }
+      expect(thumbGap, 'thumb presses the owner side of the cards').toBeLessThan(0.02);
+      expect(supportGap, 'middle finger supports the backs facing opponents').toBeLessThan(0.02);
+      disposeObjects(scene);
+    }
+  });
+
   it('keeps live hand rigs inside each finished character and disposes their bone textures', () => {
     for (let kind = 0; kind < 4; kind++) {
       const scene = new THREE.Group();
@@ -112,7 +433,8 @@ describe('hand animation contract', () => {
       );
       const meshes: THREE.SkinnedMesh[] = [];
       character.traverse((object) => {
-        if (object instanceof THREE.SkinnedMesh) meshes.push(object);
+        if (object instanceof THREE.SkinnedMesh && object.skeleton.bones.length === 22)
+          meshes.push(object);
       });
       expect(meshes).toHaveLength(2);
       let texturesDisposed = 0;

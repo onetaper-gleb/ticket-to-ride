@@ -25,7 +25,6 @@ import {
   buildBoard,
   buildEnvironment,
   buildHand,
-  updateHandGrips,
   disposeObjects,
   railColors,
   type Engine,
@@ -474,7 +473,6 @@ export default function Diorama({
       cardPickables: [],
       uiPickables: [],
       cards: [],
-      grips: [],
       hoveredCard: null,
       hoveredInteraction: null,
       animatedProps: [],
@@ -1206,7 +1204,6 @@ export default function Diorama({
         const cardScale = hover ? 1.65 : 1;
         card.group.scale.setScalar(THREE.MathUtils.lerp(card.group.scale.x, cardScale, cardBlend));
       }
-      updateHandGrips(eng);
       if (keyboardObject.current) {
         eng.hoveredInteraction = keyboardObject.current;
         eng.hoveredCard = keyboardObject.current.kind === 'card' ? keyboardObject.current.id : null;
