@@ -56,7 +56,7 @@
         512
       ],
       "alpha": false,
-      "source": "project-original blue gradient, two diffuse cloud paths and abstract atmosphere; optional, not wired into frozen38b",
+      "source": "project-original blue gradient, two diffuse cloud paths and abstract atmosphere; optional, not wired into frozen e9c95c2",
       "rights": "project-original artwork; no new project license asserted"
     },
     {
@@ -435,7 +435,7 @@
     "allUniqueP1MapsMiBWithoutFallbackWithoutSteam": 14.0,
     "allUniqueMapsBothFallbacksAndSteamMiB": 22.286458333333332,
     "baseline316FourLoadedMapsMiB": 4.666666666666666,
-    "note": "RGBA8 full-mip estimate per unique image: six surface maps, clock, stickers, ticket and optional sky. Source-only shape SVG is excluded. Excludes duplicated GPU uploads of owned clones, DOM textures, render targets, shadows and PMREM; not renderer.info. Historical316 loads wood/clock/stickers/ticket. Frozen38b routes the agreed environment surfaces through MenuCompositionArt/buildMenuModels; optional sky is not loaded."
+    "note": "RGBA8 full-mip estimate per unique image: six surface maps, clock, stickers, ticket and optional sky. Source-only shape SVG is excluded. Excludes duplicated GPU uploads of owned clones, DOM textures, render targets, shadows and PMREM; not renderer.info. Historical316 loads wood/clock/stickers/ticket. Frozen e9c95c2 routes the agreed environment surfaces through MenuCompositionArt/buildMenuModels; optional sky is not loaded."
   },
   "generation": {
     "tool": "built-in image_gen",
