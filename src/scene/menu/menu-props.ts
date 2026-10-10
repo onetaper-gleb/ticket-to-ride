@@ -253,18 +253,20 @@ export function buildMenuBench(kit: MenuModelKit): THREE.Group {
   root.name = 'menu-bench';
   const body = kit.batch(root, 'bench');
   for (const z of [-0.05, 0.1, 0.25])
-    body.add(new RoundedBoxGeometry(1.25, 0.036, 0.13, 2, 0.008), 'woodDark', [0, 0.429, z]);
+    body.add(new RoundedBoxGeometry(1.25, 0.028, 0.13, 2, 0.006), 'woodDark', [0, 0.433, z]);
   // The thinner top board keeps its established outer height and rear edge.
-  for (const [y, z] of [
+  const backProfile = new RoundedBoxGeometry(1.2, 0.077, 0.03, 2, 0.007);
+  backProfile.rotateX(-0.18);
+  backProfile.computeBoundingBox();
+  const backSlats = [
     [0.765, -0.255],
-    [0.951807, -0.319795],
-  ])
-    body.add(
-      new RoundedBoxGeometry(1.2, 0.086, 0.038, 2, 0.009),
-      'woodDark',
-      [0, y, z],
-      [-0.18, 0, 0],
-    );
+    [
+      0.9959025979042053 - backProfile.boundingBox!.max.y,
+      -0.34457504749298096 - backProfile.boundingBox!.min.z,
+    ],
+  ];
+  for (const [y, z] of backSlats) body.add(backProfile.clone(), 'woodDark', [0, y, z]);
+  backProfile.dispose();
   for (const x of [-0.535, 0.535]) {
     body.add(
       menuTube(
@@ -275,7 +277,7 @@ export function buildMenuBench(kit: MenuModelKit): THREE.Group {
           [x, 0.34, 0.175],
           [x, 0.41, 0.2],
         ],
-        0.024,
+        0.022,
         22,
       ),
       'iron',
@@ -290,7 +292,7 @@ export function buildMenuBench(kit: MenuModelKit): THREE.Group {
           [x, 0.735, -0.26],
           [x, 0.952, -0.315],
         ],
-        0.024,
+        0.022,
         26,
       ),
       'iron',
@@ -305,45 +307,27 @@ export function buildMenuBench(kit: MenuModelKit): THREE.Group {
           [x, 0.51, 0.269],
           [x, 0.429, 0.25],
         ],
-        0.018,
+        0.016,
         28,
       ),
       'iron',
     );
-    body.add(
-      menuTube(
-        [
-          [x, 0.416, 0.2],
-          [x, 0.49, 0.16],
-          [x, 0.525, 0.04],
-          [x, 0.513, -0.065],
-          [x, 0.457, -0.11],
-          [x, 0.416, -0.1],
-        ],
-        0.012,
-        24,
-      ),
-      'iron',
-    );
-    body.add(menuBox(0.055, 0.035, 0.45, 0.008), 'iron', [x, 0.395, 0.095]);
+    body.add(menuBox(0.055, 0.03, 0.45, 0.008), 'iron', [x, 0.408, 0.095]);
     for (const z of [-0.22, 0.25])
       body.add(menuBox(0.09, 0.018, 0.1, 0.006), 'iron', [x, 0.009, z]);
-    for (const [y, z] of [
-      [0.765, -0.255],
-      [0.951807, -0.319795],
-    ])
+    for (const [y, z] of backSlats)
       body.add(
-        new THREE.CylinderGeometry(0.008, 0.008, 0.007, 10),
+        new THREE.CylinderGeometry(0.006, 0.006, 0.004, 10),
         'iron',
-        [x, y + 0.004, z + 0.02],
+        [x, y + Math.sin(0.18) * 0.016, z + Math.cos(0.18) * 0.016],
         [Math.PI / 2 - 0.18, 0, 0],
       );
   }
   for (const z of [-0.1, 0.2])
     body.add(
-      new THREE.CylinderGeometry(0.02, 0.02, 1.07, 12),
+      new THREE.CylinderGeometry(0.018, 0.018, 1.07, 12),
       'iron',
-      [0, 0.395, z],
+      [0, 0.404, z],
       [0, 0, Math.PI / 2],
     );
   body.flush();
@@ -594,31 +578,31 @@ export function buildMenuSuitcase(
     menuTube(
       [
         [-0.084 * sx, topY + 0.005 * sy, 0],
-        [-0.074 * sx, topY + 0.043 * sy, 0],
-        [-0.051 * sx, topY + 0.054 * sy, 0],
-        [0.051 * sx, topY + 0.054 * sy, 0],
-        [0.074 * sx, topY + 0.043 * sy, 0],
+        [-0.074 * sx, topY + 0.043 * sy + 0.0025 * bevelScale, 0],
+        [-0.051 * sx, topY + 0.054 * sy + 0.0025 * bevelScale, 0],
+        [0.051 * sx, topY + 0.054 * sy + 0.0025 * bevelScale, 0],
+        [0.074 * sx, topY + 0.043 * sy + 0.0025 * bevelScale, 0],
         [0.084 * sx, topY + 0.005 * sy, 0],
       ],
-      0.012 * bevelScale,
+      0.0095 * bevelScale,
       24,
     ),
     trim,
   );
   for (const x of [-0.21, 0.21]) {
     body.add(
-      suitcaseStrapGeometry(0.025 * sx, height, depth, radius, 0.0025 * bevelScale),
+      suitcaseStrapGeometry(0.019 * sx, height, depth, radius, 0.002 * bevelScale),
       'brass',
       [x * sx, centreY, 0],
     );
   }
   const corners = suitcaseCornerGeometries(
     radius,
-    0.04 * sx,
-    0.065 * sy,
-    0.016 * sz,
+    0.032 * sx,
+    0.05 * sy,
+    0.012 * sz,
     0.0025 * bevelScale,
-    0.0032 * bevelScale,
+    0.0024 * bevelScale,
   );
   const oppositeCorners = corners.map(suitcaseOppositeCorner);
   for (const bottom of [false, true]) {
@@ -647,18 +631,24 @@ export function buildMenuSuitcase(
         z * sz,
       ]);
   for (const x of [-0.101, 0.101]) {
-    body.add(box(0.039, 0.05, 0.003), 'brass', at(x, 0.345, 0.1305));
-    body.add(box(0.021, 0.023, 0.006), 'brass', at(x, 0.349, 0.135));
-    for (const y of [0.329, 0.361])
+    body.add(box(0.032, 0.044, 0.0018), 'brass', at(x, 0.342, 0.1304));
+    body.add(
+      new THREE.CylinderGeometry(0.0028 * bevelScale, 0.0028 * bevelScale, 0.0059 * sz, 8),
+      'brass',
+      at(x, 0.347, 0.13415),
+      [Math.PI / 2, 0, 0],
+    );
+    body.add(box(0.018, 0.02, 0.0018), 'brass', at(x, 0.347, 0.1371));
+    for (const y of [0.327, 0.357])
       body.add(
-        new THREE.CylinderGeometry(0.004 * bevelScale, 0.004 * bevelScale, 0.003 * sz, 10),
+        new THREE.CylinderGeometry(0.0024 * bevelScale, 0.0024 * bevelScale, 0.001 * sz, 10),
         'brass',
-        at(x, y, 0.135),
+        at(x, y, 0.13125),
         [Math.PI / 2, 0, 0],
       );
   }
   for (const x of [-0.084, 0.084])
-    body.add(box(0.05, 0.007, 0.039), 'brass', [x * sx, topY + 0.0015 * sy, 0]);
+    body.add(box(0.042, 0.007, 0.03), 'brass', [x * sx, topY + 0.0015 * sy, 0]);
   body.flush();
   const frontDecal = menuAnchor(root, 'decal-front', [0, decalY, 0.131 * sz]);
   if (stickers) {
@@ -679,7 +669,7 @@ export function buildMenuSuitcase(
       normal: '+Z',
       art: 'A07',
       clearance: {
-        strap: 0.1975 * sx - decalSize / 2,
+        strap: 0.2005 * sx - decalSize / 2,
         lock: 0.32 * sy - decalY - decalSize / 2,
         lowerCurve: decalY - decalSize / 2 - footHeight - radius,
       },

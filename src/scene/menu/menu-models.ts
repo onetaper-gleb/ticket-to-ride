@@ -127,7 +127,14 @@ export function buildMenuModels(art: MenuEnvironmentArt = {}): MenuModels {
     counter.bellAnchor.add(buildMenuBell(kit));
     counter.ticketTrayAnchor.add(buildMenuTicketHolder(kit));
 
-    const board = buildBoard(stationRoot, kit);
+    const board = buildBoard(
+      stationRoot,
+      kit,
+      art.surfaces?.settingsPaper !== undefined ||
+        art.materialOverrides?.settingsPaper !== undefined
+        ? 'settingsPaper'
+        : 'paper',
+    );
     const clock = buildMenuClock(kit, art.clockFace);
     clock.root.position.set(1.36, 1.3, -0.03);
     stationRoot.add(clock.root);
@@ -365,6 +372,13 @@ function buildInterior(root: THREE.Group, kit: MenuModelKit) {
   back.lineTo(1.1, 2.1);
   back.lineTo(-1.1, 2.1);
   back.closePath();
+  const storageOpening = new THREE.Path();
+  storageOpening.moveTo(-0.91, 0.2);
+  storageOpening.lineTo(-0.91, 2.005);
+  storageOpening.lineTo(-0.02, 2.005);
+  storageOpening.lineTo(-0.02, 0.2);
+  storageOpening.closePath();
+  back.holes.push(storageOpening);
   batch.add(extrude(back, 0.075, 0), 'woodDark', [0, 0, -0.04]);
   batch.add(menuBox(0.1, 2.78, 1.02), 'woodDark', [-0.94, 0.49, 0.39]);
   batch.add(menuBox(0.1, 3.0, 1.02), 'woodDark', [1.1, 0.6, 0.39]);
@@ -382,31 +396,93 @@ function buildInterior(root: THREE.Group, kit: MenuModelKit) {
   doorArch.closePath();
   batch.add(extrude(doorArch, 0.19, 0.01), 'wood', [0, 0, -0.03]);
   batch.add(menuBox(0.62, 0.055, 0.27), 'wood', [0.7, -0.07, 0.04]);
-  // Recessed plaster reveals and a distant view keep the aperture from reading as a painted blue patch.
-  batch.add(menuBox(0.65, 3.0, 0.06), 'cream', [0.7, 0.6, -1.15]);
-  batch.add(menuBox(0.63, 0.52, 0.02), 'sky', [0.7, 0.98, -1.12]);
-  batch.add(menuBox(0.16, 0.32, 0.09), 'wood', [0.83, 0.18, -0.6]);
-  for (const x of [-0.88, -0.47, -0.045])
+  // The portal has long side reveals, a rear wall and separate outdoor/inset planes.
+  batch.add(menuBox(0.75, 3.0, 0.075), 'cream', [0.7, 0.6, -1.52]);
+  for (const x of [0.38, 1.055])
+    batch.add(verticalWood(menuBox(0.055, 2.3, 1.53)), 'wood', [x, 0.28, -0.7325]);
+  batch.add(menuBox(0.62, 0.055, 1.53), 'wood', [0.7, -0.075, -0.7325]);
+  batch.add(menuBox(0.55, 0.93, 0.08), 'wood', [0.77, 0.03, -1.445]);
+  batch.add(menuBox(0.28, 0.43, 0.022), 'sky', [0.59, 1.095, -1.472]);
+  batch.add(menuBox(0.033, 0.46, 0.06), 'wood', [0.747, 1.08, -1.43]);
+  batch.add(menuBox(0.2, 0.39, 0.2, 0.007), 'wood', [0.83, 0.1475, -0.92]);
+  batch.add(menuBox(0.24, 0.2, 0.18, 0.005), 'woodDark', [0.59, 0.0525, -1.19]);
+  // Storage is an actual wall recess; interrupted partitions and parcels reveal its backs.
+  for (const x of [-0.88, -0.045])
     batch.add(verticalWood(menuBox(0.047, 1.91, 0.09, 0.009)), 'wood', [x, 0.97, 0.15]);
-  for (const y of [0.25, 0.68, 1.13, 1.58]) {
-    batch.add(menuBox(0.87, 0.065, 0.27, 0.008), 'wood', [-0.465, y, 0.17]);
-    batch.add(menuBox(0.88, 0.027, 0.03), 'woodDark', [-0.465, y - 0.03, 0.314]);
-    for (let index = 0; index < 4; index++) {
-      const height = [0.16, 0.21, 0.13, 0.18][index];
-      const x = -0.78 + index * 0.19;
-      batch.add(menuBox(0.145, height, 0.13, 0.005), index % 2 ? 'cream' : 'paper', [
+  const shelves = [
+    [
+      0.25,
+      0.3,
+      -0.55,
+      -0.24,
+      [
+        [-0.76, 0.16, 0.24, 0.15, 0.025, 'paper'],
+        [-0.3, 0.22, 0.13, 0.18, 0.075, 'wood'],
+      ],
+    ],
+    [
+      0.68,
+      0.38,
+      -0.34,
+      -0.34,
+      [
+        [-0.69, 0.23, 0.17, 0.17, 0.06, 'cream'],
+        [-0.19, 0.15, 0.25, 0.12, 0.015, 'paper'],
+      ],
+    ],
+    [
+      1.13,
+      0.32,
+      -0.53,
+      -0.19,
+      [
+        [-0.77, 0.14, 0.25, 0.14, 0.01, 'wood'],
+        [-0.4, 0.18, 0.13, 0.12, 0.055, 'paper'],
+        [-0.16, 0.12, 0.18, 0.15, 0.07, 'cream'],
+      ],
+    ],
+    [1.58, 0.41, -0.42, -0.29, [[-0.71, 0.24, 0.22, 0.18, 0.045, 'paper']]],
+  ] as const;
+  for (const [row, [y, depth, dividerX, backZ, parcels]] of shelves.entries()) {
+    const top = row < shelves.length - 1 ? shelves[row + 1][0] : 2.025;
+    const front = 0.13 + depth / 2;
+    const cellHeight = top - y;
+    batch.add(menuBox(0.87, 0.065, depth, 0.008), 'wood', [-0.465, y, 0.13]);
+    batch.add(menuBox(0.88, 0.027, 0.03), 'woodDark', [-0.465, y - 0.03, front]);
+    batch.add(menuBox(0.87, cellHeight, 0.045), 'woodDark', [-0.465, y + cellHeight / 2, backZ]);
+    for (const x of [-0.9, dividerX, -0.03])
+      batch.add(verticalWood(menuBox(0.034, cellHeight, front - backZ)), 'wood', [
         x,
-        y + 0.033 + height / 2,
-        0.19,
+        y + cellHeight / 2,
+        (front + backZ) / 2,
       ]);
-      batch.add(new THREE.BoxGeometry(0.145, 0.014, 0.005), 'woodDark', [x, y + 0.1, 0.259]);
+    for (const [x, width, height, parcelDepth, recess, material] of parcels) {
+      const parcelFront = front - recess - 0.015;
+      batch.add(menuBox(width, height, parcelDepth, 0.005), material, [
+        x,
+        y + 0.031 + height / 2,
+        parcelFront - parcelDepth / 2,
+      ]);
+      if (material !== 'wood') {
+        const bindings = height > 0.2 ? 2 : 1;
+        for (let index = 0; index < bindings; index++)
+          batch.add(new THREE.BoxGeometry(width - 0.012, 0.009, 0.007), 'woodDark', [
+            x,
+            y + 0.031 + height * (0.35 + index * 0.29),
+            parcelFront + 0.002,
+          ]);
+      }
     }
   }
   batch.flush();
   return interior;
 }
 
-function buildBoard(root: THREE.Group, kit: MenuModelKit): MenuModels['board'] {
+function buildBoard(
+  root: THREE.Group,
+  kit: MenuModelKit,
+  settingsPaper: 'paper' | 'settingsPaper',
+): MenuModels['board'] {
   const boardRoot = new THREE.Group();
   boardRoot.name = 'boardFrame';
   root.add(boardRoot);
@@ -663,7 +739,7 @@ function buildBoard(root: THREE.Group, kit: MenuModelKit): MenuModels['board'] {
         settingsPixel * 3,
       ),
     );
-    settings.add(extrude(paperFrame, 0.04, 0), 'paper', [0, 0, -0.04]);
+    settings.add(extrude(paperFrame, 0.04, 0), settingsPaper, [0, 0, -0.04]);
     settings.add(
       extrude(
         frameShape(
@@ -705,7 +781,7 @@ function buildBoard(root: THREE.Group, kit: MenuModelKit): MenuModels['board'] {
         ),
         4,
       ),
-      'paper',
+      settingsPaper,
       'settingsInnerPlane',
     );
     settings.flush();
@@ -758,26 +834,26 @@ function buildBoard(root: THREE.Group, kit: MenuModelKit): MenuModels['board'] {
 function buildCanopy(root: THREE.Group, kit: MenuModelKit) {
   const canopy = part(root, 'station-canopy', [0, 2.63, 0]);
   const batch = kit.batch(canopy, 'canopy');
-  batch.add(menuBox(5.9, 0.15, 1.7), 'green', [-1.885, 0, -0.93]);
+  batch.add(menuBox(5.9, 0.12, 1.7), 'green', [-1.885, 0.015, -0.93]);
   batch.add(menuBox(5.84, 0.05, 1.58), 'wood', [-1.885, -0.1, -0.93]);
-  batch.add(menuBox(6.2, 0.18, 3.6), 'green', [4.05, 0, -1.0]);
+  batch.add(menuBox(6.2, 0.12, 3.6), 'green', [4.05, 0.03, -1.0]);
   batch.add(menuBox(6.14, 0.045, 3.43), 'wood', [4.05, -0.1125, -1.0]);
   for (const z of [0.73, -0.13, -1.45, -2.68])
-    batch.add(menuBox(6.2, 0.17, 0.13, 0.015), 'green', [4.05, -0.15, z]);
+    batch.add(flangedBeam(0.13, 0.15, 6.2, true), 'green', [4.05, -0.155, z]);
   for (const x of [1.01, 2.5, 4.1, 6.0, 7.08])
-    batch.add(menuBox(0.12, 0.145, 3.45, 0.014), 'green', [x, -0.17, -1.0]);
-  batch.add(menuBox(6.2, 0.13, 0.12, 0.015), 'cream', [4.05, -0.17, 0.78]);
-  batch.add(menuBox(6.3, 0.16, 0.17, 0.018), 'green', [0, -0.1, -0.14]);
+    batch.add(flangedBeam(0.12, 0.2, 3.45), 'green', [x, -0.12, -1.0]);
+  batch.add(menuBox(6.2, 0.072, 0.085, 0.008), 'cream', [4.05, -0.142, 0.78]);
+  batch.add(flangedBeam(0.17, 0.135, 6.3, true), 'green', [0, -0.1, -0.14]);
   batch.add(menuBox(0.045, 0.04, 0.64), 'iron', [-2.0, -0.08, 0.1]);
   const scallop = new THREE.Shape();
   scallop.moveTo(-0.17, 0);
   scallop.lineTo(0.17, 0);
   scallop.lineTo(0.17, -0.035);
-  scallop.quadraticCurveTo(0.16, -0.19, 0, -0.19);
-  scallop.quadraticCurveTo(-0.16, -0.19, -0.17, -0.035);
+  scallop.quadraticCurveTo(0.16, -0.165, 0, -0.165);
+  scallop.quadraticCurveTo(-0.16, -0.165, -0.17, -0.035);
   scallop.closePath();
   for (let x = 1.12; x < 7.15; x += 0.34)
-    batch.add(extrude(scallop, 0.065, 0.006), 'cream', [x, -0.21, 0.75]);
+    batch.add(extrude(scallop, 0.045, 0.004), 'cream', [x, -0.17, 0.76]);
   batch.flush();
   const supports = part(root, 'station-supports', [0, FLOOR_Y, 0]);
   const posts = kit.batch(supports, 'canopy-supports');
@@ -813,11 +889,45 @@ function buildCanopy(root: THREE.Group, kit: MenuModelKit) {
     corbel.lineTo(0.66, height + 0.015);
     corbel.lineTo(0, height + 0.015);
     corbel.closePath();
+    const opening = new THREE.Path();
+    opening.moveTo(0.17, height - 0.3);
+    opening.lineTo(0.17, height - 0.07);
+    opening.lineTo(0.46, height - 0.07);
+    opening.lineTo(0.46, height - 0.155);
+    opening.quadraticCurveTo(0.2, height - 0.2, 0.17, height - 0.3);
+    opening.closePath();
+    corbel.holes.push(opening);
     target.add(extrude(corbel, 0.15, 0.008), 'green', [localX, 0, localZ - 0.075]);
   }
   posts.flush();
   rightPost.flush();
   return { canopy, supports, outerCanopySupport };
+}
+
+/** Closed I section; the tall longitudinal web joins the liner to the roofing. */
+function flangedBeam(width: number, height: number, length: number, across = false) {
+  const w = width / 2,
+    h = height / 2,
+    web = 0.014,
+    flange = 0.022;
+  const section = new THREE.Shape();
+  section.moveTo(-w, -h);
+  section.lineTo(w, -h);
+  section.lineTo(w, -h + flange);
+  section.lineTo(web, -h + flange);
+  section.lineTo(web, h - flange);
+  section.lineTo(w, h - flange);
+  section.lineTo(w, h);
+  section.lineTo(-w, h);
+  section.lineTo(-w, h - flange);
+  section.lineTo(-web, h - flange);
+  section.lineTo(-web, -h + flange);
+  section.lineTo(-w, -h + flange);
+  section.closePath();
+  const geometry = extrude(section, length, 0);
+  geometry.translate(0, 0, -length / 2);
+  if (across) geometry.rotateY(Math.PI / 2);
+  return geometry;
 }
 
 function profiledPost(width: number, depth: number, height: number) {
@@ -865,10 +975,10 @@ function buildPlatform(root: THREE.Group, kit: MenuModelKit) {
   trackRoot.rotation.y = -0.65;
   railwayRoot.add(trackRoot);
   const batch = kit.batch(trackRoot, 'platform-and-track');
-  batch.add(menuBox(0.66, 0.2, 9), 'stone', [-0.98, -0.15, -3]);
+  batch.add(slopedBed(0.66, 0.76, -0.05, -0.25, 9), 'stone', [-0.98, 0, -3]);
   for (let z = -7.125; z < 1.1; z += 0.75)
     batch.add(menuBox(0.68, 0.035, 0.745, 0.006), 'cream', [-0.98, -0.0675, z]);
-  batch.add(menuBox(1.3, 0.12, 9), 'stone', [0, -0.19, -3]);
+  batch.add(slopedBed(1.12, 1.6, -0.13, -0.25, 9), 'stone', [0, 0, -3]);
   for (let z = -7.3; z < 1.1; z += 0.42) {
     batch.add(menuBox(1.3, 0.06, 0.13, 0.005), 'woodDark', [0, -0.1, z]);
     for (const x of [-0.41, 0.41])
@@ -886,6 +996,25 @@ function buildPlatform(root: THREE.Group, kit: MenuModelKit) {
   }
   batch.flush();
   return { railwayRoot, platform: trackRoot };
+}
+
+/** Ballast meets the floor with a slope while the sleeper bearing plane stays fixed. */
+function slopedBed(
+  topWidth: number,
+  baseWidth: number,
+  top: number,
+  bottom: number,
+  length: number,
+) {
+  const section = new THREE.Shape();
+  section.moveTo(-baseWidth / 2, bottom);
+  section.lineTo(baseWidth / 2, bottom);
+  section.lineTo(topWidth / 2, top);
+  section.lineTo(-topWidth / 2, top);
+  section.closePath();
+  const geometry = extrude(section, length, 0);
+  geometry.translate(0, 0, -length / 2);
+  return geometry;
 }
 
 function buildLuggage(root: THREE.Group, kit: MenuModelKit, stickers?: THREE.Texture) {
@@ -943,14 +1072,14 @@ function buildBackdrop(root: THREE.Group, kit: MenuModelKit) {
     seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
     return seed / 4294967296;
   };
-  // Branch-supported, offset crowns leave sky gaps and an uneven skyline.
+  // Sparse crowns at three depths keep the station skyline and sky channels visible.
   for (const [x, y, z, spread, height] of [
-    [0.3, 2.3, -11.3, 0.95, 1.1],
-    [2.0, 2.65, -11.8, 1.3, 1.35],
-    [3.9, 2.55, -11.4, 1.1, 1.4],
-    [5.85, 1.9, -11.6, 0.8, 0.95],
-    [7.1, 2.15, -11.2, 0.85, 1.2],
-    [8.65, 2.2, -12.0, 1.35, 1.05],
+    [0.65, 1.75, -11.6, 0.65, 0.85],
+    [2.65, 2.35, -11.25, 0.97, 1.22],
+    [4.4, 1.8, -12.2, 0.78, 1.0],
+    [5.9, 2.07, -11.45, 0.69, 0.9],
+    [7.65, 1.8, -11.2, 0.7, 0.96],
+    [9.1, 2.0, -12.0, 0.82, 0.95],
   ]) {
     const trunk = new THREE.CatmullRomCurve3([
       new THREE.Vector3(x, FLOOR_Y, z),
@@ -958,26 +1087,26 @@ function buildBackdrop(root: THREE.Group, kit: MenuModelKit) {
       new THREE.Vector3(x + 0.09 * spread, y - height * 0.6, z + 0.05),
       new THREE.Vector3(x + 0.04 * spread, y + 0.15 * height, z - 0.06),
     ]);
-    batch.add(new THREE.TubeGeometry(trunk, 12, 0.08 * spread, 7, false), 'woodDark');
+    batch.add(new THREE.TubeGeometry(trunk, 12, 0.045 * spread, 7, false), 'woodDark');
     for (const [dx, dy, dz] of [
-      [-0.55, 0.06, 0.12],
-      [0.28, 0.48, -0.12],
-      [0.58, -0.18, 0.06],
+      [-0.42, 0.04, 0.12],
+      [0.12, 0.33, -0.16],
+      [0.4, -0.17, 0.11],
     ]) {
       const end = new THREE.Vector3(x + dx * spread, y + dy * height, z + dz);
       const branch = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(x + 0.04, y - height * 0.68, z),
+        trunk.getPoint(0.64),
         new THREE.Vector3(x + dx * spread * 0.5, y - height * 0.23, z + dz * 0.5),
         end,
       ]);
-      batch.add(new THREE.TubeGeometry(branch, 8, 0.035 * spread, 6, false), 'woodDark');
-      const count = 12 + Math.floor(random() * 7);
+      batch.add(new THREE.TubeGeometry(branch, 8, 0.025 * spread, 6, false), 'woodDark');
+      const count = 5 + Math.floor(random() * 4);
       for (let i = 0; i < count; i++) {
         const a = random() * Math.PI * 2;
         const b = Math.acos(2 * random() - 1);
         const dist = Math.cbrt(random());
-        const size = spread * (0.2 + random() * 0.18);
-        const geometry = new THREE.IcosahedronGeometry(size, 1);
+        const size = spread * (0.24 + random() * 0.18);
+        const geometry = new THREE.SphereGeometry(size, 14, 10);
         const positions = geometry.getAttribute('position');
         const phase = random() * Math.PI * 2;
         for (let index = 0; index < positions.count; index++) {
@@ -985,21 +1114,21 @@ function buildBackdrop(root: THREE.Group, kit: MenuModelKit) {
           const normal = p.clone().normalize();
           p.multiplyScalar(
             1 +
-              0.16 * Math.sin(normal.x * 5 + normal.y * 3 + phase) +
-              0.1 * Math.cos(normal.z * 7 - phase),
+              0.08 * Math.sin(normal.x * 3.2 + normal.y * 2.4 + phase) +
+              0.045 * Math.cos(normal.z * 4.2 - phase),
           );
           positions.setXYZ(index, p.x, p.y, p.z);
         }
-        geometry.scale(0.75 + random() * 0.7, 0.55 + random() * 0.8, 0.6 + random() * 0.6);
+        geometry.scale(0.85 + random() * 0.5, 0.75 + random() * 0.45, 0.7 + random() * 0.5);
         geometry.computeVertexNormals();
-        const leafY = end.y + Math.cos(b) * dist * height * 0.45;
+        const leafY = end.y + Math.cos(b) * dist * height * 0.3;
         batch.add(
           geometry,
-          leafY > y + height * 0.2 ? 'foliageLight' : random() < 0.3 ? 'foliageDark' : 'foliage',
+          leafY > y + height * 0.12 ? 'foliageLight' : random() < 0.1 ? 'foliageDark' : 'foliage',
           [
-            end.x + Math.sin(b) * Math.cos(a) * dist * spread * 0.58,
+            end.x + Math.sin(b) * Math.cos(a) * dist * spread * 0.52,
             leafY,
-            end.z + Math.sin(b) * Math.sin(a) * dist * spread * 0.48,
+            end.z + Math.sin(b) * Math.sin(a) * dist * spread * 0.4,
           ],
           [random() * 0.8, random() * Math.PI, random() * 0.6],
         );
@@ -1009,9 +1138,9 @@ function buildBackdrop(root: THREE.Group, kit: MenuModelKit) {
   // Recessed bays, pitched roof volumes and a separate canopy break the golden wall.
   batch.add(menuBox(8.7, 0.16, 1.65), 'stone', [4.2, FLOOR_Y + 0.08, -10.2]);
   for (const [x, width, top, z] of [
-    [1.4, 2.7, 1.52, -10.6],
-    [3.98, 2.16, 1.72, -10.8],
-    [6.55, 2.7, 1.45, -10.58],
+    [1.22, 2.25, 1.43, -10.44],
+    [4.07, 1.72, 1.69, -10.88],
+    [6.72, 2.5, 1.37, -10.32],
   ]) {
     batch.add(menuBox(width, top - FLOOR_Y, 0.58), 'cream', [x, (top + FLOOR_Y) / 2, z]);
     batch.add(menuBox(width + 0.26, 0.12, 1.08), 'green', [x, top + 0.06, z + 0.08]);
