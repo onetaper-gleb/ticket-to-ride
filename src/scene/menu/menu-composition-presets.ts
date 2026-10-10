@@ -10,6 +10,13 @@ export type MenuCompositionPreset = {
   fov: number;
   buildingYaw: number;
   luggageAdvance: number;
+  desktopPrint?: {
+    actionsHeight: number;
+    headerPaddingBottom: number;
+    boardPaddingLeftExtra: number;
+    copyPaddingLeft: number;
+    settingsIconSize: number;
+  };
   dom: {
     pad: number;
     hh: number;
@@ -43,20 +50,20 @@ export function menuCompositionPreset(width: number, height: number): MenuCompos
   const mix = (values: readonly number[]) =>
     THREE.MathUtils.lerp(values[index], values[index + 1], t);
   const compact = !desktop && !narrow && width >= 760;
-  const fs = desktop ? mix([32, 40, 44]) : narrow ? 23 : compact ? 24 : 27;
+  const fs = desktop ? mix([36.8, 46, 50.6]) : narrow ? 23 : compact ? 24 : 27;
   const dom = {
     pad: desktop ? mix([12, 12, 16]) : 12,
-    hh: desktop ? mix([96, 136, 164]) : 80,
+    hh: desktop ? mix([86, 122, 148]) : 80,
     rh: desktop ? mix([76, 94, 103]) : narrow ? 72 : compact ? 76 : 84,
     th: desktop ? mix([76, 94, 103]) : narrow ? 100 : compact ? 106 : 116,
-    gap: desktop ? mix([6, 8, 10]) : 6,
+    gap: desktop ? mix([4.5, 6, 7.5]) : 6,
     headgap: desktop ? mix([16, 12, 18]) : 12,
     fs,
-    tf: desktop ? mix([24, 28, 32]) : fs,
-    sf: desktop ? mix([26, 32, 36]) : fs,
-    is: desktop ? mix([36, 44, 48]) : 32,
+    tf: desktop ? mix([27.43, 32, 36.57]) : fs,
+    sf: desktop ? mix([24.375, 30, 33.75]) : fs,
+    is: desktop ? mix([45.82, 56, 61.09]) : 32,
     im: desktop ? mix([2, 4, 4]) : 4,
-    ic: desktop ? mix([80, 104, 116]) : 60,
+    ic: desktop ? mix([75.38, 98, 109.31]) : 60,
     mark: desktop ? mix([300, 370, 414]) : 340,
     hint: desktop ? 24 : fs,
     touch: desktop ? 64 : narrow ? 60 : compact ? 64 : 72,
@@ -73,7 +80,15 @@ export function menuCompositionPreset(width: number, height: number): MenuCompos
     width: desktop
       ? mix([420, 510, 580])
       : Math.min(narrow ? 400 : 360, width - (narrow ? 64 : 32)),
-    height: 24 + 2 * dom.pad + dom.hh + dom.headgap + 3 * dom.rh + dom.th + 3 * dom.gap,
+    // The print fit redistributes space inside the accepted physical frame.
+    height:
+      24 +
+      2 * dom.pad +
+      (desktop ? mix([96, 136, 164]) : dom.hh) +
+      dom.headgap +
+      3 * dom.rh +
+      dom.th +
+      3 * (desktop ? mix([6, 8, 10]) : dom.gap),
   };
   const settings = {
     x: board.x + (desktop ? mix([50, 65, 75]) : 16),
@@ -98,6 +113,15 @@ export function menuCompositionPreset(width: number, height: number): MenuCompos
     fov: 34,
     buildingYaw: THREE.MathUtils.degToRad(27),
     luggageAdvance: desktop ? mix([0.8, 0, 0]) : 0,
+    desktopPrint: desktop
+      ? {
+          actionsHeight: 3 * dom.rh + dom.th + 3 * mix([6, 8, 10]) + mix([96, 136, 164]) - dom.hh,
+          headerPaddingBottom: mix([11, 14, 16]),
+          boardPaddingLeftExtra: mix([15, 19, 22]),
+          copyPaddingLeft: mix([16, 20, 23]),
+          settingsIconSize: mix([38.4, 48, 55]),
+        }
+      : undefined,
     dom,
   };
 }

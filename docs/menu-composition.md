@@ -1,12 +1,12 @@
 # Статичная общая сцена меню
 
-Текущая ветка `design/menu-ticket-office-composition` объединяет полные принятые истории environment `70f4fbb47cf9c95e8d4b4ba3272bff4a2e71ad37`, cashier `b7ac412ac28210fb86960f50667ca9ee05a08c7c` и art `82a61576330d3f279aadec45b964ffc4b31bde62` от базы `bea9743`. Кассирша b7 отличается от c489 только документацией. Чужие dirty files не используются. Приоритет — desktop и максимальное сходство с `menu-station-2.png`; адаптив отложен прямым указанием владельца. Общая художественная приёмка ещё не достигнута. Анимации остановлены; production App/session/config/manifest/Sites этим владельцем не меняются.
+Текущая ветка `design/menu-ticket-office-composition` объединяет полные принятые истории environment `70f4fbb47cf9c95e8d4b4ba3272bff4a2e71ad37`, cashier `b7ac412ac28210fb86960f50667ca9ee05a08c7c` и art `9e6a6b250135fef2f59cc3a5ba95bfb6a7419ce2` (полная история82→ddc→9e6) от базы `bea9743`. Кассирша b7 отличается от c489 только документацией. Чужие dirty files не используются. Приоритет — desktop и максимальное сходство с `menu-station-2.png`; адаптив отложен прямым указанием владельца. Общая художественная приёмка ещё не достигнута. Анимации остановлены; production App/session/config/manifest/Sites этим владельцем не меняются.
 
 ## Загрузка и владение
 
 `createMenuComposition({assetBase, signal})` загружает десять уникальных SRGB texture inputs, binary собственных кистей и optional canonical SVG title. Inputs принадлежат compositor/art loader, model kit владеет отдельными clones, meshes и materials; cashier владеет своей геометрией, кистями и бумагами. Skin binary/source hashes сохранены. Texture loads используют allSettled, успешные inputs при ошибке освобождаются once; Blob URLs отзываются. Title — текст/Shape данные без самостоятельных GPU ресурсов. Его HTTP/parse failure оставляет native fallback; отмена caller signal отклоняет factory и очищает art. Поздний результат после закрытия не прикрепляется к сцене.
 
-Существующие surface slots cream/green/boardPaint/wood/woodDark/leather/stone/paper/sky связаны с собственными файлами art82. Stone repeat8×8, sky repeat(1,.7)/offset(0,.4), прочие maps1×1. Wood/paint aliases не создают повторных input loads. Sky использует один kit clone на двух existing meshes: black diffuse/white emissive1, emissiveMap===map, ClampToEdge. Solid scene.background — резерв; whole-scene PNG и новые background planes не используются.
+Существующие surface slots cream/green/boardPaint/wood/woodDark/leather/stone/paper/sky связаны с собственными файлами принятого art9e6. Stone repeat8×8, sky repeat(1,.7)/offset(0,.4), прочие maps1×1. Wood/paint aliases не создают повторных input loads. Sky использует один kit clone на двух existing meshes: black diffuse/white emissive1, emissiveMap===map, ClampToEdge. Solid scene.background — резерв; whole-scene PNG и новые background planes не используются.
 
 ## Камера и контакты
 
@@ -26,7 +26,7 @@ Optional titleRect задан относительно верхнего лево
 
 ## Четвёртый раунд света и глубины
 
-Неизменяемая технически принятая основа77e709e сохранена в outputs/checkpoints/menu-composition-77e709e-preview.zip, SHA256a39b1a7446fc251918a9211d56400b3e2157adbdc83c00366871ee28dff3108a. Этот собственный light/depth delta использует те же принятые env70/cashb7/art82: свежие foreign tips и art tokens пока не подключены. Сравнение before/after делается при одной камере/геометрии/maps/native sizes.
+Неизменяемая технически принятая основа77e709e сохранена в outputs/checkpoints/menu-composition-77e709e-preview.zip, SHA256a39b1a7446fc251918a9211d56400b3e2157adbdc83c00366871ee28dff3108a. Этот собственный light/depth delta использует те же принятые env70/cashb7/art82: в этом сохранённом light/depth снимке новые модели и токены арта ещё не подключены. Сравнение before/after делается при одной камере/геометрии/maps/native sizes.
 
 Платформенный reflected fill освещает underside навеса снизу: canopyFill RectArea#dedbd0/intensity3/size4×2, parent actual parts.canopy, localposition(4.2,−1.4,1.1), local aiming(4.2,0,−1). Ориентация задаётся до parenting, затем наследует station yaw; −Z light axis направлен вверх/назад. Источник не создаёт geometry/map/shadow target, compositor явно снимает его с parent до model cleanup. Shared LTC уже используется существующим RectArea fill. Дневной key теперь(6,7,−3)/2: тени направлены к ближнему полу, угол/градиент у оснований стоек заметнее. Header/face сохраняют прежний localfill и native paint; canopy shade не заменяет отсутствующие foreign depth planes.
 
@@ -53,3 +53,15 @@ Scene/calls/GPU samples/CPU arrays/map estimates и exact source/harness provena
 ## Обязательная политика
 
 Ничего из Аркадии или внутренней инфраструктуры Яндекса: code/deps/repos/components/build systems/services/API/docs/credentials/tools/skills, прямо или черезagents. Только собственный проект, ordinary Git/GitHub и public open-source с проверенным происхождением и лицензией. Three MIT/Playwright Apache2/Vite MIT уже применялись; новых dependencies/fonts в этом раунде нет. Canonical title и texture art авторские. Foreign geometry changes возвращаются владельцам через локальные outputs, которые читает оркестратор. Обратные сообщения не требуются; отклонённую отправку не повторять.
+
+## Принятая печать четвёртого раунда
+
+После отдельной приёмки root импортирована полная чистая история art82→ddc4e38→9e6a6b2. Четыре SVG изменяют печать и значки, остальные прежние изображения и canonical title сохранены. Принятая спецификация public/menu/art/sources/desktop-fit-round4.json задаёт один ориентир1672×941; её диагностические unconditional CSS overrides не импортируются как общий stylesheet. Own presets/harness получают отдельные desktopPrint tokens и интерполяцию трёх десктопных узлов.
+
+На1672 header122/gap6/font46/continued32/icon56/column98, headerpadding14/copy[6,16,6,20]/leftboardextra19. Label line1.05/scaleX.89, title display.90×1.10, settings font30/icon48/scaleX.92. Mark layout370 и canonical source600×120 сохранены; измеренный native display rect(94,54.3,333,81.4) задаёт прежнему compositor единственный physical title. Native fallback/h1 сохраняются.
+
+На1280/1672/1920 own derived header86/122/148, rowfonts36.8/46/50.6, icons45.82/56/61.09 и columns75.38/98/109.31. Эти размеры согласуют крупную печать с шириной узла; mobile/narrow tokens не меняются. Внешние board/settings rects сохранены через исходную формулу physical frame; освобождённая высота header добавляется fixed action viewport:348/430/474. На1280 даже четыре строки с dynamic hints используют прокрутку; на1672/1920 четыре обычные строки помещаются. Пять строк и длинные ошибки прокручиваются, footer остаётся24px/pointer-none/tabIndex−1, focusin переносит активную кнопку в viewport.
+
+Own native affected QA проверяет actual три размера, four/five actions, friends callback без hint, New/Rules hits, keyboard Tab/Shift+Tab с пропуском disabled, Settings Enter/Escape с возвратом, обе длинные ошибки/Retry и physical↔native fallback. На1672 row top-left(109.03154,211.39032) совпадает с прототипом art9e6. Source outerframes совпадают с a081, native/physical corners≤.038px. Production game/storage/network и широкий старый titleloader/lifecycle suite не повторяются.
+
+Новый settingsPaper API/цвет не подключён и не имитируется compositor clone. Cashier geometry/руки, env builders, production App/styles/session/config/manifest/Sites не меняются. Свет, постобработка, камера и контакты сохранены из a081. Художественная приёмка остаётся открытой; аниматор остановлен, адаптив отложен.
