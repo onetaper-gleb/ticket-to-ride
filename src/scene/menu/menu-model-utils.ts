@@ -9,6 +9,7 @@ export const MENU_PALETTE = {
   cream: '#bfae92',
   plasterShade: '#978771',
   green: '#2e403b',
+  canopyPaint: '#2e403b',
   boardPaint: '#2e403b',
   leather: '#713e29',
   red: '#942e27',
@@ -78,15 +79,13 @@ export function createMenuModelKit(
 
   function material(kind: MenuMaterial): THREE.MeshStandardMaterial {
     assertAlive();
-    if (
-      kind === 'settingsPaper' &&
-      surfaceMaps.settingsPaper === undefined &&
-      overrides.settingsPaper === undefined
-    )
-      return material('paper');
+    const inheritedKind =
+      kind === 'settingsPaper' ? 'paper' : kind === 'canopyPaint' ? 'green' : undefined;
+    if (inheritedKind && surfaceMaps[kind] === undefined && overrides[kind] === undefined)
+      return material(inheritedKind);
     let result = materials.get(kind);
     if (!result) {
-      const inherited = kind === 'settingsPaper' ? material('paper') : undefined;
+      const inherited = inheritedKind ? material(inheritedKind) : undefined;
       const override = Object.fromEntries(
         Object.entries(overrides[kind] ?? {}).filter(([, value]) => value !== undefined),
       ) as MenuSurfaceOptions;
@@ -139,7 +138,7 @@ export function createMenuModelKit(
       materials.set(kind, result);
       const source =
         surfaceMaps[kind] ??
-        (kind === 'settingsPaper' ? surfaceMaps.paper : kind === 'wood' ? wood : undefined);
+        (inheritedKind ? surfaceMaps[inheritedKind] : kind === 'wood' ? wood : undefined);
       if (source) {
         const map = source.clone();
         map.colorSpace = THREE.SRGBColorSpace;
