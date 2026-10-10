@@ -265,8 +265,8 @@ function buildFacade(root: THREE.Group, kit: MenuModelKit) {
   const wall = new THREE.Shape();
   wall.moveTo(-4.8, -0.08);
   wall.lineTo(-0.86, -0.08);
-  wall.lineTo(-0.86, 1.65);
-  wall.quadraticCurveTo(0, 2.2, 0.86, 1.65);
+  wall.lineTo(-0.86, 1.8);
+  wall.quadraticCurveTo(0, 2.06, 0.86, 1.8);
   wall.lineTo(0.86, -0.08);
   wall.lineTo(1.03, -0.08);
   wall.lineTo(1.03, 2.6);
