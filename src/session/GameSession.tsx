@@ -16,6 +16,8 @@ import { tutorialCommandAllowed } from '../ui/tutorial';
 export default function GameSession() {
   const [state, setState] = useState<GameState | null>(null);
   const [difficulty, setDifficulty] = useState<BotDifficulty>('normal');
+  const difficultyRef = useRef(difficulty);
+  difficultyRef.current = difficulty;
   const [saved, setSaved] = useState<Save | null>(null);
   const [tutorialSave, setTutorialSave] = useState<Save | null>(null);
   const [tutorial, setTutorial] = useState(false);
@@ -55,23 +57,40 @@ export default function GameSession() {
       mounted = false;
     };
   }, []);
-  useEffect(() => {
-    if (!state) return;
-    const save: Save = {
-      schemaVersion: 2,
-      savedAt: new Date().toISOString(),
-      difficulty,
-      state,
-      pendingTurn,
-    };
-    if (tutorial) setTutorialSave(save);
-    else setSaved(save);
-    saveMatch(state, difficulty, tutorial ? 'tutorial' : 'current', pendingTurn).catch(() =>
-      setError(
-        'Браузер не разрешил сохранить партию. Можно продолжать играть, пока вкладка открыта.',
-      ),
-    );
-  }, [state, difficulty, tutorial, pendingTurn]);
+  const persist = useCallback(
+    (
+      next: GameState,
+      turn: TurnAcknowledgement | null,
+      nextDifficulty: BotDifficulty,
+      slot: 'current' | 'tutorial',
+    ) => {
+      const save: Save = {
+        schemaVersion: 2,
+        savedAt: new Date().toISOString(),
+        difficulty: nextDifficulty,
+        state: next,
+        pendingTurn: turn,
+      };
+      let writing: Promise<void>;
+      try {
+        writing = saveMatch(next, nextDifficulty, slot, turn);
+      } catch (reason) {
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : 'Не удалось сохранить действие. Повторите попытку.',
+        );
+        return false;
+      }
+      if (slot === 'tutorial') setTutorialSave(save);
+      else setSaved(save);
+      writing.catch(() =>
+        setError('Последнее состояние сохранено в браузере, но основное хранилище недоступно.'),
+      );
+      return true;
+    },
+    [],
+  );
   const commit = useCallback(
     (command: GameCommand, expected?: { epoch: number; revision: number }) => {
       const previous = current.current;
@@ -92,13 +111,23 @@ export default function GameSession() {
         setError(transition.error);
         return false;
       }
-      current.current = transition.state;
-      updatePendingTurn(getTurnAcknowledgement(previous, transition));
-      setState(transition.state);
+      const turn = getTurnAcknowledgement(previous, transition);
       setError(null);
+      if (
+        !persist(
+          transition.state,
+          turn,
+          difficultyRef.current,
+          tutorialMode.current ? 'tutorial' : 'current',
+        )
+      )
+        return false;
+      current.current = transition.state;
+      updatePendingTurn(turn);
+      setState(transition.state);
       return true;
     },
-    [],
+    [persist],
   );
   useEffect(() => {
     if (!state || pendingTurn || state.phase === 'finished' || state.activePlayer === 0) return;
@@ -136,17 +165,19 @@ export default function GameSession() {
     return () => window.clearTimeout(timer);
   }, [state, difficulty, commit, tutorial, pendingTurn]);
   function start(options: GameOptions, nextDifficulty: BotDifficulty) {
+    const seed =
+      options.seed?.trim() || `europe-${crypto.getRandomValues(new Uint32Array(2)).join('-')}`;
+    const next = createGame({ ...options, seed });
+    setError(null);
+    if (!persist(next, null, nextDifficulty, 'current')) return;
     sessionEpoch.current++;
     updatePendingTurn(null);
     tutorialMode.current = false;
     setTutorial(false);
-    const seed =
-      options.seed?.trim() || `europe-${crypto.getRandomValues(new Uint32Array(2)).join('-')}`;
-    const next = createGame({ ...options, seed });
     current.current = next;
+    difficultyRef.current = nextDifficulty;
     setDifficulty(nextDifficulty);
     setState(next);
-    setError(null);
   }
   function continueMatch() {
     if (!saved) return;
@@ -155,14 +186,12 @@ export default function GameSession() {
     tutorialMode.current = false;
     setTutorial(false);
     current.current = saved.state;
+    difficultyRef.current = saved.difficulty;
     setDifficulty(saved.difficulty);
     setState(saved.state);
     setError(null);
   }
   function startTutorial(savedLesson = false) {
-    sessionEpoch.current++;
-    tutorialMode.current = true;
-    setTutorial(true);
     const next =
       savedLesson && tutorialSave
         ? tutorialSave.state
@@ -171,15 +200,20 @@ export default function GameSession() {
             playerCount: 2,
             playerName: 'Ваша компания',
           });
-    current.current = next;
-    updatePendingTurn(
+    const turn =
       savedLesson && tutorialSave
         ? restoreTurnAcknowledgement(next, tutorialSave.pendingTurn)
-        : null,
-    );
+        : null;
+    setError(null);
+    if (!persist(next, turn, 'easy', 'tutorial')) return;
+    sessionEpoch.current++;
+    tutorialMode.current = true;
+    setTutorial(true);
+    current.current = next;
+    updatePendingTurn(turn);
+    difficultyRef.current = 'easy';
     setState(next);
     setDifficulty('easy');
-    setError(null);
   }
   return (
     <App
@@ -207,8 +241,18 @@ export default function GameSession() {
           expected.sessionId === sessionEpoch.current &&
           pendingTurnRef.current?.revision === expected.revision &&
           current.current?.revision === expected.revision
-        )
+        ) {
+          if (
+            !persist(
+              current.current,
+              null,
+              difficultyRef.current,
+              tutorialMode.current ? 'tutorial' : 'current',
+            )
+          )
+            return;
           updatePendingTurn(null);
+        }
       }}
       onMenu={() => {
         sessionEpoch.current++;
