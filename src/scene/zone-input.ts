@@ -1,6 +1,6 @@
 import type { Observation } from '../shared/types';
 import type { TableInteraction, TableView } from './interaction';
-import { tableOverviewFit } from './table-layout';
+import { OPTION_GESTURE_THRESHOLD, COLLECTION_GESTURE_THRESHOLD } from './vector-motion';
 
 export type FocusZone = 'neutral' | 'deck' | 'hand' | 'goals' | 'paper' | 'dock';
 export type OptionZone = Exclude<FocusZone, 'neutral'>;
@@ -59,29 +59,6 @@ export function interactionAllowed(
   if (interaction.kind === 'control' && interaction.id === 'plan') return policy.boardAllowed;
   const zone = interactionZone(interaction, view);
   return zone ? zoneAllowed(zone, policy) : policy.boardAllowed;
-}
-
-// The region chooses a collection. Individual choices never depend on a hidden hit point.
-export function pointerZone(x: number, y: number, previous: FocusZone, aspect = 16 / 9): FocusZone {
-  const fit = tableOverviewFit(aspect);
-  x = Math.max(0, Math.min(1, 0.5 + (((x - 0.5) * aspect) / (16 / 9)) * fit));
-  y = Math.max(0, Math.min(1, 0.5 + (y - 0.5) * fit));
-  const bounds: Record<OptionZone, [number, number, number, number]> = {
-    deck: [0, 0.32, 0.27, 0.7],
-    hand: [0.32, 0.63, 0.76, 1],
-    goals: [0, 0.32, 0.74, 1],
-    paper: [0.71, 1, 0.24, 0.7],
-    dock: [0.63, 1, 0.74, 1],
-  };
-  if (previous !== 'neutral') {
-    const [left, right, top, bottom] = bounds[previous];
-    const margin = 0.035;
-    if (x >= left - margin && x <= right + margin && y >= top - margin && y <= bottom + margin)
-      return previous;
-  }
-  for (const [zone, [left, right, top, bottom]] of Object.entries(bounds))
-    if (x >= left && x <= right && y >= top && y <= bottom) return zone as OptionZone;
-  return 'neutral';
 }
 
 export function buildZoneLayouts(observation: Observation, view: TableView): ZoneLayouts {
@@ -174,21 +151,53 @@ export function stepOption(
   );
 }
 
-export type RelativeMovement = { x: number; y: number };
-export const emptyMovement = (): RelativeMovement => ({ x: 0, y: 0 });
-export function accumulateMovement(
-  movement: RelativeMovement,
-  dx: number,
-  dy: number,
-  threshold = 64,
-): { movement: RelativeMovement; direction: Direction | null } {
-  const x = (movement.x && dx && Math.sign(movement.x) !== Math.sign(dx) ? 0 : movement.x) + dx;
-  const y = (movement.y && dy && Math.sign(movement.y) !== Math.sign(dy) ? 0 : movement.y) + dy;
-  if (Math.max(Math.abs(x), Math.abs(y)) < threshold)
-    return { movement: { x, y }, direction: null };
-  const direction = Math.abs(x) >= Math.abs(y) ? (x < 0 ? 'left' : 'right') : y < 0 ? 'up' : 'down';
-  // Consume the whole gesture, including at an edge. Reversal never inherits stale displacement.
-  return { movement: emptyMovement(), direction };
+const collectionPositions: Record<FocusZone, [number, number]> = {
+  neutral: [0, 0],
+  deck: [-1, 0],
+  goals: [-1, 1],
+  hand: [0, 1],
+  paper: [1, 0],
+  dock: [1, 1],
+};
+
+export function neighborFocusZone(
+  zone: FocusZone,
+  direction: Direction,
+  policy?: InputPolicy,
+): FocusZone {
+  const horizontal = direction === 'left' || direction === 'right';
+  const sign = direction === 'left' || direction === 'up' ? -1 : 1;
+  const [x, y] = collectionPositions[zone];
+  return (
+    (Object.keys(collectionPositions) as FocusZone[])
+      .filter((candidate) => zoneAllowed(candidate, policy) && candidate !== zone)
+      .map((candidate) => {
+        const [cx, cy] = collectionPositions[candidate];
+        const forward = (horizontal ? cx - x : cy - y) * sign;
+        const side = Math.abs(horizontal ? cy - y : cx - x);
+        return { candidate, forward, side };
+      })
+      .filter(({ forward, side }) => forward > 0 && side <= forward * 1.25)
+      .sort((a, b) => a.forward + a.side * 1.5 - (b.forward + b.side * 1.5))[0]?.candidate ?? zone
+  );
+}
+
+export function gestureThresholds(
+  zone: FocusZone,
+  selected: ZoneOption | null,
+  layouts: ZoneLayouts,
+  policy?: InputPolicy,
+): Record<Direction, number> {
+  return Object.fromEntries(
+    (['left', 'right', 'up', 'down'] as Direction[]).map((direction) => [
+      direction,
+      zone !== 'neutral' && selected && stepOption(layouts[zone], selected, direction) !== selected
+        ? OPTION_GESTURE_THRESHOLD
+        : neighborFocusZone(zone, direction, policy) !== zone
+          ? COLLECTION_GESTURE_THRESHOLD
+          : Infinity,
+    ]),
+  ) as Record<Direction, number>;
 }
 
 export function canReleasePress(

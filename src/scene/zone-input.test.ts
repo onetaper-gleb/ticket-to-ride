@@ -1,16 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { createGame, getObservation } from '../core';
 import type { TableView } from './interaction';
-import { PerspectiveCamera, Vector3 } from 'three';
-import { TABLE_CAMERA, TABLE_LAYOUT, tableOverviewFit } from './table-layout';
+import { emptyGesture, feedGesture } from './vector-motion';
 import {
-  accumulateMovement,
   buildZoneLayouts,
   canReleasePress,
-  emptyMovement,
+  gestureThresholds,
   interactionAllowed,
+  neighborFocusZone,
   permittedPointerZone,
-  pointerZone,
   reconcileOption,
   returnFocusZone,
   stepOption,
@@ -19,50 +17,6 @@ import {
 } from './zone-input';
 
 describe('table regions and relative selection', () => {
-  it('keeps the neutral table free and gives borders a hysteresis band', () => {
-    expect(pointerZone(0.5, 0.5, 'neutral')).toBe('neutral');
-    expect(pointerZone(0.2, 0.5, 'neutral')).toBe('deck');
-    expect(pointerZone(0.34, 0.5, 'deck')).toBe('deck');
-    expect(pointerZone(0.4, 0.5, 'deck')).toBe('neutral');
-    expect(pointerZone(0.2, 0.9, 'neutral')).toBe('goals');
-    expect(pointerZone(0.5, 0.9, 'neutral')).toBe('hand');
-    expect(pointerZone(0.9, 0.9, 'neutral')).toBe('dock');
-  });
-
-  it.each([16 / 9, 16 / 10, 21 / 9, 814 / 914])(
-    'reaches physical controls with aspect %s',
-    (aspect) => {
-      const camera = new PerspectiveCamera(43, aspect, 0.1, 180);
-      camera.position.fromArray(TABLE_CAMERA.overview.position);
-      const target = new Vector3().fromArray(TABLE_CAMERA.overview.target);
-      camera.position.sub(target).multiplyScalar(tableOverviewFit(aspect)).add(target);
-      camera.lookAt(target);
-      camera.updateMatrixWorld(true);
-      const screen = (x: number, z: number) => {
-        const p = new Vector3(x, -0.75, z).project(camera);
-        return { x: (p.x + 1) / 2, y: (1 - p.y) / 2 };
-      };
-      const bell = screen(TABLE_LAYOUT.bell.x, TABLE_LAYOUT.bell.z);
-      for (const previous of ['neutral', 'hand', 'paper'] as const)
-        expect(pointerZone(bell.x, bell.y, previous, aspect)).toBe('dock');
-      const tickets = screen(TABLE_LAYOUT.goals.x, TABLE_LAYOUT.goals.z);
-      expect(pointerZone(tickets.x, tickets.y, 'deck', aspect)).toBe('goals');
-    },
-  );
-
-  it('accumulates slow movement, ignores small jitter and resets after edge gestures', () => {
-    let movement = emptyMovement();
-    for (let i = 0; i < 63; i++) {
-      const next = accumulateMovement(movement, 1, 0);
-      expect(next.direction).toBeNull();
-      movement = next.movement;
-    }
-    const step = accumulateMovement(movement, 1, 0);
-    expect(step.direction).toBe('right');
-    expect(accumulateMovement(step.movement, -5, 0).direction).toBeNull();
-    expect(accumulateMovement({ x: 60, y: 0 }, -6, 0).movement.x).toBe(-6);
-  });
-
   const choices: ZoneOption[] = Array.from({ length: 6 }, (_, index) => ({
     interaction: { kind: 'market', id: String(index) },
     enabled: index !== 0,
@@ -137,6 +91,76 @@ describe('table regions and relative selection', () => {
     expect(returnFocusZone('paper', policy)).toBe('goals');
     expect(returnFocusZone('hand')).toBe('hand');
     expect(returnFocusZone('hand', { allowedZones: ['deck'], boardAllowed: false })).toBe('deck');
+  });
+
+  it('reaches permitted collections by direction without passing through forbidden ones', () => {
+    const tickets: InputPolicy = {
+      allowedZones: ['goals', 'paper'],
+      boardAllowed: true,
+      returnZone: 'goals',
+    };
+    expect(neighborFocusZone('goals', 'right', tickets)).toBe('paper');
+    expect(neighborFocusZone('paper', 'left', tickets)).toBe('goals');
+    expect(neighborFocusZone('goals', 'left', tickets)).toBe('goals');
+    expect(neighborFocusZone('neutral', 'left')).toBe('deck');
+    expect(neighborFocusZone('neutral', 'right')).toBe('paper');
+    expect(neighborFocusZone('neutral', 'down')).toBe('hand');
+    expect(neighborFocusZone('hand', 'left')).toBe('goals');
+    expect(neighborFocusZone('hand', 'right')).toBe('dock');
+    expect(neighborFocusZone('hand', 'up')).toBe('neutral');
+  });
+
+  it('requires a deliberate longer gesture to leave the selected collection at its edge', () => {
+    const ticketChoices: ZoneOption[] = ['one', 'two', 'three', 'four'].map((id, column) => ({
+      interaction: { kind: 'objective', id },
+      enabled: true,
+      column,
+      row: 0,
+    }));
+    const layouts = { deck: [], hand: [], goals: ticketChoices, paper: [], dock: [] };
+    const policy: InputPolicy = { allowedZones: ['goals', 'paper'], boardAllowed: true };
+    expect(gestureThresholds('goals', ticketChoices[0]!, layouts, policy).right).toBe(48);
+    expect(gestureThresholds('goals', ticketChoices[3]!, layouts, policy).right).toBe(144);
+    expect(gestureThresholds('goals', ticketChoices[0]!, layouts, policy).left).toBe(Infinity);
+    expect(gestureThresholds('neutral', null, layouts).right).toBe(144);
+  });
+
+  it('crosses a large hand consistently for one long event or many short events', () => {
+    const cards: ZoneOption[] = Array.from({ length: 50 }, (_, column) => ({
+      interaction: { kind: 'card', id: String(column) },
+      enabled: true,
+      column,
+      row: 0,
+    }));
+    const layouts = { deck: [], hand: cards, goals: [], paper: [], dock: [] };
+    const policy: InputPolicy = { allowedZones: ['hand'], boardAllowed: false };
+    const run = (deltas: number[]) => {
+      let gesture = emptyGesture();
+      let selected = cards[0]!;
+      for (const dx of deltas) {
+        let next = feedGesture(
+          gesture,
+          dx,
+          0,
+          10,
+          gestureThresholds('hand', selected, layouts, policy),
+        );
+        while (next.direction) {
+          selected = stepOption(cards, selected, next.direction);
+          next = feedGesture(
+            next.state,
+            0,
+            0,
+            10,
+            gestureThresholds('hand', selected, layouts, policy),
+          );
+        }
+        gesture = next.state;
+      }
+      return selected.interaction.id;
+    };
+    expect(run([48 * 45])).toBe('45');
+    expect(run(Array(45).fill(48))).toBe('45');
   });
 
   it('applies the same tutorial limits to logical and accessible interactions', () => {
