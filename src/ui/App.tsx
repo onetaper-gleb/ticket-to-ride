@@ -701,7 +701,7 @@ export default function App(props: AppProps) {
       `В руке ${observation.self.hand.length} карт. Счёт: ${observation.self.score}.`,
     ];
     controls.length = 0;
-    controls.push({ id: 'endTurn', label: 'Завершить ход', enabled: true });
+    controls.push({ id: 'endTurn', label: 'Завершить ход', enabled: !props.busy });
     if (props.error) controls.push({ id: 'clearError', label: 'Понятно', enabled: true });
   }
   const inputPolicy =

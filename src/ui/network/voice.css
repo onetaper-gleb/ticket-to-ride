@@ -1,0 +1,81 @@
+.room-voice {
+  color: #eee2c5;
+  background: #172e2dd9;
+  border: 1px solid #b49b65;
+  border-radius: 0.6rem;
+  padding: 1rem;
+  font:
+    0.875rem/1.45 'IBM Plex Sans',
+    sans-serif;
+}
+.room-voice-heading,
+.room-voice-peer-title,
+.room-voice-buttons,
+.room-voice-peer-controls {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.room-voice-heading,
+.room-voice-peer-title {
+  justify-content: space-between;
+}
+.room-voice p {
+  margin: 0.45rem 0;
+}
+.room-voice-note {
+  color: #c7c7b4;
+  font-size: 0.8rem;
+}
+.room-voice-error {
+  color: #ffd49d;
+}
+.room-voice button {
+  padding: 0.45rem 0.65rem;
+  color: #172e2d;
+  background: #e2cca0;
+  border: 1px solid #d6bb83;
+  border-radius: 0.3rem;
+  cursor: pointer;
+  font: inherit;
+}
+.room-voice button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.room-voice button[aria-pressed='true'] {
+  background: #96c7b6;
+}
+.room-voice button:focus-visible,
+.room-voice input:focus-visible {
+  outline: 2px solid #ffe4a1;
+  outline-offset: 3px;
+}
+.room-voice-peers {
+  list-style: none;
+  padding: 0;
+  margin: 0.8rem 0 0;
+}
+.room-voice-peers li {
+  padding: 0.7rem 0;
+  border-top: 1px solid #78918366;
+}
+.room-voice-peers li[data-speaking='true'] .room-voice-peer-title {
+  color: #aff0b9;
+}
+.room-voice-peer-controls label {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.room-voice input[type='range'] {
+  width: 7rem;
+  accent-color: #e2cca0;
+}
+.room-voice-diagnostics {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}

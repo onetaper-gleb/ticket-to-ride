@@ -2250,3 +2250,42 @@ input[type='checkbox'] {
   color: #575f52;
   font-size: 14px;
 }
+/* A room opens above the physical table; voice remains mounted while it is closed. */
+.network-experience {
+  min-height: 100dvh;
+}
+.network-room-surface {
+  height: 100dvh;
+  overflow: auto;
+}
+.network-room-surface[hidden] {
+  display: none;
+}
+.network-room-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: #0b1617eb;
+}
+.network-room-surface .network-panel {
+  max-height: none;
+}
+.network-room-close {
+  display: block;
+  margin: 18px auto 0;
+  padding: 12px 22px;
+  border: 1px solid #b59661;
+  border-radius: 8px;
+  color: #eee2c6;
+  background: #202824;
+  font: inherit;
+  cursor: pointer;
+}
+.network-room-close:focus-visible {
+  outline: 3px solid #e0b960;
+  outline-offset: 3px;
+}
+.network-voice-container {
+  width: min(100% - 32px, 900px);
+  margin: 0 auto 24px;
+}
