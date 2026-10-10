@@ -159,6 +159,8 @@ export interface NetworkClientState {
   pendingCommand: CommandEnvelope | null;
   pendingRequest: string | null;
   error: string | null;
+  /** Accepted ack plus its authoritative snapshot have both arrived. UI may clear its draft. */
+  confirmedCommandId?: string | null;
 }
 export interface NetworkClientApi {
   getState(): NetworkClientState;

@@ -111,6 +111,7 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
   let authenticated = false;
   let acknowledgedRevision: number | null = null;
   let acknowledgedRoomRevision: number | null = null;
+  let acknowledgedCommandId: string | null = null;
   let acknowledgedRoomRequestRevision: number | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let responseTimer: ReturnType<typeof setTimeout> | null = null;
@@ -260,6 +261,7 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
     )
       return;
     let pendingCommand = state.pendingCommand;
+    let confirmedCommandId = state.confirmedCommandId;
     if (
       acknowledgedRevision !== null &&
       acknowledgedRoomRevision !== null &&
@@ -267,6 +269,8 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
       (snapshot.observation?.revision ?? -1) >= acknowledgedRevision
     ) {
       pendingCommand = null;
+      confirmedCommandId = acknowledgedCommandId;
+      acknowledgedCommandId = null;
       acknowledgedRevision = null;
       acknowledgedRoomRevision = null;
       if (responseTimer) clearTimeout(responseTimer);
@@ -281,7 +285,12 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
       if (responseTimer) clearTimeout(responseTimer);
       responseTimer = null;
     }
-    publish({ snapshot, pendingCommand, pendingRequest: pendingRoom?.requestId ?? null });
+    publish({
+      snapshot,
+      pendingCommand,
+      confirmedCommandId,
+      pendingRequest: pendingRoom?.requestId ?? null,
+    });
     persist();
   }
   function receive(packet: ServerPacket) {
@@ -341,6 +350,7 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
     if (packet.type === 'snapshot') applySnapshot(packet.snapshot);
     if (packet.type === 'ack' && packet.ack.commandId === state.pendingCommand?.commandId) {
       if (packet.ack.accepted) {
+        acknowledgedCommandId = packet.ack.commandId;
         acknowledgedRevision = packet.ack.revision;
         acknowledgedRoomRevision = packet.ack.roomRevision;
         if (
@@ -349,12 +359,14 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
         ) {
           acknowledgedRevision = null;
           acknowledgedRoomRevision = null;
-          publish({ pendingCommand: null, error: null });
+          publish({ pendingCommand: null, confirmedCommandId: packet.ack.commandId, error: null });
+          acknowledgedCommandId = null;
           if (responseTimer) clearTimeout(responseTimer);
           responseTimer = null;
         }
         send({ type: 'sync' });
       } else {
+        acknowledgedCommandId = null;
         acknowledgedRevision = null;
         acknowledgedRoomRevision = null;
         publish({ pendingCommand: null, error: packet.ack.message ?? 'Сервер отклонил действие.' });
