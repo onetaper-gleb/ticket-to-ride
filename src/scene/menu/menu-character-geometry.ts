@@ -16,7 +16,13 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { MENU_CASHIER_PALETTE } from './menu-character-materials';
 
 type Point = [number, number, number];
-type Ring = { y: number; width: number; front: number; back?: number; z?: number };
+type Ring = {
+  y: number;
+  width: number;
+  front: number;
+  back?: number;
+  z?: number;
+};
 
 const CASHIER_STYLE = {
   name: 'Билетная кассирша',
@@ -158,7 +164,11 @@ function characterFactory(parent: THREE.Group) {
     const key = `${color}:${roughness}`;
     let result = materials.get(key);
     if (!result) {
-      result = new THREE.MeshStandardMaterial({ color, roughness, metalness: 0 });
+      result = new THREE.MeshStandardMaterial({
+        color,
+        roughness,
+        metalness: 0,
+      });
       result.name = `Кассирша: ${color}`;
       const role = Object.entries(MENU_CASHIER_PALETTE).find(([, value]) => value === color)?.[0];
       if (role) result.userData.menuCashierRole = role;
@@ -210,8 +220,8 @@ function sculptedFace() {
   const profile = [
     [-1, 0, 0, 0],
     [-0.92, 0.36, 0.43, 0.34],
-    [-0.76, 0.64, 0.67, 0.54],
-    [-0.5, 0.86, 0.77, 0.74],
+    [-0.76, 0.7, 0.67, 0.54],
+    [-0.5, 0.91, 0.77, 0.74],
     [-0.18, 1, 0.81, 0.87],
     [0.18, 1, 0.79, 0.92],
     [0.52, 0.94, 0.74, 0.87],
@@ -245,13 +255,13 @@ function sculptedFace() {
   };
   const gaussian = (x: number, y: number, cx: number, cy: number, rx: number, ry: number) =>
     Math.exp(-(((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2));
-  const eyeX = w * 0.41;
-  const eyeY = 0.15;
-  const eyeWidth = 0.255;
-  const eyeHeight = 0.17;
-  const mouthY = (x: number) => -0.8 + 0.12 * (x / 0.38) ** 2;
+  const eyeX = w * 0.38;
+  const eyeY = 0.065;
+  const eyeWidth = 0.205;
+  const eyeHeight = 0.205;
+  const mouthY = (x: number) => -0.92 + 0.12 * (x / 0.38) ** 2;
   const noseWidth = style.nose[0] * 0.96;
-  const noseY = -0.18;
+  const noseY = -0.28;
   const noseHeight = style.nose[1] * 0.77;
   const displacement = (x: number, y: number) => {
     // Wide cheek and jaw fields overlap the muzzle instead of forming circular cheek objects.
@@ -268,7 +278,7 @@ function sculptedFace() {
       result += 0.06 * gaussian(x, y, side * eyeX, eyeY + 0.24, 0.38, 0.15);
     }
     // Bridge, broad tip, alae and columella all belong to the same skin mesh.
-    result += 0.095 * gaussian(x, y, 0, 0.12, noseWidth * 0.69, 0.44);
+    result += 0.095 * gaussian(x, y, 0, 0.02, noseWidth * 0.69, 0.44);
     result += (style.nose[2] + 0.1) * gaussian(x, y, 0, noseY, noseWidth, noseHeight);
     for (const side of [-1, 1])
       result +=
@@ -449,9 +459,9 @@ function sweptFringe(face: FaceForm): THREE.BufferGeometry {
   shape.moveTo(-1.08, 0.32);
   shape.bezierCurveTo(-1.12, 0.72, -1.05, 1.36, -0.61, 1.58);
   shape.bezierCurveTo(-0.27, 1.59, 0.53, 1.59, 0.92, 1.3);
-  shape.quadraticCurveTo(0.98, 1.04, 0.86, 1.02);
-  shape.bezierCurveTo(0.62, 0.99, 0.12, 1.04, -0.08, 0.88);
-  shape.bezierCurveTo(-0.34, 0.61, -0.55, 0.24, -0.83, 0.27);
+  shape.quadraticCurveTo(0.98, 1.04, 0.86, 0.98);
+  shape.bezierCurveTo(0.62, 0.93, 0.12, 0.95, -0.08, 0.88);
+  shape.bezierCurveTo(-0.36, 0.69, -0.55, 0.24, -0.83, 0.27);
   shape.quadraticCurveTo(-0.96, 0.28, -1.08, 0.32);
   shape.closePath();
   const extrusion = new THREE.ExtrudeGeometry(shape, {
@@ -585,13 +595,13 @@ function buildCashierHead(person: THREE.Group, factory: Factory) {
   const head = new THREE.Group();
   // Fit the broad head to the reference frame while retaining overlap with the neck.
   head.position
-    .set(-0.07, 4.05, 0.04)
+    .set(-0.12, 4.05, 0.04)
     .sub(MENU_NECK_PIVOT)
     .multiply(MENU_HEAD_SCALE)
     .add(MENU_NECK_PIVOT);
   head.position.y += MENU_HEAD_LIFT;
   head.scale.copy(MENU_HEAD_SCALE);
-  head.rotation.set(-0.075, -0.055, 0.05);
+  head.rotation.set(-0.075, -0.4, 0.05);
   person.add(head);
   const w = style.headWidth;
   const h = style.headHeight;
@@ -638,7 +648,7 @@ function buildCashierHead(person: THREE.Group, factory: Factory) {
     );
     const pupilX = cx - side * 0.012;
     mesh(
-      facePatch(face, [pupilX, cy - 0.009], [0.125, 0.135], 0.026),
+      facePatch(face, [pupilX, cy - 0.009], [0.132, 0.154], 0.026),
       MENU_CASHIER_PALETTE.pupil,
       [0, 0, 0],
       head,
@@ -730,9 +740,9 @@ function buildCashierClothes(person: THREE.Group, factory: Factory) {
         { y: 0.57, width: w * 0.9, front: 0.86, back: 0.7, z: -0.12 },
         { y: 1.47, width: w, front: 0.88, back: 0.74, z: -0.1 },
         { y: 2.42, width: w * 0.99, front: 0.81, back: 0.69, z: -0.06 },
-        { y: 2.95, width: w * 0.94, front: 0.64, back: 0.53 },
-        { y: 3.1, width: w * 0.67, front: 0.4, back: 0.37, z: 0.02 },
-        { y: 3.18, width: 0.49, front: 0.34, back: 0.33, z: 0.03 },
+        { y: 3.125, width: w * 0.97, front: 0.64, back: 0.53 },
+        { y: 3.2, width: w * 0.67, front: 0.4, back: 0.37, z: 0.02 },
+        { y: 3.25, width: 0.49, front: 0.34, back: 0.33, z: 0.03 },
       ],
       2.6,
     ),
