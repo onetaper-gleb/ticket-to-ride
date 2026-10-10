@@ -337,7 +337,7 @@ function addLocomotive(batch: TrainBatch) {
     addBox(batch, 'steel', [0.084, 0.04, 0.02], [-0.293, BOILER_Y + y, 1.026], 0.006);
     addCylinder(batch, 'steel', 0.02, 0.02, 0.052, [-0.322, BOILER_Y + y, 1.037], [0, 0, 0], 12);
   }
-  addCylinder(batch, 'steel', 0.03, 0.03, 0.025, [0, BOILER_Y - 0.13, 1.072], [HALF_PI, 0, 0], 12);
+  addCylinder(batch, 'steel', 0.03, 0.03, 0.04, [0, BOILER_Y - 0.13, 1.0645], [HALF_PI, 0, 0], 12);
   addBox(batch, 'brass', [0.098, 0.017, 0.018], [0.025, BOILER_Y - 0.13, 1.09], 0.006);
   addCylinder(batch, 'steel', 0.022, 0.022, 0.018, [0, BOILER_Y - 0.13, 1.09], [HALF_PI, 0, 0], 12);
 
@@ -534,7 +534,7 @@ function addCab(batch: TrainBatch) {
     for (const z of [-1.06, -0.48]) {
       addBox(batch, 'green', [0.065, 0.47, 0.075], [x, 1.097, z]);
     }
-    addBox(batch, 'glassWarm', [0.018, 0.41, 0.45], [side * 0.425, 1.098, -0.77], 0.006);
+    addBox(batch, 'glassWarm', [0.018, 0.41, 0.45], [side * 0.45, 1.098, -0.77], 0.006);
     addWindowFrame(batch, [0.508, 0.474], [0.446, 0.406], 0.0465, [side * 0.43925, 1.098, -0.77]);
     addBox(batch, 'cream', [0.027, 0.41, 0.024], [side * 0.449, 1.098, -0.76]);
     addBox(batch, 'steel', [0.19, 0.06, 0.36], [side * 0.392, 0.455, -0.77], 0.012);
@@ -575,7 +575,7 @@ function addCoach(batch: TrainBatch) {
         1.035,
         COACH_Z + z,
       ]);
-      addBox(batch, 'glassWarm', [0.016, 0.354, 0.336], [side * 0.4, 1.035, COACH_Z + z], 0.006);
+      addBox(batch, 'glassWarm', [0.016, 0.354, 0.336], [side * 0.45, 1.035, COACH_Z + z], 0.006);
       addBox(batch, 'cream', [0.025, 0.354, 0.02], [side * 0.449, 1.035, COACH_Z + z]);
     }
     for (const z of [-0.985, -0.5, 0, 0.5, 0.985]) {
