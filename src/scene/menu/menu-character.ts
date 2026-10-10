@@ -23,6 +23,9 @@ export type MenuCashier = {
 };
 
 const HAND_SCALE = 0.16;
+const TICKET_WIDTH = 1.1;
+const TICKET_HEIGHT = 2.1;
+const TICKET_THICKNESS = 0.006;
 
 /** The menu pinch uses positive finger flexion in the frozen rig's local X axis. */
 function setTicketPinch(hand: THREE.Group) {
@@ -206,8 +209,17 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
   getHandRig(right)!.wrist.add(ticketGrip);
   ticketGrip.position.set(0.2854797512, 0.8281042599, 0.4100078096);
   ticketGrip.quaternion.set(0.6205496137, -0.0243775746, -0.0307664825, 0.7831840999).normalize();
-  const ticketGeometry = new THREE.BoxGeometry(0.76, 1.54, 0.006);
-  ticketGeometry.translate(0, 0.77, 0);
+  // Tilt within the paper plane and seat the lower edge as the hand reaches across the counter.
+  ticketGrip.quaternion.multiply(
+    new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -0.2),
+  );
+  ticketGrip.position.add(
+    new THREE.Vector3(-0.16, -0.09, 0)
+      .multiplyScalar(ticketReach)
+      .applyQuaternion(ticketGrip.quaternion),
+  );
+  const ticketGeometry = new THREE.BoxGeometry(TICKET_WIDTH, TICKET_HEIGHT, TICKET_THICKNESS);
+  ticketGeometry.translate(0, TICKET_HEIGHT / 2, 0);
   const ticket = new THREE.Mesh(ticketGeometry, materials.paper);
   ticket.name = 'neutral cashier ticket — replace print after art handoff';
   ticket.castShadow = true;
