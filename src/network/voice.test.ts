@@ -103,9 +103,11 @@ function fixture(self = 'a', allowTestTone = false) {
     pendingCommand: null,
     pendingRequest: null,
     error: null,
+    intentEpoch: 0,
   };
   const subscribers = new Set<() => void>();
   const voiceSubscribers = new Set<(fromId: string, signal: VoiceSignal) => void>();
+  const lifecycle = new EventTarget();
   const sent: Array<{ targetId: string; signal: VoiceSignal }> = [];
   const client = {
     getState: () => current,
@@ -168,6 +170,10 @@ function fixture(self = 'a', allowTestTone = false) {
     createStream: (tracks) =>
       ({ getTracks: () => tracks, getAudioTracks: () => tracks }) as unknown as MediaStream,
     sessionId: () => `local-${sessionNumber++}`,
+    onPageHide: (listener) => {
+      lifecycle.addEventListener('pagehide', listener);
+      return () => lifecycle.removeEventListener('pagehide', listener);
+    },
   };
   const voice = createRoomVoice(client, { environment: env, allowTestTone });
   controllers.push(voice);
@@ -194,6 +200,7 @@ function fixture(self = 'a', allowTestTone = false) {
     remote,
     subscribers,
     voiceSubscribers,
+    lifecycle,
     update: (state: NetworkClientState) => {
       current = state;
       for (const listener of subscribers) listener();
@@ -259,6 +266,76 @@ describe('room voice lifecycle and authenticated signaling', () => {
     expect(f.subscribers.size).toBe(0);
     expect(f.voiceSubscribers.size).toBe(0);
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('stops active capture, peers and audio synchronously on pagehide before passive cleanup', async () => {
+    const f = fixture();
+    f.handshake();
+    const media = makeStream();
+    vi.mocked(f.env.getUserMedia).mockResolvedValue(media.stream);
+    await f.voice.setMicrophoneEnabled(true);
+    const publication = vi.fn();
+    f.voice.subscribe(publication);
+    const removeListener = vi.spyOn(f.lifecycle, 'removeEventListener');
+
+    f.lifecycle.dispatchEvent(new Event('pagehide'));
+
+    expect(media.track.stop).toHaveBeenCalledOnce();
+    expect(f.pcs[0]?.close).toHaveBeenCalledOnce();
+    expect(f.context.close).toHaveBeenCalledOnce();
+    expect(f.source.disconnect).toHaveBeenCalledOnce();
+    expect(f.subscribers.size).toBe(0);
+    expect(f.voiceSubscribers.size).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+    expect(f.voice.getState()).toMatchObject({
+      microphoneEnabled: false,
+      available: false,
+      peers: [],
+    });
+    expect(removeListener).toHaveBeenCalledWith('pagehide', expect.any(Function));
+    expect(publication).not.toHaveBeenCalled();
+
+    // A later React cleanup or repeated exit event must not stop resources a second time.
+    f.voice.dispose();
+    f.lifecycle.dispatchEvent(new Event('pagehide'));
+    expect(media.track.stop).toHaveBeenCalledOnce();
+    expect(f.pcs[0]?.close).toHaveBeenCalledOnce();
+    expect(f.context.close).toHaveBeenCalledOnce();
+  });
+
+  it('stops a pending permission result after pagehide without publishing or reopening peers', async () => {
+    const f = fixture();
+    f.handshake();
+    let resolve!: (stream: MediaStream) => void;
+    vi.mocked(f.env.getUserMedia).mockReturnValue(
+      new Promise((done) => {
+        resolve = done;
+      }),
+    );
+    const enabling = f.voice.setMicrophoneEnabled(true);
+    const publication = vi.fn();
+    f.voice.subscribe(publication);
+
+    f.lifecycle.dispatchEvent(new Event('pagehide'));
+    expect(f.pcs[0]?.close).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+    const sentBeforeResult = f.sent.length;
+    const late = makeStream();
+    resolve(late.stream);
+    await enabling;
+    await flush();
+
+    expect(late.track.stop).toHaveBeenCalledOnce();
+    expect(publication).not.toHaveBeenCalled();
+    expect(f.sent).toHaveLength(sentBeforeResult);
+    expect(f.pcs).toHaveLength(1);
+    expect(f.voice.getState()).toMatchObject({
+      microphoneEnabled: false,
+      requestingMicrophone: false,
+      peers: [],
+    });
+    f.voice.dispose();
+    expect(late.track.stop).toHaveBeenCalledOnce();
   });
 
   it('mutes the existing track without reopening permission, then stops media on disconnect', async () => {

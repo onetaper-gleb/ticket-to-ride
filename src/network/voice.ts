@@ -63,6 +63,7 @@ export interface VoiceEnvironment {
   createAudioContext(): AudioContext;
   createStream(tracks: MediaStreamTrack[]): MediaStream;
   sessionId(): string;
+  onPageHide?(listener: () => void): () => void;
 }
 export interface RoomVoiceOptions {
   iceServers?: RTCIceServer[];
@@ -132,6 +133,10 @@ const browserEnvironment = (): VoiceEnvironment => ({
   createAudioContext: () => new AudioContext(),
   createStream: (tracks) => new MediaStream(tracks),
   sessionId: () => crypto.randomUUID(),
+  onPageHide: (listener) => {
+    window.addEventListener('pagehide', listener);
+    return () => window.removeEventListener('pagehide', listener);
+  },
 });
 const microphoneError = (error: unknown): string => {
   const name = error instanceof Error ? error.name : '';
@@ -847,6 +852,18 @@ export function createRoomVoice(
   };
   const unsubscribeNetwork = client.subscribe(syncMembership);
   const unsubscribeVoice = client.subscribeVoice(receive);
+  let unsubscribePageHide = () => {};
+  const dispose = () => {
+    if (disposed) return;
+    unsubscribePageHide();
+    unsubscribeNetwork();
+    unsubscribeVoice();
+    cleanupRoom();
+    disposed = true;
+    listeners.clear();
+  };
+  // Browser exit must stop capture synchronously, before a React passive cleanup runs.
+  unsubscribePageHide = env.onPageHide?.(dispose) ?? (() => {});
   syncMembership();
 
   return {
@@ -970,13 +987,6 @@ export function createRoomVoice(
       }
       await Promise.all([...peers.values()].map(tryPlayback));
     },
-    dispose: () => {
-      if (disposed) return;
-      unsubscribeNetwork();
-      unsubscribeVoice();
-      cleanupRoom();
-      disposed = true;
-      listeners.clear();
-    },
+    dispose,
   };
 }
