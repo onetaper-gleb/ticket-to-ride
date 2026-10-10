@@ -129,6 +129,8 @@ export function createMenuModelKit(
     kind: MenuMaterial,
     name: string,
   ) {
+    assertAlive();
+    geometries.add(geometry);
     const result = meshWithSurface(parent, geometry, material(kind), name);
     result.castShadow = kind !== 'warm' && kind !== 'sky';
     return result;
@@ -160,6 +162,7 @@ export function createMenuModelKit(
     transparent = true,
   ) {
     assertAlive();
+    geometries.add(geometry);
     const key = `${kind}:${source.uuid}:${transparent}`;
     let surface = mappedMaterials.get(key);
     if (!surface) {
@@ -187,7 +190,9 @@ export function createMenuModelKit(
       position: MenuPoint = [0, 0, 0],
       rotation: MenuPoint = [0, 0, 0],
     ) {
+      assertAlive();
       const part = geometry.index ? geometry.toNonIndexed() : geometry.clone();
+      geometries.add(part);
       geometry.dispose();
       part.applyMatrix4(
         new THREE.Matrix4().compose(
@@ -201,10 +206,16 @@ export function createMenuModelKit(
       pieces.set(kind, list);
     }
     function flush() {
+      assertAlive();
       for (const [kind, parts] of pieces) {
         const merged = mergeGeometries(parts, false);
-        for (const part of parts) part.dispose();
+        for (const part of parts) {
+          geometries.delete(part);
+          part.dispose();
+        }
+        pieces.delete(kind);
         if (!merged) throw new Error(`Cannot merge menu geometry: ${name}/${kind}`);
+        geometries.add(merged);
         mesh(parent, merged, kind, `${name}/${kind}`);
       }
       pieces.clear();
@@ -232,6 +243,7 @@ export function createMenuModelKit(
 
   /** Retained roots keep their local meshes and animation/layout transforms. */
   function consolidate(root: THREE.Group, retainedRoots: readonly THREE.Object3D[]) {
+    assertAlive();
     root.updateMatrixWorld(true);
     const inverse = root.matrixWorld.clone().invert();
     const buckets = new Map<
@@ -254,6 +266,7 @@ export function createMenuModelKit(
       const geometry = object.geometry.index
         ? object.geometry.toNonIndexed()
         : object.geometry.clone();
+      geometries.add(geometry);
       geometry.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inverse, object.matrixWorld));
       const bucket = buckets.get(surface) ?? { geometry: [], meshes: [] };
       bucket.geometry.push(geometry);
@@ -262,8 +275,12 @@ export function createMenuModelKit(
     });
     for (const [surface, bucket] of buckets) {
       const geometry = mergeGeometries(bucket.geometry, false);
-      for (const temporary of bucket.geometry) temporary.dispose();
+      for (const temporary of bucket.geometry) {
+        geometries.delete(temporary);
+        temporary.dispose();
+      }
       if (!geometry) throw new Error('Cannot consolidate menu geometry');
+      geometries.add(geometry);
       for (const object of bucket.meshes) {
         object.removeFromParent();
         geometries.delete(object.geometry);
