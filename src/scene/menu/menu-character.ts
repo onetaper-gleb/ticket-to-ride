@@ -27,11 +27,12 @@ const TICKET_WIDTH = 1.1;
 const TICKET_HEIGHT = 2.1;
 const TICKET_THICKNESS = 0.006;
 
-/** The menu pinch uses positive finger flexion in the frozen rig's local X axis. */
-function setTicketPinch(hand: THREE.Group) {
-  setHandPose(hand, { curl: [0.725, 0.85, 0.1, 0.15, 0.2], thumbOpposition: 0.725 });
+/** Flex toward the palm in the frozen rig's local X axis without changing its bind surface. */
+function setPalmFlex(
+  hand: THREE.Group,
+  curl: Record<'index' | 'middle' | 'ring' | 'little', number>,
+) {
   const rig = getHandRig(hand)!;
-  const curl = { index: 0.85, middle: 0.1, ring: 0.15, little: 0.2 };
   for (const name of ['index', 'middle', 'ring', 'little'] as const) {
     const chain = rig.fingers[name];
     for (let i = 0; i < 3; i++) {
@@ -46,6 +47,11 @@ function setTicketPinch(hand: THREE.Group) {
   }
   hand.updateMatrixWorld(true);
   rig.skeleton.update();
+}
+
+function setTicketPinch(hand: THREE.Group) {
+  setHandPose(hand, { curl: [0.725, 0.85, 0.1, 0.15, 0.2], thumbOpposition: 0.725 });
+  setPalmFlex(hand, { index: 0.85, middle: 0.1, ring: 0.15, little: 0.2 });
 }
 
 function contactAnchor(name: string, position: THREE.Vector3, parent: THREE.Object3D) {
@@ -122,7 +128,8 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
     hand.position.copy(contact);
     if (resting) {
       hand.rotation.set(Math.PI / 2, 0, -0.08);
-      setHandPose(hand, { curl: [0.04, 0.06, 0.04, 0.065, 0.09], thumbOpposition: 0.06 });
+      setHandPose(hand, { curl: [0.35, 0.9, 0.85, 0.88, 1.0], thumbOpposition: 0.35 });
+      setPalmFlex(hand, { index: 0.9, middle: 0.85, ring: 0.88, little: 1.0 });
     } else {
       hand.rotation.set(-Math.PI / 2, -0.18, -0.18);
       hand.quaternion.premultiply(
@@ -130,6 +137,9 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
       );
       setTicketPinch(hand);
     }
+    const handMaterial = getHandRig(hand)!.mesh.material;
+    for (const material of Array.isArray(handMaterial) ? handMaterial : [handMaterial])
+      material.userData.menuCashierRole = 'skin-hand';
     root.add(hand);
     root.updateMatrixWorld(true);
     hand.position.y += contact.y + 0.002 - posedBounds(hand).min.y;

@@ -2,8 +2,8 @@
  * Menu-only adaptation of this project's original cashier, kind 1.
  * Provenance: src/scene/characters.ts at bea9743c7622a7806a3d9b6824a9d912b0a41b65:
  * loft, curvedVolume, softPatch, characterFactory, sculptedFace/facePatch/faceRibbon,
- * buildHead, buildClothes and consolidateCharacter. The authored facial features
- * are retained, with proportions adapted to the menu frame; only her visible upper body
+ * buildHead, buildClothes and consolidateCharacter. Facial forms, hair and clothes
+ * are adapted to the reference menu frame; only her visible upper body
  * is built. This isolated snapshot does not import evolving gameplay characters.
  * Chair, badge, cards, arms and gameplay state are intentionally not constructed.
  * The body uses a uniform 0.20 scale, then translation (0, -0.08, -0.26), baked
@@ -11,24 +11,25 @@
  * Mirrored lapels/collars reflect vertices and winding, never Object3D scale.
  */
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { MENU_CASHIER_PALETTE } from './menu-character-materials';
 
 type Point = [number, number, number];
 type Ring = { y: number; width: number; front: number; back?: number; z?: number };
 
 const CASHIER_STYLE = {
   name: 'Билетная кассирша',
-  skin: '#edbb96',
-  cheek: '#df9f87',
-  hair: '#563e32',
-  cloth: '#974a52',
-  trim: '#71363e',
-  shirt: '#efe0c6',
+  skin: MENU_CASHIER_PALETTE.skin,
+  cheek: MENU_CASHIER_PALETTE.cheek,
+  hair: MENU_CASHIER_PALETTE.hair,
+  cloth: MENU_CASHIER_PALETTE.cloth,
+  trim: MENU_CASHIER_PALETTE.trim,
+  shirt: MENU_CASHIER_PALETTE.cream,
   width: 1.98,
   headWidth: 1.24,
   headHeight: 1.33,
-  nose: [0.3, 0.31, 0.37] as Point,
+  nose: [0.32, 0.31, 0.28] as Point,
 };
 const MENU_BODY_SCALE = 0.2;
 const MENU_BODY_OFFSET = new THREE.Vector3(0, -0.08, -0.26);
@@ -95,7 +96,7 @@ export function buildSleeve(
   const frames = curve.computeFrenetFrames(segments, false);
   const positions: number[] = [];
   const indices: number[] = [];
-  const sides = 12;
+  const sides = 20;
   for (let section = 0; section <= segments; section++) {
     const t = section / segments;
     const sample = t * (widths.length - 1);
@@ -135,7 +136,7 @@ export function buildSleeve(
   return geometry;
 }
 
-function softPatch(points: [number, number][], depth = 0.1) {
+function softPatch(points: [number, number][], depth = 0.1, bevel = 0.065) {
   const shape = new THREE.Shape();
   shape.moveTo(...points[0]);
   for (const point of points.slice(1)) shape.lineTo(...point);
@@ -143,8 +144,8 @@ function softPatch(points: [number, number][], depth = 0.1) {
   return new THREE.ExtrudeGeometry(shape, {
     depth,
     bevelEnabled: true,
-    bevelSize: 0.065,
-    bevelThickness: 0.065,
+    bevelSize: bevel,
+    bevelThickness: bevel,
     bevelSegments: 3,
     steps: 1,
     curveSegments: 8,
@@ -153,12 +154,14 @@ function softPatch(points: [number, number][], depth = 0.1) {
 
 function characterFactory(parent: THREE.Group) {
   const materials = new Map<string, THREE.MeshStandardMaterial>();
-  const material = (color: string, roughness = 0.94) => {
+  const material = (color: string, roughness = color === CASHIER_STYLE.cloth ? 1 : 0.94) => {
     const key = `${color}:${roughness}`;
     let result = materials.get(key);
     if (!result) {
       result = new THREE.MeshStandardMaterial({ color, roughness, metalness: 0 });
       result.name = `Кассирша: ${color}`;
+      const role = Object.entries(MENU_CASHIER_PALETTE).find(([, value]) => value === color)?.[0];
+      if (role) result.userData.menuCashierRole = role;
       materials.set(key, result);
     }
     return result;
@@ -189,7 +192,8 @@ function characterFactory(parent: THREE.Group) {
     position: Point,
     target: THREE.Object3D = parent,
     depth = 0.1,
-  ) => mesh(softPatch(points, depth), color, position, target);
+    bevel = 0.065,
+  ) => mesh(softPatch(points, depth, bevel), color, position, target);
   return { mesh, round, oval, patch, material };
 }
 
@@ -202,12 +206,12 @@ function sculptedFace() {
   const style = CASHIER_STYLE;
   const w = style.headWidth;
   const h = style.headHeight;
-  const exponent = 2.3;
+  const exponent = 2.05;
   const profile = [
     [-1, 0, 0, 0],
     [-0.92, 0.36, 0.43, 0.34],
-    [-0.76, 0.67, 0.67, 0.54],
-    [-0.5, 0.88, 0.77, 0.74],
+    [-0.76, 0.64, 0.67, 0.54],
+    [-0.5, 0.86, 0.77, 0.74],
     [-0.18, 1, 0.81, 0.87],
     [0.18, 1, 0.79, 0.92],
     [0.52, 0.94, 0.74, 0.87],
@@ -242,16 +246,16 @@ function sculptedFace() {
   const gaussian = (x: number, y: number, cx: number, cy: number, rx: number, ry: number) =>
     Math.exp(-(((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2));
   const eyeX = w * 0.41;
-  const eyeY = 0.19;
+  const eyeY = 0.15;
   const eyeWidth = 0.255;
-  const eyeHeight = 0.16;
-  const mouthY = (x: number) => -0.7 + 0.095 * (x / 0.36) ** 2;
+  const eyeHeight = 0.17;
+  const mouthY = (x: number) => -0.8 + 0.12 * (x / 0.38) ** 2;
   const noseWidth = style.nose[0] * 0.96;
-  const noseY = -0.13;
+  const noseY = -0.18;
   const noseHeight = style.nose[1] * 0.77;
   const displacement = (x: number, y: number) => {
     // Wide cheek and jaw fields overlap the muzzle instead of forming circular cheek objects.
-    let result = 0.085 * gaussian(x, y, 0, -0.99, w * 0.56, 0.29);
+    let result = 0.06 * gaussian(x, y, 0, -0.99, w * 0.56, 0.29);
     result += 0.045 * gaussian(x, y, 0, -0.6, 0.58, 0.31);
     for (const side of [-1, 1]) {
       result += 0.115 * gaussian(x, y, side * w * 0.56, -0.37, w * 0.42, 0.4);
@@ -264,7 +268,7 @@ function sculptedFace() {
       result += 0.06 * gaussian(x, y, side * eyeX, eyeY + 0.24, 0.38, 0.15);
     }
     // Bridge, broad tip, alae and columella all belong to the same skin mesh.
-    result += 0.13 * gaussian(x, y, 0, 0.16, noseWidth * 0.69, 0.49);
+    result += 0.095 * gaussian(x, y, 0, 0.12, noseWidth * 0.69, 0.44);
     result += (style.nose[2] + 0.1) * gaussian(x, y, 0, noseY, noseWidth, noseHeight);
     for (const side of [-1, 1])
       result +=
@@ -289,7 +293,7 @@ function sculptedFace() {
   const blush = new THREE.Color(style.cheek);
   const colorAt = (x: number, y: number, facing: number) => {
     const warmth =
-      0.18 *
+      0.24 *
       (gaussian(x, y, w * 0.58, -0.35, 0.49, 0.37) + gaussian(x, y, -w * 0.58, -0.35, 0.49, 0.37)) *
       Math.max(0, facing);
     const color = skin.clone().lerp(blush, warmth);
@@ -420,9 +424,164 @@ function faceRibbon(
   return geometry;
 }
 
+// Immutable CPU snapshots only; each bundle receives independent geometry attributes/index.
+let fringeBlueprint:
+  | {
+      positions: Float32Array;
+      normals: Float32Array;
+      index: Uint16Array | Uint32Array;
+    }
+  | undefined;
+
+/** A closed curved fringe follows the forehead and crown instead of floating as a flat plate. */
+function sweptFringe(face: FaceForm): THREE.BufferGeometry {
+  if (fringeBlueprint) {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute(
+      'position',
+      new THREE.BufferAttribute(fringeBlueprint.positions.slice(), 3),
+    );
+    geometry.setAttribute('normal', new THREE.BufferAttribute(fringeBlueprint.normals.slice(), 3));
+    geometry.setIndex(new THREE.BufferAttribute(fringeBlueprint.index.slice(), 1));
+    return geometry;
+  }
+  const shape = new THREE.Shape();
+  shape.moveTo(-1.08, 0.32);
+  shape.bezierCurveTo(-1.12, 0.72, -1.05, 1.36, -0.61, 1.58);
+  shape.bezierCurveTo(-0.27, 1.59, 0.53, 1.59, 0.92, 1.3);
+  shape.quadraticCurveTo(0.98, 1.04, 0.86, 1.02);
+  shape.bezierCurveTo(0.62, 0.99, 0.12, 1.04, -0.08, 0.88);
+  shape.bezierCurveTo(-0.34, 0.61, -0.55, 0.24, -0.83, 0.27);
+  shape.quadraticCurveTo(-0.96, 0.28, -1.08, 0.32);
+  shape.closePath();
+  const extrusion = new THREE.ExtrudeGeometry(shape, {
+    depth: 0.095,
+    bevelEnabled: true,
+    bevelSize: 0.03,
+    bevelThickness: 0.03,
+    bevelSegments: 4,
+    steps: 1,
+    curveSegments: 20,
+  });
+  // Bend a conforming cap mesh: neighbouring triangles share every new edge midpoint.
+  // Independent recursive splits leave curved T-junction gaps after the forehead warp.
+  const positionsOnly = new THREE.BufferGeometry();
+  positionsOnly.setAttribute('position', extrusion.getAttribute('position').clone());
+  extrusion.dispose();
+  const indexed = mergeVertices(positionsOnly, 1e-5);
+  positionsOnly.dispose();
+  const source = indexed.getAttribute('position');
+  const points = Array.from({ length: source.count }, (_, i) =>
+    new THREE.Vector3().fromBufferAttribute(source, i),
+  );
+  type Triangle = [number, number, number];
+  let triangles: Triangle[] = [];
+  for (let i = 0; i < indexed.index!.count; i += 3)
+    triangles.push([
+      indexed.index!.getX(i),
+      indexed.index!.getX(i + 1),
+      indexed.index!.getX(i + 2),
+    ]);
+  indexed.dispose();
+  // A numeric pair key avoids repeated coordinate strings while preserving shared topology.
+  const edgeKey = (a: number, b: number) => {
+    const high = Math.max(a, b);
+    return (high * (high + 1)) / 2 + Math.min(a, b);
+  };
+  for (let pass = 0; pass < 5; pass++) {
+    const edges = new Set<number>();
+    for (const [a, b, c] of triangles) {
+      const cap =
+        Math.abs(points[a].z - points[b].z) < 1e-6 && Math.abs(points[a].z - points[c].z) < 1e-6;
+      if (cap)
+        for (const [u, v] of [
+          [a, b],
+          [b, c],
+          [c, a],
+        ])
+          if (points[u].distanceToSquared(points[v]) > 0.16 ** 2) edges.add(edgeKey(u, v));
+    }
+    if (!edges.size) break;
+    const refined: Triangle[] = [];
+    const midpoints = new Map<number, number>();
+    const split = (a: number, b: number, c: number) => {
+      for (const [u, v, opposite] of [
+        [a, b, c],
+        [b, c, a],
+        [c, a, b],
+      ]) {
+        const key = edgeKey(u, v);
+        if (!edges.has(key)) continue;
+        let middle = midpoints.get(key);
+        if (middle === undefined) {
+          middle = points.length;
+          points.push(points[u].clone().lerp(points[v], 0.5));
+          midpoints.set(key, middle);
+        }
+        split(u, middle, opposite);
+        split(middle, v, opposite);
+        return;
+      }
+      refined.push([a, b, c]);
+    };
+    for (const triangle of triangles) split(...triangle);
+    triangles = refined;
+  }
+  const vertices = triangles.flatMap((triangle) => triangle.flatMap((i) => points[i].toArray()));
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+  const positions = geometry.getAttribute('position');
+  const surfaceZ = (x: number, y: number) => {
+    const crown = 0.88 * Math.sqrt(Math.max(0, 1 - (x / 1.36) ** 2 - (y / 1.75) ** 2));
+    return Math.max(face.front(x, y), crown) + 0.045;
+  };
+  let minZ = Infinity,
+    maxZ = -Infinity;
+  for (let vertex = 0; vertex < positions.count; vertex++) {
+    const x = positions.getX(vertex),
+      y = positions.getY(vertex),
+      z = positions.getZ(vertex);
+    minZ = Math.min(minZ, z);
+    maxZ = Math.max(maxZ, z);
+    positions.setZ(vertex, surfaceZ(x, y) + z);
+  }
+  const smooth = mergeVertices(geometry, 1e-5);
+  geometry.dispose();
+  smooth.computeVertexNormals();
+  // Curved caps use the authored surface derivative, independent of skinny triangulation.
+  const p = smooth.getAttribute('position'),
+    normals = smooth.getAttribute('normal');
+  const normal = new THREE.Vector3(),
+    epsilon = 0.0005;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i),
+      y = p.getY(i),
+      z = p.getZ(i) - surfaceZ(x, y);
+    const front = Math.abs(z - maxZ) < 1e-5,
+      back = Math.abs(z - minZ) < 1e-5;
+    if (!front && !back) continue;
+    normal
+      .set(
+        -(surfaceZ(x + epsilon, y) - surfaceZ(x - epsilon, y)) / (2 * epsilon),
+        -(surfaceZ(x, y + epsilon) - surfaceZ(x, y - epsilon)) / (2 * epsilon),
+        1,
+      )
+      .normalize()
+      .multiplyScalar(front ? 1 : -1);
+    normals.setXYZ(i, normal.x, normal.y, normal.z);
+  }
+  const index = smooth.index!.array;
+  fringeBlueprint = {
+    positions: new Float32Array(p.array),
+    normals: new Float32Array(normals.array),
+    index: index instanceof Uint16Array ? index.slice() : new Uint32Array(index),
+  };
+  return smooth;
+}
+
 function buildCashierHead(person: THREE.Group, factory: Factory) {
   const style = CASHIER_STYLE;
-  const { mesh, oval, round, patch } = factory;
+  const { mesh, oval, round } = factory;
   const head = new THREE.Group();
   // Fit the broad head to the reference frame while retaining overlap with the neck.
   head.position
@@ -444,6 +603,7 @@ function buildCashierHead(person: THREE.Group, factory: Factory) {
     metalness: 0,
   });
   faceMaterial.name = 'Скульптура лица: ' + style.name;
+  faceMaterial.userData.menuCashierRole = 'skin-face';
   const skinMesh = new THREE.Mesh(face.geometry, faceMaterial);
   skinMesh.name = 'Цельная скульптура головы';
   skinMesh.castShadow = true;
@@ -472,20 +632,20 @@ function buildCashierHead(person: THREE.Group, factory: Factory) {
     const cy = face.eyeY;
     mesh(
       facePatch(face, [cx, cy], [face.eyeWidth, face.eyeHeight], 0.014, true),
-      '#e2dac9',
+      MENU_CASHIER_PALETTE.eyeWhite,
       [0, 0, 0],
       head,
     );
-    const pupilX = cx - side * 0.035;
+    const pupilX = cx - side * 0.012;
     mesh(
-      facePatch(face, [pupilX, cy - 0.009], [0.135, face.eyeHeight * 0.9], 0.026),
-      '#24272a',
+      facePatch(face, [pupilX, cy - 0.009], [0.125, 0.135], 0.026),
+      MENU_CASHIER_PALETTE.pupil,
       [0, 0, 0],
       head,
     );
     mesh(
       facePatch(face, [pupilX - 0.028, cy + 0.035], [0.024, 0.026], 0.036),
-      '#f0e6d2',
+      MENU_CASHIER_PALETTE.eyeHighlight,
       [0, 0, 0],
       head,
     );
@@ -502,7 +662,7 @@ function buildCashierHead(person: THREE.Group, factory: Factory) {
         [0.003, 0.015, 0.014, 0.003],
         0.004,
       ),
-      '#604a3c',
+      MENU_CASHIER_PALETTE.lash,
       [0, 0, 0],
       head,
     );
@@ -516,57 +676,46 @@ function buildCashierHead(person: THREE.Group, factory: Factory) {
           [side * (face.eyeX + 0.13), browY + 0.045],
           [side * (face.eyeX + 0.32), browY - 0.07],
         ],
-        [0.015, 0.105, 0.09, 0.012],
-        0.065,
+        [0.015, 0.078, 0.075, 0.012],
+        0.035,
       ),
       style.hair,
       [0, 0, 0],
       head,
     );
   }
-  const mouthPoints: [number, number][] = [-0.36, -0.2, 0, 0.2, 0.36].map((x) => [
+  const mouthPoints: [number, number][] = [-0.38, -0.2, 0, 0.2, 0.38].map((x) => [
     x,
     face.mouthY(x),
   ]);
   mesh(
-    faceRibbon(face, mouthPoints, [0.005, 0.016, 0.021, 0.016, 0.005], 0.004),
-    '#775044',
+    faceRibbon(face, mouthPoints, [0.005, 0.019, 0.023, 0.019, 0.005], 0.005),
+    MENU_CASHIER_PALETTE.smile,
     [0, 0, 0],
     head,
   );
   mesh(
-    loft([
-      { y: -h * 0.76, width: w * 0.86, front: 0.17, back: 0.66, z: -0.29 },
-      { y: -h * 0.45, width: w * 1.08, front: 0.29, back: 0.76, z: -0.29 },
-      { y: h * 0.43, width: w * 1.09, front: 0.38, back: 0.85, z: -0.19 },
-      { y: h * 0.81, width: w * 0.94, front: 0.57, back: 0.75, z: -0.11 },
-      { y: h * 1.03, width: w * 0.62, front: 0.45, back: 0.5 },
-      { y: h * 1.09, width: 0.04, front: 0.04 },
-    ]),
+    loft(
+      [
+        { y: -h * 0.76, width: w * 0.86, front: 0.17, back: 0.66, z: -0.29 },
+        { y: -h * 0.45, width: w * 1.08, front: 0.29, back: 0.76, z: -0.29 },
+        { y: h * 0.43, width: w * 1.09, front: 0.38, back: 0.85, z: -0.19 },
+        { y: h * 0.81, width: w * 0.94, front: 0.57, back: 0.75, z: -0.11 },
+        { y: h * 1.03, width: w * 0.62, front: 0.45, back: 0.5 },
+        { y: h * 1.09, width: 0.04, front: 0.04 },
+      ],
+      2.2,
+      48,
+    ),
     style.hair,
     [0, 0, 0],
     head,
   );
-  const fringe = patch(
-    [
-      [-1.06, -0.33],
-      [-1.05, 0.39],
-      [-0.54, 0.64],
-      [0.5, 0.56],
-      [0.92, 0.32],
-      [0.38, 0.21],
-      [-0.18, 0.12],
-      [-0.7, -0.36],
-    ],
-    style.hair,
-    [0, h * 0.6, 0.65],
-    head,
-    0.19,
-  );
-  fringe.rotation.z = -0.07;
+  mesh(sweptFringe(face), style.hair, [0, 0, 0], head);
   for (const side of [-1, 1])
-    oval([0.24, 0.78, 0.24], style.hair, [side * w * 0.99, -0.08, 0.15], head);
-  round([0.4, 0.16, 0.11], '#ccb375', [w * 0.77, h * 0.55, 0.77], head).rotation.z = -0.25;
+    oval([0.22, 0.76, 0.28], style.hair, [side * w * 0.99, -0.08, 0.2], head);
+  round([0.4, 0.16, 0.11], MENU_CASHIER_PALETTE.gold, [w * 0.77, h * 0.55, 0.77], head).rotation.z =
+    -0.25;
 }
 
 function buildCashierClothes(person: THREE.Group, factory: Factory) {
@@ -590,21 +739,34 @@ function buildCashierClothes(person: THREE.Group, factory: Factory) {
     style.cloth,
   );
   oval([0.48, 0.5, 0.43], style.skin, [0, 2.98, 0.02]);
-  round([0.84, 2.08, 0.16], style.shirt, [0, 1.84, 0.79]);
+  patch(
+    [
+      [-0.34, 2.88],
+      [0.34, 2.88],
+      [0.14, 0.8],
+      [-0.14, 0.8],
+    ],
+    style.shirt,
+    [0, 0, 0.79],
+    person,
+    0.07,
+    0.035,
+  );
   for (const side of [-1, 1]) {
     const lapel = patch(
       [
-        [-0.14, 0.81],
-        [0.53, 0.81],
-        [0.82, 0.14],
-        [0.48, -0.03],
-        [0.03, -0.88],
-        [-0.19, -0.09],
+        [-0.12, 0.79],
+        [0.36, 0.78],
+        [0.7, 0.16],
+        [0.42, -0.03],
+        [0.12, -0.55],
+        [-0.13, -0.07],
       ],
       style.trim,
       [side * 0.43, 2.02, 0.84],
       person,
-      0.1,
+      0.055,
+      0.04,
     );
     if (side < 0) reflectGeometryX(lapel.geometry);
     lapel.rotation.y = side * 0.09;
@@ -616,18 +778,19 @@ function buildCashierClothes(person: THREE.Group, factory: Factory) {
         [0.15, -0.35],
       ],
       style.shirt,
-      [side * 0.29, 2.71, 0.87],
+      [side * 0.29, 2.91, 0.87],
       person,
       0.09,
     );
     if (side < 0) reflectGeometryX(collar.geometry);
   }
-  for (const y of [1.14, 0.57]) oval([0.085, 0.085, 0.06], '#ccb477', [0.13, y, 0.83]);
+  for (const y of [1.14, 0.57])
+    oval([0.055, 0.055, 0.04], MENU_CASHIER_PALETTE.gold, [0.13, y, 0.83]);
   round([0.66, 0.29, 0.08], style.trim, [-w * 0.58, 1.24, 0.81]).rotation.z = -0.08;
-  // The menu's collar and bow share cream cloth, replacing the snapshot's ochre bow.
-  oval([0.25, 0.21, 0.13], style.shirt, [0, 2.59, 1.01]);
+  oval([0.225, 0.19, 0.13], MENU_CASHIER_PALETTE.gold, [0, 2.79, 1.01]);
   for (const side of [-1, 1])
-    oval([0.36, 0.22, 0.14], style.shirt, [side * 0.26, 2.54, 0.96]).rotation.z = side * 0.17;
+    oval([0.36, 0.19, 0.14], MENU_CASHIER_PALETTE.gold, [side * 0.26, 2.74, 0.96]).rotation.z =
+      side * 0.17;
 }
 
 /** Reflection is baked into geometry and triangle order; object scale stays positive. */
