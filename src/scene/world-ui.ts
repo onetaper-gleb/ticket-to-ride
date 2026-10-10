@@ -396,22 +396,22 @@ function buildPaper(eng: Engine, view: TableView) {
     ctx.strokeRect(30, 30, 964, 1348);
     ctx.fillStyle = '#7a7765';
     ctx.font = `32px ${mono}`;
-    ctx.fillText('EUROPE · ЛИСТ ПУТИ', 62, view.rulesOpen ? 134 : 154);
+    ctx.fillText('EUROPE · ЛИСТ ПУТИ', 62, view.rulesOpen ? 94 : 154);
     ctx.fillStyle = ink;
-    let headingSize = view.rulesOpen ? 72 : 86;
-    for (; headingSize > 60; headingSize -= 2) {
+    let headingSize = view.rulesOpen ? 50 : 86;
+    for (; headingSize > (view.rulesOpen ? 40 : 60); headingSize -= 2) {
       ctx.font = `${headingSize}px ${sans}`;
       if (wrapText(ctx, view.headline, 900).length <= 2) break;
     }
     ctx.font = `${headingSize}px ${sans}`;
     let y =
-      printLines(ctx, view.headline, 62, view.rulesOpen ? 224 : 272, 900, headingSize * 1.13) +
-      (view.rulesOpen ? 14 : 39);
-    ctx.font = `${view.rulesOpen ? 32 : 50}px ${sans}`;
+      printLines(ctx, view.headline, 62, view.rulesOpen ? 160 : 272, 900, headingSize * 1.13) +
+      (view.rulesOpen ? 2 : 39);
+    ctx.font = `${view.rulesOpen ? 28 : 50}px ${sans}`;
     ctx.fillStyle = '#565c4a';
     y =
-      printLines(ctx, view.notice, 62, y, 900, view.rulesOpen ? 39 : 61) +
-      (view.rulesOpen ? 18 : 33);
+      printLines(ctx, view.notice, 62, y, 900, view.rulesOpen ? 34 : 61) +
+      (view.rulesOpen ? 12 : 33);
     ctx.strokeStyle = '#b4a788';
     ctx.beginPath();
     ctx.moveTo(62, y - 15);
@@ -421,21 +421,21 @@ function buildPaper(eng: Engine, view: TableView) {
     ctx.fillStyle = ink;
     // Reserve the physical stamps before fitting the contextual text.
     const textBottom = paperControls.length ? 1190 - (buttonRows - 1) * 147 : 1265;
-    let availableImages = illustrations.filter((item) => item.asset.ready);
-    const gap = view.rulesOpen ? 10 : 24;
+    const availableImages = illustrations.filter((item) => item.asset.ready);
+    const gap = view.rulesOpen ? 6 : 24;
     const captionHeight = () => {
       if (!availableImages.length) return 0;
       ctx.font = `28px ${sans}`;
       const slotWidth = 900 / availableImages.length;
       return (
-        218 +
+        568 +
         Math.max(
           ...availableImages.map((item) => wrapText(ctx, item.caption, slotWidth - 24).length * 34),
         ) +
-        24
+        8
       );
     };
-    let illustrationHeight = captionHeight();
+    const illustrationHeight = captionHeight();
     const textHeight = (size: number) => {
       ctx.font = `${size}px ${sans}`;
       return view.detailLines.reduce(
@@ -443,11 +443,6 @@ function buildPaper(eng: Engine, view: TableView) {
         0,
       );
     };
-    // Artwork must never displace the full rules or their navigation stamps.
-    if (y + textHeight(28) + illustrationHeight > textBottom) {
-      availableImages = [];
-      illustrationHeight = 0;
-    }
     let size = 46;
     for (; size > 28; size -= 2) if (y + textHeight(size) + illustrationHeight <= textBottom) break;
     ctx.font = `${size}px ${sans}`;
@@ -456,12 +451,12 @@ function buildPaper(eng: Engine, view: TableView) {
       const slotWidth = 900 / availableImages.length;
       availableImages.forEach((item, index) => {
         const image = item.asset.image;
-        const scale = Math.min((slotWidth - 24) / image.naturalWidth, 184 / image.naturalHeight);
+        const scale = Math.min(slotWidth / image.naturalWidth, 540 / image.naturalHeight);
         const width = image.naturalWidth * scale,
           height = image.naturalHeight * scale;
         ctx.drawImage(image, 62 + index * slotWidth + (slotWidth - width) / 2, y, width, height);
         ctx.font = `28px ${sans}`;
-        printLines(ctx, item.caption, 74 + index * slotWidth, y + 218, slotWidth - 24, 34);
+        printLines(ctx, item.caption, 74 + index * slotWidth, y + 568, slotWidth - 24, 34);
       });
     }
     if (!paperControls.length) {

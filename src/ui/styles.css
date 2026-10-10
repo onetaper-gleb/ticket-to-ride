@@ -2185,6 +2185,7 @@ input[type='checkbox'] {
 
 .europe-rules {
   width: min(900px, calc(100vw - 40px));
+  max-width: 900px;
 }
 .europe-rules-grid {
   display: grid;
@@ -2246,6 +2247,6 @@ input[type='checkbox'] {
   margin: auto;
 }
 .rules-illustration figcaption {
-  color: #abb6ac;
+  color: #575f52;
   font-size: 14px;
 }

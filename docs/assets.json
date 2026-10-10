@@ -1,13 +1,141 @@
 {
-  "version": 12,
+  "version": 13,
   "assets": [
     {
       "name": "Europe geographic 3D railway table, coach miniatures, stations, wagon cards, destination tickets, cartoon railway characters and anatomical rigged hands and sculpted faces, chalkboard and papers",
-      "source": "src/scene/Diorama.tsx + src/scene/interaction.ts + src/scene/tabletop.ts + src/scene/world-ui.ts + src/scene/characters.ts + src/scene/cartoon-hands.ts + src/scene/zone-input.ts + src/scene/camera-motion.ts + src/scene/vector-motion.ts + src/scene/table-layout.ts + src/scene/board-layout.ts + src/scene/board-europe-layout.ts + src/scene/board-layout-fallback.ts + src/scene/board-print.ts + src/scene/board-pick-targets.ts + src/scene/board-picking.ts + src/scene/rail-miniatures.ts + src/scene/rail-batching.ts + src/scene/player-reserve.ts + src/scene/card-art.ts + src/scene/europe-atlas.ts + src/data/europe-geography.ts + src/data/europe.ts",
+      "source": "src/scene/Diorama.tsx + src/scene/interaction.ts + src/scene/tabletop.ts + src/scene/world-ui.ts + src/scene/characters.ts + src/scene/cartoon-hands.ts + src/scene/zone-input.ts + src/scene/camera-motion.ts + src/scene/vector-motion.ts + src/scene/pointer-lock.ts + src/scene/table-layout.ts + src/scene/board-layout.ts + src/scene/board-europe-layout.ts + src/scene/board-layout-fallback.ts + src/scene/board-print.ts + src/scene/board-pick-targets.ts + src/scene/board-picking.ts + src/scene/rail-miniatures.ts + src/scene/rail-batching.ts + src/scene/player-reserve.ts + src/scene/card-art.ts + src/scene/europe-atlas.ts + src/data/europe-geography.ts + src/data/europe.ts + src/ui/rules-pages.ts",
       "license": "project original procedural geometry and artwork; Natural Earth public-domain geodata; classic Europe graph and ticket facts with sources in docs/europe-rules.md",
-      "transformations": "Original rounded Three.js coach bodies, barrel roofs, windows, bogies, wheels, couplers and brass trim; instanced route pieces and physical 45-coach reserve; geographic atlas with 47 locally spread city positions and explicit name leaders, 101 curved routes, separated double tracks and 299 physical places; station reservations and four printed connector gaps; shared ink paths for printing, highlighting, bounded picking and SVG fallback with physical mesh priority; original vector wagon-card and locomotive artwork; separate stock tray, physical tickets and clipboard; vector-based option and collection gestures across the gameplay canvas and visible-pointer board zoom/pan; self-hosted IBM Plex typography; no publisher scans, artwork or logos imported; tutorial focus restrictions, explicit turn confirmation and frame-time-aware base camera transitions with bounded decaying mouse-look overlay; current-camera raycasts and press stabilization; reduced-motion and stale-input reset handling; four original short cartoon railway characters inspired by the selected Fisherman form reference; continuous anatomical five-finger hands with independent 22-bone skeletons, normalized skin weights, mirrored deformation, quaternion animation clips and card-following foreground grips; closed sculpted heads integrating cheeks, chin, nose, eye sockets, eyelids and lips",
-      "hash": "93ce9a4724b6b20a76110e7907155a28deb989834a64a50fb1cacbbe00b62293",
+      "transformations": "Original rounded Three.js coach bodies, barrel roofs, windows, bogies, wheels, couplers and brass trim; instanced route pieces and physical 45-coach reserve; geographic atlas with 47 locally spread city positions and explicit name leaders, 101 curved routes, separated double tracks and 299 physical places; station reservations and four printed connector gaps; shared ink paths for printing, highlighting, bounded picking and SVG fallback with physical mesh priority; original vector wagon-card and locomotive artwork; separate stock tray, physical tickets and clipboard; vector-based option and collection gestures across the gameplay canvas and visible-pointer board zoom/pan; self-hosted IBM Plex typography; no publisher scans, artwork or logos imported; tutorial focus restrictions, explicit turn confirmation and frame-time-aware base camera transitions with bounded decaying mouse-look overlay; current-camera raycasts and press stabilization; reduced-motion and stale-input reset handling; four original short cartoon railway characters inspired by the selected Fisherman form reference; continuous anatomical five-finger hands with independent 22-bone skeletons, normalized skin weights, mirrored deformation, quaternion animation clips and card-following foreground grips; closed sculpted heads integrating cheeks, chin, nose, eye sockets, eyelids and lips; true browser Pointer Lock from an explicit acquisition-only click, single relative mousemove stream, release on Escape/mode/lifecycle changes, visible cursor and keyboard on refusal; 15 non-cyclic rules pages with eight original 900x540 PNG diagrams and preserved text exceptions, DOM SVG counterparts, late-load CanvasTexture disposal guards",
+      "hash": "f115d152c2eadd21857dd0aeb7a1790bb9d2d5c9962a38ca7c656fabebd41c82",
       "hashKind": "sha256 of ordered file name + LF + file bytes + LF for each source"
+    },
+    {
+      "name": "Europe rules: colored-route (SVG)",
+      "file": "public/rules-illustrations/colored-route.svg",
+      "source": "public/rules-illustrations/source/generate.py; public/rules-illustrations/source/label-paths.json; docs/rules-illustrations.md",
+      "license": "Project original vector geometry and illustrations; system Helvetica Bold glyphs outlined with CoreText, no font file bundled",
+      "transformations": "Original 1200x720 SVG with path-based labels, no external resources",
+      "sha256": "1347674c7e409923c6730ee12c0b010b9c4b85e72678f9f2711b67732f2443d8"
+    },
+    {
+      "name": "Europe rules: colored-route (PNG)",
+      "file": "public/rules-illustrations/colored-route.png",
+      "source": "public/rules-illustrations/source/generate.py; public/rules-illustrations/source/label-paths.json; docs/rules-illustrations.md",
+      "license": "Project original vector geometry and illustrations; system Helvetica Bold glyphs outlined with CoreText, no font file bundled",
+      "transformations": "Transparent RGBA 1200x720 PNG rendered directly from matching SVG with Sharp",
+      "sha256": "91223b211b59d6c6652ff7d94bf77cf2adc8a96dbde9ed87525c7c3bcf4f6732"
+    },
+    {
+      "name": "Europe rules: gray-route (SVG)",
+      "file": "public/rules-illustrations/gray-route.svg",
+      "source": "public/rules-illustrations/source/generate.py; public/rules-illustrations/source/label-paths.json; docs/rules-illustrations.md",
+      "license": "Project original vector geometry and illustrations; system Helvetica Bold glyphs outlined with CoreText, no font file bundled",
+      "transformations": "Original 1200x720 SVG with path-based labels, no external resources",
+      "sha256": "2818699437370d9b7206d4763308e8cf103a0d0fc6da215144c4896a7329c3ad"
+    },
+    {
+      "name": "Europe rules: gray-route (PNG)",
+      "file": "public/rules-illustrations/gray-route.png",
+      "source": "public/rules-illustrations/source/generate.py; public/rules-illustrations/source/label-paths.json; docs/rules-illustrations.md",
+      "license": "Project original vector geometry and illustrations; system Helvetica Bold glyphs outlined with CoreText, no font file bundled",
+      "transformations": "Transparent RGBA 1200x720 PNG rendered directly from matching SVG with Sharp",
+      "sha256": "488dcf021ff436d92ba4902731889cce05f32348b44043de50c88cdb8f4c0f50"
+    },
+    {
+      "name": "Europe rules: locomotive (SVG)",
+      "file": "public/rules-illustrations/locomotive.svg",
+      "source": "public/rules-illustrations/source/generate.py; public/rules-illustrations/source/label-paths.json; docs/rules-illustrations.md",
+      "license": "Project original vector geometry and illustrations; system Helvetica Bold glyphs outlined with CoreText, no font file bundled",
+      "transformations": "Original 1200x720 SVG with path-based labels, no external resources",
+      "sha256": "e7e03af6656061499eb9add9b2e4f906c9e189103cb47530831591628a93fe4e"
+    },
+    {
+      "name": "Europe rules: locomotive (PNG)",
+      "file": "public/rules-illustrations/locomotive.png",
+      "source": "public/rules-illustrations/source/generate.py; public/rules-illustrations/source/label-paths.json; docs/rules-illustrations.md",
+      "license": "Project original vector geometry and illustrations; system Helvetica Bold glyphs outlined with CoreText, no font file bundled",
+      "transformations": "Transparent RGBA 1200x720 PNG rendered directly from matching SVG with Sharp",
+      "sha256": "3b714f0816b8183e8b704d899129f2ff43e1a74911d416c6112007a47a88d353"
+    },
+    {
+      "name": "Europe rules: tunnel (SVG)",
+      "file": "public/rules-illustrations/tunnel.svg",
+      "source": "public/rules-illustrations/source/generate.py; public/rules-illustrations/source/label-paths.json; docs/rules-illustrations.md",
+      "license": "Project original vector geometry and illustrations; system Helvetica Bold glyphs outlined with CoreText, no font file bundled",
+      "transformations": "Original 1200x720 SVG with path-based labels, no external resources",
+      "sha256": "d6ebd373558c55125fa915a313a8a3f8879c84bc0194fd650927c5d949a396ff"
+    },
+    {
+      "name": "Europe rules: tunnel (PNG)",
+      "file": "public/rules-illustrations/tunnel.png",
+      "source": "public/rules-illustrations/source/generate.py; public/rules-illustrations/source/label-paths.json; docs/rules-illustrations.md",
+      "license": "Project original vector geometry and illustrations; system Helvetica Bold glyphs outlined with CoreText, no font file bundled",
+      "transformations": "Transparent RGBA 1200x720 PNG rendered directly from matching SVG with Sharp",
+      "sha256": "7b37f920e9caf03ddd76e048cdd8f1287d7653337eee0af8b0fdb6f468aa6673"
+    },
+    {
+      "name": "Europe rules: ferry (SVG)",
+      "file": "public/rules-illustrations/ferry.svg",
+      "source": "public/rules-illustrations/source/generate.py; public/rules-illustrations/source/label-paths.json; docs/rules-illustrations.md",
+      "license": "Project original vector geometry and illustrations; system Helvetica Bold glyphs outlined with CoreText, no font file bundled",
+      "transformations": "Original 1200x720 SVG with path-based labels, no external resources",
+      "sha256": "19b577f7be17522ceec4d7c12582b4823e96f27744c7f24396c1114a2f6f9e4f"
+    },
+    {
+      "name": "Europe rules: ferry (PNG)",
+      "file": "public/rules-illustrations/ferry.png",
+      "source": "public/rules-illustrations/source/generate.py; public/rules-illustrations/source/label-paths.json; docs/rules-illustrations.md",
+      "license": "Project original vector geometry and illustrations; system Helvetica Bold glyphs outlined with CoreText, no font file bundled",
+      "transformations": "Transparent RGBA 1200x720 PNG rendered directly from matching SVG with Sharp",
+      "sha256": "d11213634f32ce151dee22cc4e8b24862ff44ec64b688966c45eb9fa53d9aaff"
+    },
+    {
+      "name": "Europe rules: tickets (SVG)",
+      "file": "public/rules-illustrations/tickets.svg",
+      "source": "public/rules-illustrations/source/generate.py; public/rules-illustrations/source/label-paths.json; docs/rules-illustrations.md",
+      "license": "Project original vector geometry and illustrations; system Helvetica Bold glyphs outlined with CoreText, no font file bundled",
+      "transformations": "Original 1200x720 SVG with path-based labels, no external resources",
+      "sha256": "68a568739059183065f5ca28931e4c744a96a6c7a5cd61818e3bc2df96a8c792"
+    },
+    {
+      "name": "Europe rules: tickets (PNG)",
+      "file": "public/rules-illustrations/tickets.png",
+      "source": "public/rules-illustrations/source/generate.py; public/rules-illustrations/source/label-paths.json; docs/rules-illustrations.md",
+      "license": "Project original vector geometry and illustrations; system Helvetica Bold glyphs outlined with CoreText, no font file bundled",
+      "transformations": "Transparent RGBA 1200x720 PNG rendered directly from matching SVG with Sharp",
+      "sha256": "495b81625377c337408b4bd275d700ae8e022bd6afae57593b1b3e3cfb289fa3"
+    },
+    {
+      "name": "Europe rules: station (SVG)",
+      "file": "public/rules-illustrations/station.svg",
+      "source": "public/rules-illustrations/source/generate.py; public/rules-illustrations/source/label-paths.json; docs/rules-illustrations.md",
+      "license": "Project original vector geometry and illustrations; system Helvetica Bold glyphs outlined with CoreText, no font file bundled",
+      "transformations": "Original 1200x720 SVG with path-based labels, no external resources",
+      "sha256": "60f9d86d873312d72d72cfc67c20d87b8dff6556e4a755b14ad8c29ce5dd5457"
+    },
+    {
+      "name": "Europe rules: station (PNG)",
+      "file": "public/rules-illustrations/station.png",
+      "source": "public/rules-illustrations/source/generate.py; public/rules-illustrations/source/label-paths.json; docs/rules-illustrations.md",
+      "license": "Project original vector geometry and illustrations; system Helvetica Bold glyphs outlined with CoreText, no font file bundled",
+      "transformations": "Transparent RGBA 1200x720 PNG rendered directly from matching SVG with Sharp",
+      "sha256": "82f6ee1e5bc187dbf84a8128a0425e65580c7740dcd958fd3191977a9817129c"
+    },
+    {
+      "name": "Europe rules: double-route (SVG)",
+      "file": "public/rules-illustrations/double-route.svg",
+      "source": "public/rules-illustrations/source/generate.py; public/rules-illustrations/source/label-paths.json; docs/rules-illustrations.md",
+      "license": "Project original vector geometry and illustrations; system Helvetica Bold glyphs outlined with CoreText, no font file bundled",
+      "transformations": "Original 1200x720 SVG with path-based labels, no external resources",
+      "sha256": "475bbd218509d51ffed42ad15335759c8e5b61576b00a54ab386b8a4be0572fa"
+    },
+    {
+      "name": "Europe rules: double-route (PNG)",
+      "file": "public/rules-illustrations/double-route.png",
+      "source": "public/rules-illustrations/source/generate.py; public/rules-illustrations/source/label-paths.json; docs/rules-illustrations.md",
+      "license": "Project original vector geometry and illustrations; system Helvetica Bold glyphs outlined with CoreText, no font file bundled",
+      "transformations": "Transparent RGBA 1200x720 PNG rendered directly from matching SVG with Sharp",
+      "sha256": "7d1b12e144a0ad9b89466ad6db9647fb72563c4ac10d5b2baeb6f3950a5f5aeb"
     }
   ],
   "externalAssets": [
