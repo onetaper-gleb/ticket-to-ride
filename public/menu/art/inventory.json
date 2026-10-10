@@ -428,8 +428,8 @@
     },
     {
       "file": "sources/desktop-fit-round4.json",
-      "bytes": 33879,
-      "sha256": "408d1f23110a39e5b5569693d7db123b506b93d9a1b910a34a9ab2f1993216c9",
+      "bytes": 33969,
+      "sha256": "c7f598b0ff91183afa723fb3795a41102b637b02bf6aef042e092ac6ad043c0b",
       "role": "source",
       "stage": "proposal",
       "source": "project-original specification measured with immutable common77 fixture",

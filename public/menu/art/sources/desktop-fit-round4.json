@@ -56,9 +56,15 @@
     "iconColumn": 98,
     "copyPadding": [
       6,
-      20,
+      16,
       6,
-      16
+      20
+    ],
+    "copyPaddingOrder": [
+      "top",
+      "right",
+      "bottom",
+      "left"
     ],
     "copyOverflow": "clip",
     "markLayoutWidth": 370,
