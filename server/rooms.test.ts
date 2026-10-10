@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { randomBytes } from 'node:crypto';
 import { getClaimOptions, getObservation } from '../src/core';
 import { chooseBotCommand } from '../src/bots';
 import type { GameCommand } from '../src/shared/types';
@@ -17,16 +18,25 @@ import type {
 import { RoomService, type TurnGuard } from './rooms';
 import { SQLiteRoomStore } from './store';
 import { canonical, copy, gameReplyOwner } from './model';
+import { createTurnTimers } from './timers';
 
 const cleanup: Array<() => void | Promise<void>> = [];
 afterEach(async () => {
   for (const close of cleanup.splice(0).reverse()) await close();
 });
 
-function harness(options: { path?: string; budget?: number } = {}) {
+function harness(
+  options: {
+    path?: string;
+    budget?: number;
+    onSchedule?: (roomId: string, guard: TurnGuard, delay: number) => void;
+  } = {},
+) {
   let now = 1_000,
     failCommit = false,
     loseAck = false,
+    loseWelcome = false,
+    closed = false,
     counter = 0;
   const store = new SQLiteRoomStore(options.path, {
     beforeCommit: () => {
@@ -35,7 +45,8 @@ function harness(options: { path?: string; budget?: number } = {}) {
   });
   const packets = new Map<string, ServerPacket[]>(),
     snapshots = new Map<string, RoomSnapshot>(),
-    credentials = new Map<string, ResumeCredential>();
+    credentials = new Map<string, ResumeCredential>(),
+    bootstrapPackets = new Map<string, Extract<ClientPacket, { type: 'create' | 'join' }>>();
   const schedules = new Map<string, TurnGuard>();
   const disconnected: string[] = [];
   const serviceOptions = {
@@ -43,13 +54,17 @@ function harness(options: { path?: string; budget?: number } = {}) {
     turnBudgetMs: options.budget ?? 1000,
     send: (id: string, packet: ServerPacket) => {
       if (packet.type === 'ack' && loseAck) throw new Error('Lost acknowledgement');
+      if (packet.type === 'welcome' && loseWelcome) throw new Error('Lost welcome');
       packets.get(id)?.push(copy(packet));
       if (packet.type === 'snapshot' || packet.type === 'welcome')
         snapshots.set(id, copy(packet.snapshot));
       if (packet.type === 'welcome') credentials.set(id, copy(packet.credential));
     },
     disconnect: (id: string) => disconnected.push(id),
-    onSchedule: (roomId: string, guard: TurnGuard) => schedules.set(roomId, copy(guard)),
+    onSchedule: (roomId: string, guard: TurnGuard, delay: number) => {
+      schedules.set(roomId, copy(guard));
+      options.onSchedule?.(roomId, guard, delay);
+    },
   };
   let service = new RoomService(store, serviceOptions);
   const h = {
@@ -57,6 +72,7 @@ function harness(options: { path?: string; budget?: number } = {}) {
     packets,
     snapshots,
     credentials,
+    bootstrapPackets,
     schedules,
     disconnected,
     get service() {
@@ -74,6 +90,9 @@ function harness(options: { path?: string; budget?: number } = {}) {
     set loseAck(value: boolean) {
       loseAck = value;
     },
+    set loseWelcome(value: boolean) {
+      loseWelcome = value;
+    },
     snapshot: (id: string) => snapshots.get(id)!,
     connect: (id: string) => {
       packets.set(id, []);
@@ -82,23 +101,29 @@ function harness(options: { path?: string; budget?: number } = {}) {
     receive: (id: string, packet: ClientPacket) => service.receive(id, packet),
     async create(id = 'a', seats: SeatCount = 2) {
       h.connect(id);
-      await service.receive(id, {
+      const packet: Extract<ClientPacket, { type: 'create' }> = {
         type: 'create',
         requestId: `r${++counter}`,
         protocol: 1,
+        bootstrapSecret: randomBytes(32).toString('hex'),
         name: id,
         settings: { seats, difficulty: 'normal', turnSeconds: 30, admissionOpen: true },
-      });
+      };
+      bootstrapPackets.set(id, packet);
+      await service.receive(id, packet);
     },
     async join(id: string, from = 'a') {
       h.connect(id);
-      await service.receive(id, {
+      const packet: Extract<ClientPacket, { type: 'join' }> = {
         type: 'join',
         requestId: `r${++counter}`,
         protocol: 1,
+        bootstrapSecret: randomBytes(32).toString('hex'),
         name: id,
         code: h.snapshot(from).room.code,
-      });
+      };
+      bootstrapPackets.set(id, packet);
+      await service.receive(id, packet);
     },
     roomPacket(id: string, action: RoomAction): Extract<ClientPacket, { type: 'room' }> {
       const s = h.snapshot(id);
@@ -175,6 +200,8 @@ function harness(options: { path?: string; budget?: number } = {}) {
       schedules.clear();
     },
     async close() {
+      if (closed) return;
+      closed = true;
       failCommit = false;
       await service.close();
       store.close();
@@ -197,6 +224,170 @@ function lastAck(h: ReturnType<typeof harness>, id: string) {
 }
 
 describe('authoritative rooms', () => {
+  it('does not postpone a bot timer when inactive humans submit rejected room or game requests', async () => {
+    let sequence = 0;
+    const pending = new Map<number, { callback: () => void; at: number }>();
+    const timers = createTurnTimers((roomId, guard) => h.service.tick(roomId, guard), {
+      set(callback, delay) {
+        const id = ++sequence;
+        pending.set(id, { callback, at: h.now + delay });
+        return id;
+      },
+      clear(id) {
+        pending.delete(id as number);
+      },
+    });
+    const h = harness({ onSchedule: timers.schedule });
+    cleanup.push(() => timers.close());
+    await h.start(3);
+    await h.setup();
+    const s = h.snapshot('a'),
+      originalGuard = copy(s.authority),
+      scheduled = [...pending.values()][0]!;
+    expect(s.authority!.activeSeat).toBe(2);
+    expect(scheduled.at).toBe(h.now + 180);
+    for (const elapsed of [50, 100, 150]) {
+      h.now = 1000 + elapsed;
+      await h.room('a', { type: 'ready', ready: true });
+      expect(lastError(h, 'a')!.code).toBe('LOBBY_REQUIRED');
+      await h.command('b', { type: 'draw', source: 'deck' });
+      expect(lastAck(h, 'b')!.ack.code).toBe('NO_CONTROL');
+      expect(h.snapshot('a').authority).toEqual(originalGuard);
+      expect([...pending.values()]).toEqual([scheduled]);
+    }
+    h.now = scheduled.at;
+    pending.clear();
+    scheduled.callback();
+    for (let i = 0; i < 12; i++) await Promise.resolve();
+    expect(h.snapshot('a').authority!.activeSeat).toBe(0);
+    expect(h.snapshot('a').observation!.phase).toBe('action');
+    expect(
+      h.store.readJournal(s.room.id).some((entry) => (entry as { type: string }).type === 'bot'),
+    ).toBe(true);
+  });
+  it('recovers lost create and join welcomes on the same or a new socket without extra rooms or members', async () => {
+    const h = harness();
+    h.loseWelcome = true;
+    await h.create();
+    const created = h.store.loadRooms()[0]!,
+      createPacket = h.bootstrapPackets.get('a')!;
+    expect(h.credentials.size).toBe(0);
+    h.loseWelcome = false;
+    await h.receive('a', createPacket);
+    expect(h.snapshot('a').room.id).toBe(created.view.id);
+    expect(h.snapshot('a').room.revision).toBe(created.view.revision);
+    expect(h.credentials.get('a')!.secret).toBe(createPacket.bootstrapSecret);
+    h.loseWelcome = true;
+    await h.join('b');
+    const joinPacket = h.bootstrapPackets.get('b')!,
+      joined = h.store.loadRooms()[0]!.view.members.find((m) => m.name === 'b')!;
+    expect(h.credentials.has('b')).toBe(false);
+    h.loseWelcome = false;
+    h.connect('b-new');
+    await h.receive('b-new', joinPacket);
+    expect(h.snapshot('b-new').memberId).toBe(joined.id);
+    expect(h.disconnected).toContain('b');
+    expect(h.store.loadRooms()).toHaveLength(1);
+    expect(h.snapshot('b-new').room.members).toHaveLength(2);
+    const lease = h.store.loadRooms()[0]!.identities[joined.id]!.lease;
+    await h.receive('b-new', joinPacket);
+    expect(h.store.loadRooms()[0]!.identities[joined.id]!.lease).toBe(lease);
+    for (const packet of [createPacket, joinPacket]) {
+      const receipt = h.store.findBootstrap('id', packet.requestId)!;
+      expect(Object.keys(JSON.parse(receipt.reply)).sort()).toEqual(['memberId', 'roomId']);
+      expect(
+        JSON.stringify([h.store.loadRooms(), h.store.readJournal(created.view.id), receipt]),
+      ).not.toContain(packet.bootstrapSecret);
+      expect(
+        JSON.stringify([...h.packets.values()].flat().filter((p) => p.type !== 'welcome')),
+      ).not.toContain(packet.bootstrapSecret);
+    }
+  });
+  it.each(['create', 'join'] as const)(
+    'recovers a lost %s welcome after closing and reopening the actual SQLite database',
+    async (kind) => {
+      const folder = mkdtempSync(join(tmpdir(), 'europe-bootstrap-'));
+      cleanup.push(() => rmSync(folder, { recursive: true, force: true }));
+      const path = join(folder, 'room.sqlite'),
+        before = harness({ path });
+      if (kind === 'join') await before.create();
+      before.loseWelcome = true;
+      if (kind === 'create') await before.create();
+      else await before.join('b');
+      const packet = copy(before.bootstrapPackets.get(kind === 'create' ? 'a' : 'b')!),
+        room = before.store.loadRooms()[0]!,
+        member = room.view.members.find((m) => m.name === packet.name)!;
+      await before.close();
+      const after = harness({ path });
+      after.connect('reloaded');
+      await after.receive('reloaded', packet);
+      expect(after.credentials.get('reloaded')).toEqual({
+        roomId: room.view.id,
+        memberId: member.id,
+        secret: packet.bootstrapSecret,
+      });
+      expect(after.store.loadRooms()).toHaveLength(1);
+      expect(after.snapshot('reloaded').room.members).toHaveLength(kind === 'create' ? 1 : 2);
+      expect(
+        after.snapshot('reloaded').room.members.find((m) => m.id === member.id)!.connected,
+      ).toBe(true);
+    },
+  );
+  it('rejects foreign bootstrap proofs and changed payloads or IDs without another room or seat', async () => {
+    const h = harness();
+    await h.create();
+    await h.join('b');
+    h.connect('intruder');
+    for (const packet of h.bootstrapPackets.values()) {
+      await h.receive('intruder', { ...packet, bootstrapSecret: randomBytes(32).toString('hex') });
+      expect(lastError(h, 'intruder')!.code).toBe('BOOTSTRAP_DENIED');
+      await h.receive('intruder', { ...packet, name: 'Changed' });
+      expect(lastError(h, 'intruder')!.code).toBe('BOOTSTRAP_REUSED');
+      await h.receive('intruder', { ...packet, requestId: `other-${packet.requestId}` });
+      expect(lastError(h, 'intruder')!.code).toBe('BOOTSTRAP_REUSED');
+    }
+    expect(h.packets.get('intruder')!.some((p) => p.type === 'welcome')).toBe(false);
+    expect(h.store.loadRooms()).toHaveLength(1);
+    expect(h.store.loadRooms()[0]!.view.members).toHaveLength(2);
+    const joinPacket = h.bootstrapPackets.get('b')!;
+    await h.room('a', { type: 'kick', memberId: h.credentials.get('b')!.memberId });
+    await h.receive('intruder', joinPacket);
+    expect(lastError(h, 'intruder')!.code).toBe('MEMBER_REMOVED');
+    expect(h.store.loadRooms()[0]!.view.members).toHaveLength(1);
+  });
+  it('atomically commits bootstrap receipts with membership and lets only one concurrent join claim a seat', async () => {
+    const h = harness();
+    h.fail = true;
+    await h.create();
+    const packet = h.bootstrapPackets.get('a')!;
+    expect(lastError(h, 'a')!.code).toBe('SERVER_ERROR');
+    expect(h.store.loadRooms()).toHaveLength(0);
+    expect(h.store.findBootstrap('id', packet.requestId)).toBeNull();
+    h.fail = false;
+    await h.receive('a', packet);
+    h.fail = true;
+    await h.join('b');
+    const joinPacket = h.bootstrapPackets.get('b')!;
+    expect(h.store.findBootstrap('id', joinPacket.requestId)).toBeNull();
+    expect(h.store.loadRooms()[0]!.view.members).toHaveLength(1);
+    h.fail = false;
+    h.connect('c');
+    await Promise.all([
+      h.receive('b', joinPacket),
+      h.receive('c', {
+        ...joinPacket,
+        requestId: 'competing',
+        bootstrapSecret: randomBytes(32).toString('hex'),
+        name: 'c',
+      }),
+    ]);
+    expect(h.store.loadRooms()[0]!.view.members).toHaveLength(2);
+    expect(h.store.findBootstrap('id', joinPacket.requestId)).not.toBeNull();
+    expect(h.store.findBootstrap('id', 'competing')).toBeNull();
+    expect(lastError(h, 'c')!.code).toBe('ROOM_FULL');
+    await h.receive('b', joinPacket);
+    expect(h.snapshot('b').room.members).toHaveLength(2);
+  });
   it('isolates game idempotency from another room poison or replay and keeps historical own retries', async () => {
     const h = harness();
     await h.start();

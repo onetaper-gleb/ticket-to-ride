@@ -16,7 +16,7 @@ export interface StoredRoom {
   remainingMs: number | null;
 }
 export interface StoredReply {
-  scope: 'game' | 'room';
+  scope: 'game' | 'room' | 'bootstrap';
   owner: string;
   actor: string;
   id: string;

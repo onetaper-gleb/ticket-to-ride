@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { WebSocket as PublicWebSocket } from 'ws';
+import { randomBytes } from 'node:crypto';
 import { createRoomServer } from './transport';
 import type {
   ClientPacket,
@@ -84,6 +85,7 @@ describe('real WebSocket transport', () => {
       type: 'create',
       requestId: 'create',
       protocol: 1,
+      bootstrapSecret: randomBytes(32).toString('hex'),
       name: 'Alpha',
       settings: { seats: 2, difficulty: 'normal', turnSeconds: 30, admissionOpen: true },
     });
@@ -92,6 +94,7 @@ describe('real WebSocket transport', () => {
       type: 'join',
       requestId: 'join',
       protocol: 1,
+      bootstrapSecret: randomBytes(32).toString('hex'),
       name: 'Beta',
       code: welcomeA.snapshot.room.code,
     });

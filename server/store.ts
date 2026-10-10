@@ -17,7 +17,9 @@ export class SQLiteRoomStore {
     this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA foreign_keys=ON;
       CREATE TABLE IF NOT EXISTS rooms(id TEXT PRIMARY KEY, state TEXT NOT NULL) STRICT;
       CREATE TABLE IF NOT EXISTS journal(seq INTEGER PRIMARY KEY, room_id TEXT NOT NULL, entry TEXT NOT NULL) STRICT;
-      CREATE TABLE IF NOT EXISTS replies(scope TEXT NOT NULL, owner TEXT NOT NULL, actor TEXT NOT NULL, id TEXT NOT NULL, payload TEXT NOT NULL, reply TEXT NOT NULL, PRIMARY KEY(scope,owner,actor,id)) STRICT;`);
+      CREATE TABLE IF NOT EXISTS replies(scope TEXT NOT NULL, owner TEXT NOT NULL, actor TEXT NOT NULL, id TEXT NOT NULL, payload TEXT NOT NULL, reply TEXT NOT NULL, PRIMARY KEY(scope,owner,actor,id)) STRICT;
+      CREATE UNIQUE INDEX IF NOT EXISTS bootstrap_request ON replies(id) WHERE scope='bootstrap';
+      CREATE UNIQUE INDEX IF NOT EXISTS bootstrap_proof ON replies(owner) WHERE scope='bootstrap';`);
     this.privateFiles();
     this.scopeLegacyGameReplies();
   }
@@ -98,6 +100,12 @@ export class SQLiteRoomStore {
     const row = this.db
       .prepare('SELECT * FROM replies WHERE scope=? AND owner=? AND actor=? AND id=?')
       .get(scope, owner, actor, id);
+    return row ? (row as unknown as StoredReply) : null;
+  }
+  findBootstrap(field: 'id' | 'owner', value: string): StoredReply | null {
+    const row = this.db
+      .prepare(`SELECT * FROM replies WHERE scope='bootstrap' AND ${field}=?`)
+      .get(value);
     return row ? (row as unknown as StoredReply) : null;
   }
   readJournal(roomId: string): unknown[] {
