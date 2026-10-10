@@ -1,7 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="512" viewBox="0 0 1024 512">
-<defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="#9EC3CE"/><stop offset="1" stop-color="#E7DDC3"/></linearGradient></defs>
-<path fill="url(#sky)" d="M0 0h1024v512H0z"/>
-<g fill="#F4E8CF" opacity=".4"><path d="M55 129c5-26 35-39 58-19 26-22 69-9 74 16 34-2 47 26 28 39H45c-25-9-14-33 10-36Z"/><path d="M692 65c6-22 30-29 49-12 25-30 77-11 82 13 32-7 53 18 38 34H675c-18-13-4-31 17-35Z"/></g>
-<g fill="#74876A"><path d="M0 512V346c18-53 56-66 91-31 28-64 74-75 109-8 38-34 85-25 104 38 46-41 108-26 131 30 44-42 104-30 127 22 56-58 98-44 131 2 44-42 99-28 125 14 40-27 81-10 102 31 33-28 84-25 104 2v66Z"/></g>
-<path fill="#87968B" d="M0 481h1024v31H0z"/>
+  <defs>
+    <linearGradient id="sky-blue" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#8BB6DF"/><stop offset=".7" stop-color="#C5DCF0"/><stop offset="1" stop-color="#E7DFCD"/></linearGradient>
+    <linearGradient id="sky-distance" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#B6CCDA" stop-opacity="0"/><stop offset="1" stop-color="#A8BDC2" stop-opacity=".23"/></linearGradient>
+    <filter id="cloud-soft" x="-30%" y="-70%" width="160%" height="240%"><feGaussianBlur stdDeviation="9"/></filter>
+  </defs>
+  <path fill="url(#sky-blue)" d="M0 0h1024v512H0Z"/>
+  <g fill="#FFFCF2" opacity=".64" filter="url(#cloud-soft)">
+    <path d="M67 151c21-10 37-7 53-3 10-29 34-43 64-30 13-22 42-26 62-6 28-8 56 4 64 22 37-5 66 4 83 20-59 15-252 19-326-3Z"/>
+    <path d="M626 78c30-8 57-6 75-3 16-23 40-30 67-15 27-14 54-9 69 10 38-4 66 4 85 19-71 11-224 13-296-11Z"/>
+  </g>
+  <path fill="url(#sky-distance)" d="M0 331h1024v181H0Z"/>
 </svg>
