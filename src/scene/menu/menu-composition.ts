@@ -78,7 +78,7 @@ export async function createMenuComposition(
         stone: { roughness: 0.92 },
         boardPaint: { roughness: 0.88 },
         paper: { roughness: 0.95 },
-        iron: { roughness: 0.65, metalness: 0.25 },
+        iron: { color: '#3d454a', roughness: 0.6, metalness: 0.25 },
       },
     });
     models.parts.stationRoot.rotation.y = menuCompositionPreset(1672, 941).buildingYaw;
@@ -155,8 +155,8 @@ function assemble(
   const softFill = new THREE.RectAreaLight('#ffe9c8', 3, 5, 4);
   softFill.position.set(2, 3, 4);
   softFill.lookAt(0, 0.5, 0);
-  const railFill = new THREE.SpotLight('#ffe2b1', 40, 12, 0.42, 0.9, 2);
-  railFill.position.set(1.6, 2, 1.5);
+  const railFill = new THREE.SpotLight('#ffe2b1', 200, 12, 0.3, 0.9, 2);
+  railFill.position.set(4, 1.7, 1.4);
   scene.add(fill, keyLight, softFill, railFill, railFill.target);
   const lampLights = models.parts.lamps.map((fixture) => {
     const windowLamp = fixture.name === 'lamp-window';
@@ -255,8 +255,7 @@ function assemble(
       (6 * (settingsBounds.max.y - settingsBounds.min.y)) / settingsRect.height,
     );
     scene.updateMatrixWorld(true);
-    railFill.target.position.copy(models.train.root.getWorldPosition(new THREE.Vector3()));
-    railFill.target.position.y += 0.55;
+    railFill.target.position.copy(models.train.root.localToWorld(new THREE.Vector3(0, 0.95, 0.55)));
     railFill.target.updateMatrixWorld(true);
   }
   function projectCorners(width: number, height: number) {
