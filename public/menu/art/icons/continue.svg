@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true" focusable="false">
+  <!-- Original vector drawing for the Ticket Office menu, 2026-10-10. No imported artwork. -->
+  <g stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11 6V3.5h10V6" />
+    <path d="M10 6h12a4 4 0 0 1 4 4v11a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4V10a4 4 0 0 1 4-4Z" />
+    <path d="M10 10h12v7H10zM16 10v7M9 25l-3 4M23 25l3 4M5 29h22" />
+  </g>
+  <circle cx="10.5" cy="21" r="1.5" fill="currentColor" />
+  <circle cx="21.5" cy="21" r="1.5" fill="currentColor" />
+</svg>

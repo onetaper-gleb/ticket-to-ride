@@ -1,0 +1,37 @@
+# Происхождение арта меню
+
+Создано 10 октября 2026 для выбранного варианта «Билетная касса». Производственные файлы перечислены с размерами и sha256 в inventory.json. Это локальный инвентарь для интегратора; общий docs/assets.json эта ветка не изменяет.
+
+## Авторские SVG и текстуры
+
+A01 icons/*.svg — пять собственных контуров, viewBox32, currentColor, stroke2.2. A02 europe-mark.svg — собственные буквы/path, без шрифтовых контуров или издательского логотипа. Для цвета вставлять inline SVG либо использовать mask; img не наследует currentColor. Реальный доступный заголовок остаётся DOM.
+
+A05 clock-face.svg —512², 12 часовых и48 минутных меток. Нет стрелок. Прозрачные поля16px; диск радиуса240px. A06 ticket-print.svg —512×256, непрозрачная кремовая бумага, собственные линии/эмблемы без городов, игровых обязательств и слов UI. Сохранять2:1. Для портретного билета повернуть весь Mesh бумаги на90° с неизменёнными локальными UV; если бумага сразу строится1:2, повернуть только UV на90°. Выбрать один способ. A07 luggage-stickers.svg —512² прозрачный atlas. Три crops224²: circle(16,16), diamond(272,16), shield(144,272). Верх SVG соответствует+Y лицевой плоскости+Z. При CanvasTexture стандартную ориентацию подтверждает владелец модели; не дублировать flip вручную и в texture.
+
+A03 board-paint.png/.webp и A08 wood-tile.png/.webp —256² RGB, периодические функции без входных изображений, детерминированный источник sources/generate-textures.py. PNG — редактируемый lossless мастер; WebP — runtime. Древесные волокна идут по X. PNG/WebP не загружать одновременно. Фон DOM непрозрачный; фактура board используется только с opacity≤0.025. Bump/normal не нужны.
+
+A09 — матовые материалы цвет+roughness из спецификации, без файлов текстур. A10 distant-sky.svg —1024×512, собственный градиент и крупные силуэты; optional. Градиент камеры/простые массы предпочтительны, если они уже дают глубину. A11 steam-mask-p2.png —128² RGBA, собственная сумма трёх гауссовых масс; source в generate-textures.py. П2, выключен по умолчанию. White RGB, straight alpha, edgealpha0; blend opacity≤0.2, 2–3quads только у трубы. Генерация этой маски не использовала imagegen.
+
+Контуры, SVG и периодические текстуры — project-original artwork; сторонние компоненты/модели/платные зависимости не использованы. Этот пакет не объявляет новую открытую лицензию проекта.
+
+## A12: сгенерированный draft
+
+fallback-draft-wide.webp1280×720 и fallback-draft-compact.webp720×960 — временные иллюстрации без текста/кнопок. Созданы встроенным image_gen. Reference: выбранный пользовательский concept menu-station-2.png, только композиция и визуальный язык. Wide удаляет надписи/ряды concept; compact создаёт отдельную вертикальную компоновку. Не являются render принятой 3D сцены и не доказывают её качество/совместимость. Галерея маскирует исходную пустую доску wide CSS слоем, чтобы не дублировать динамическую раму. На ultrawide статичный draft имеет видимые границы слоя; замена кадром общей сцены обязательна для финального fallback.
+
+Сохранённые исходные PNG: wide1672×941, compact1086×1448. Изменение формата: Sharp, resize до1280×720 и720×960 соответственно, WebPquality82/effort6. Соотношения источников почти совпадают; не перерисовывались кодом. Исходные PNG и encoding scripts переданы в outputs/source archive, а не в runtime public: они не загружаются приложением. Пакет содержит оба кадра для разных presets; в UI выбирать один, не создавать обе GPU texture одновременно.
+
+Model/version/seed image_gen инструмент не сообщил. Инвентарь помечает изображения generated-draft. Финальный owner — интегратор: снять кадр принятой общей сцены, обновить hashes/manifest, сохранить отдельный DOM.
+
+### Prompt wide (verbatim)
+
+Use case: stylized-concept. Asset type: draft static backdrop for a desktop 3D railway board game's ticket office menu. Create a warm polished stylized 3D-looking European station ticket office scene in a 16:9 landscape composition, 1280x720 intended use. Reference image is the chosen concept only; preserve the broad visual composition and materials. Left 38 percent: a nearly frontal flat BLANK dark green rectangular wooden notice board with thin brass edging, and a smaller BLANK cream hanging plaque below, no lettering and NO separate button rows. Center: an adult broad proportioned friendly female ticket clerk with brown hair, burgundy jacket, cream collar in an arched wooden ticket window, hands resting on the wooden counter and holding a small blank cream ticket. Keep her face around x=52 percent,y=45 percent, separated from board. Right 30 percent in depth: a short deep green rounded steam locomotive and one carriage at a station platform, warm cream plaster, dark green metal canopy, a hanging clock with plain tick marks and separate visible hands. Quiet daylight, soft warm lamp, matte surfaces, two cropped suitcases along lower corners. Board/actions visual hierarchy before face before train. Build only visible station. Absolutely no text, no words, no letters, no numbers, no button shapes, no UI, no watermark, no official logos. No glow/bloom, no depth-of-field that obscures the board. This is background decoration only. Do not include the reference's baked menu text.
+
+### Prompt compact (verbatim)
+
+Use case: stylized-concept. Asset type: COMPACT draft static backdrop for a ticket office menu, portrait 720x960 intended use. Use reference image only as visual language: warm stylized 3D European railway station, cream plaster, dark green metal, wooden arched ticket window, adult friendly broad female clerk brown hair, burgundy jacket cream collar, green train to the right in distant depth. Compose for a NARROW WINDOW: clerk's whole face near x=74%, y=24%, body behind wooden counter y=52%. Left 48% of frame must be quiet blank cream plaster; no board, no sign, no plaque, no letters, no buttons. Clerk and train to the right never extend into left48%. Train can be cropped at right edge behind the clerk, at y=50–70%. Wooden canopy top, quiet matte daylight and soft lamp. Bottom left quiet floor, small luggage only bottom right. Absolutely no text or symbols resembling lettering, no UI, no official logos, no watermark. This is a decorative background; dynamic DOM board will cover left lower area. Keep woman adult and broad in shape, no slim realistic face. Do not bake any menu or board into the image.
+
+## Галерея и существующие материалы
+
+A04 тексты/states, CSS palette и формы — HTML-слой отдельной outputs gallery. Не runtime implementation StationMenu. Галерея не читает IndexedDB и не создаёт партий.
+
+IBM Plex Sans Regular/Medium галереи скопированы без изменений из public/fonts фиксированной базы; SIL Open Font License1.1, полный LICENSE.txt рядом. Новый SVGзнак не использует эти шрифтовые контуры. Правила и иллюстрации галереи скопированы без изменений из src/ui/rules-pages.ts/public/rules-illustrations фиксированной базы bea9743; это project-original artwork с фактами Europe, новая памятка не рисовалась. Их копии нужны только portable gallery. Лицензия/источник runtime шрифтов уже находятся в общем manifest и не меняются.
