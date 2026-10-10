@@ -535,7 +535,7 @@ function buildInterior(root: THREE.Group, kit: MenuModelKit) {
     }
   }
   for (const [x, height, material] of [
-    [-0.5, 0.24, 'burgundy'],
+    [-0.5, 0.24, 'red'],
     [-0.455, 0.29, 'green'],
     [-0.41, 0.22, 'paper'],
   ] as const) {
