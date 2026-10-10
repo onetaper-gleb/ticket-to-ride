@@ -103,7 +103,13 @@ export function buildMenuModels(art: MenuEnvironmentArt = {}): MenuModels {
     const { lowerFacade, interior } = buildFacade(stationRoot, kit);
     const stationFloor = buildStationFloor(root, kit);
     const { railwayRoot, platform } = buildPlatform(root, kit);
-    const { canopy, supports, outerCanopySupport } = buildCanopy(stationRoot, kit);
+    const { canopy, supports, outerCanopySupport } = buildCanopy(
+      stationRoot,
+      kit,
+      art.surfaces?.canopyPaint !== undefined || art.materialOverrides?.canopyPaint !== undefined
+        ? 'canopyPaint'
+        : 'green',
+    );
     const backdropRoot = buildBackdrop(root, kit);
     const semaphore = buildMenuSemaphore(kit);
     semaphore.root.position.set(5.0, FLOOR_Y, -8.4);
@@ -831,19 +837,19 @@ function buildBoard(
   };
 }
 
-function buildCanopy(root: THREE.Group, kit: MenuModelKit) {
+function buildCanopy(root: THREE.Group, kit: MenuModelKit, canopyPaint: 'green' | 'canopyPaint') {
   const canopy = part(root, 'station-canopy', [0, 2.63, 0]);
   const batch = kit.batch(canopy, 'canopy');
-  batch.add(menuBox(5.9, 0.12, 1.7), 'green', [-1.885, 0.015, -0.93]);
+  batch.add(menuBox(5.9, 0.12, 1.7), canopyPaint, [-1.885, 0.015, -0.93]);
   batch.add(menuBox(5.84, 0.05, 1.58), 'wood', [-1.885, -0.1, -0.93]);
-  batch.add(menuBox(6.2, 0.12, 3.6), 'green', [4.05, 0.03, -1.0]);
+  batch.add(menuBox(6.2, 0.12, 3.6), canopyPaint, [4.05, 0.03, -1.0]);
   batch.add(menuBox(6.14, 0.045, 3.43), 'wood', [4.05, -0.1125, -1.0]);
   for (const z of [0.73, -0.13, -1.45, -2.68])
-    batch.add(flangedBeam(0.13, 0.15, 6.2, true), 'green', [4.05, -0.155, z]);
+    batch.add(flangedBeam(0.13, 0.15, 6.2, true), canopyPaint, [4.05, -0.155, z]);
   for (const x of [1.01, 2.5, 4.1, 6.0, 7.08])
-    batch.add(flangedBeam(0.12, 0.2, 3.45), 'green', [x, -0.12, -1.0]);
+    batch.add(flangedBeam(0.12, 0.2, 3.45), canopyPaint, [x, -0.12, -1.0]);
   batch.add(menuBox(6.2, 0.072, 0.085, 0.008), 'cream', [4.05, -0.142, 0.78]);
-  batch.add(flangedBeam(0.17, 0.135, 6.3, true), 'green', [0, -0.1, -0.14]);
+  batch.add(flangedBeam(0.17, 0.135, 6.3, true), canopyPaint, [0, -0.1, -0.14]);
   batch.add(menuBox(0.045, 0.04, 0.64), 'iron', [-2.0, -0.08, 0.1]);
   const scallop = new THREE.Shape();
   scallop.moveTo(-0.17, 0);
@@ -869,7 +875,7 @@ function buildCanopy(root: THREE.Group, kit: MenuModelKit) {
     const localX = x === 4.35 ? 0 : x,
       localZ = x === 4.35 ? 0 : z;
     const height = 2.58 - FLOOR_Y;
-    target.add(profiledPost(0.18, 0.25, height), 'green', [localX, 0, localZ]);
+    target.add(profiledPost(0.18, 0.25, height), canopyPaint, [localX, 0, localZ]);
     for (const [w, h, y] of [
       [0.3, 0.12, 0.06],
       [0.265, 0.15, 0.195],
@@ -879,7 +885,7 @@ function buildCanopy(root: THREE.Group, kit: MenuModelKit) {
       [0.23, 0.055, 2.2],
       [0.26, 0.14, height - 0.18],
     ])
-      target.add(menuBox(w, h, w + 0.03, 0.015), 'green', [localX, y, localZ]);
+      target.add(menuBox(w, h, w + 0.03, 0.015), canopyPaint, [localX, y, localZ]);
     target.add(menuBox(0.29, 0.11, 0.31, 0.01), 'cream', [localX, -0.06 - FLOOR_Y, localZ]);
     const corbel = new THREE.Shape();
     corbel.moveTo(0, height - 0.67);
@@ -897,7 +903,7 @@ function buildCanopy(root: THREE.Group, kit: MenuModelKit) {
     opening.quadraticCurveTo(0.2, height - 0.2, 0.17, height - 0.3);
     opening.closePath();
     corbel.holes.push(opening);
-    target.add(extrude(corbel, 0.15, 0.008), 'green', [localX, 0, localZ - 0.075]);
+    target.add(extrude(corbel, 0.15, 0.008), canopyPaint, [localX, 0, localZ - 0.075]);
   }
   posts.flush();
   rightPost.flush();
