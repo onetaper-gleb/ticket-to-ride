@@ -54,6 +54,7 @@ export type MenuComposition = {
   lighting: {
     sky: THREE.HemisphereLight;
     softFill: THREE.RectAreaLight;
+    canopyFill: THREE.RectAreaLight;
     railFill: THREE.SpotLight;
     lamps: readonly THREE.SpotLight[];
   };
@@ -162,8 +163,8 @@ function assemble(
   scene.add(models.root);
   const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 80);
   const fill = new THREE.HemisphereLight('#bed0e2', '#918675', 1.1);
-  const keyLight = new THREE.DirectionalLight('#fff2df', 1.5);
-  keyLight.position.set(6, 8, 2);
+  const keyLight = new THREE.DirectionalLight('#fff2df', 2);
+  keyLight.position.set(6, 7, -3);
   keyLight.castShadow = true;
   keyLight.shadow.mapSize.set(2048, 2048);
   Object.assign(keyLight.shadow.camera, {
@@ -186,6 +187,12 @@ function assemble(
   const softFill = new THREE.RectAreaLight('#fff1dd', 6, 5, 4);
   softFill.position.set(2, 3, 4);
   softFill.lookAt(0, 0.5, 0);
+  // Reflected platform daylight reaches the roof underside from below.
+  const canopyFill = new THREE.RectAreaLight('#dedbd0', 3, 4, 2);
+  canopyFill.name = 'canopy-bounce-fill';
+  canopyFill.position.set(4.2, -1.4, 1.1);
+  canopyFill.lookAt(4.2, 0, -1);
+  models.parts.canopy.add(canopyFill);
   const railFill = new THREE.SpotLight('#ffe2b1', 200, 12, 0.3, 0.9, 2);
   railFill.position.set(4, 1.7, 1.4);
   scene.add(fill, keyLight, softFill, railFill, railFill.target);
@@ -351,7 +358,7 @@ function assemble(
     cashier,
     art,
     keyLight,
-    lighting: { sky: fill, softFill, railFill, lamps: lampLights },
+    lighting: { sky: fill, softFill, canopyFill, railFill, lamps: lampLights },
     get titleVisible() {
       return !disposed && models.board.titleRoot.visible;
     },
@@ -361,6 +368,7 @@ function assemble(
     dispose() {
       if (disposed) return;
       disposed = true;
+      canopyFill.removeFromParent();
       cashier.dispose();
       railFill.shadow.dispose();
       railFill.removeFromParent();

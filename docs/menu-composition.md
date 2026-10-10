@@ -24,9 +24,17 @@ Optional titleRect задан относительно верхнего лево
 
 `titleVisible` читает фактическую видимость titleRoot и false после dispose. Native caller скрывает visible decorative SVG через visibility:hidden и делает board/header paint прозрачным только после successful layout. DOM размер, доступное h1 и actions сохраняются; rows имеют свой paint. Отсутствующий title rect, clear или failed hook возвращают единственный SVG и native paint. Preview fixture setVolumeTitleEnabled и ?flat-title проверяют этот переход; production wiring принадлежит интегратору. HTTP503 title source оставляет обычное меню работоспособным.
 
-## Текущий свет и материалы
+## Четвёртый раунд света и глубины
 
-Сохраняются existing light objects и shadow/post graph. Hemisphere#bed0e2/#918675 intensity1.1; key#fff2df intensity1.5 в(6,8,2), shadow2048²/radius8/intensity.8. RectArea fill#fff1dd intensity6,size5×4 в(2,3,4), lookAt(0,.5,0). Train Spot#ffe2b1 intensity200/distance12/angle.3/penumbra.9/decay2 направлен на actual boiler local(0,.95,.55), без shadow.
+Неизменяемая технически принятая основа77e709e сохранена в outputs/checkpoints/menu-composition-77e709e-preview.zip, SHA256a39b1a7446fc251918a9211d56400b3e2157adbdc83c00366871ee28dff3108a. Этот собственный light/depth delta использует те же принятые env70/cashb7/art82: свежие foreign tips и art tokens пока не подключены. Сравнение before/after делается при одной камере/геометрии/maps/native sizes.
+
+Платформенный reflected fill освещает underside навеса снизу: canopyFill RectArea#dedbd0/intensity3/size4×2, parent actual parts.canopy, localposition(4.2,−1.4,1.1), local aiming(4.2,0,−1). Ориентация задаётся до parenting, затем наследует station yaw; −Z light axis направлен вверх/назад. Источник не создаёт geometry/map/shadow target, compositor явно снимает его с parent до model cleanup. Shared LTC уже используется существующим RectArea fill. Дневной key теперь(6,7,−3)/2: тени направлены к ближнему полу, угол/градиент у оснований стоек заметнее. Header/face сохраняют прежний localfill и native paint; canopy shade не заменяет отсутствующие foreign depth planes.
+
+Near focal plane5/coefficient.75 мягче показывает ближние чемоданы/скамью; far focal10.5/coefficient.9 и maxradius3 сохранены, ближняя ходовая поезда/лицо/физический title остаются в резком band. AO24/radius.2/min.0003/max.015 и graph/full-depth/half-target sizing не менялись. Смена key shadow frustum влияет на multipass draws; новый RectArea добавляет один light, но не draw mesh/post target. Общая художественная приёмка pending.
+
+## Текущие параметры
+
+Сохраняются existing shadow/post targets. Hemisphere#bed0e2/#918675 intensity1.1; key#fff2df intensity2 в(6,7,−3), shadow2048²/radius8/intensity.8. RectArea fill#fff1dd intensity6,size5×4 в(2,3,4), lookAt(0,.5,0). Train Spot#ffe2b1 intensity200/distance12/angle.3/penumbra.9/decay2 направлен на actual boiler local(0,.95,.55), без shadow.
 
 Lamp sources находятся на.02 ниже actual contact.height. Board2/distance5/angle.9, window4/3/1.1, distant4/3.5/.8; color#ffcf83/decay2. Window penumbra1/target localZ−.25 мягко заполняет интерьер; прочие penumbra.75. Только window castShadow1024²/radius2. Изменённый shadow frustum может менять multipass calls; это не новые lights или targets.
 
@@ -34,7 +42,7 @@ Cream#c6cbd1/roughness.95, woodDark#887660, stone#c0b9ae/.92, boardPaint#abb8b0/
 
 ## Preview и проверка
 
-Own standalone harness: ACES/exposure1/DPR1/PCF/static shadow refresh; RenderPass→MenuAO→две depth Gaussian→Output→FXAA. Normal/depth full physical resolution; AO/blur half. Shared actual depthTexture устанавливается после ShaderPass uniform clone. Focal radius clamp(max(4−depth,0)×.5+max(depth−10.5,0)×.9,0,3);9taps/axis до±6px. Rear axle depth10.396 даёт r0. Viewport/DPR memo исключает лишнюю переаллокацию targets; сам graph в этом title/material раунде не менялся.
+Own standalone harness: ACES/exposure1/DPR1/PCF/static shadow refresh; RenderPass→MenuAO→две depth Gaussian→Output→FXAA. Normal/depth full physical resolution; AO/blur half. Shared actual depthTexture устанавливается после ShaderPass uniform clone. Focal radius clamp(max(5−depth,0)×.75+max(depth−10.5,0)×.9,0,3);9taps/axis до±6px. Rear axle depth10.396 даёт r0. Viewport/DPR memo исключает лишнюю переаллокацию targets; сам graph сохранён; в четвёртом раунде изменён только near coefficient/band.
 
 Native optional friends callback даёт «Играть с друзьями» без hint после new и до tutorial. Его присутствие моделируется ?network=1, событием и requests counter; реальные комнаты не относятся к harness. Actions-frame338/416/458px сохраняет внешний размер; при overflow nav314/392/434 плюс noninteractive footer24: «Ещё действия↓», «↕ Прокрутите меню», «↑ Действия выше». Без overflow footer/aria-describedby сняты. Ниже viewport остаются tutorial/rules, доступные обычной прокруткой/Tab. Все пять одновременно видимыми в initial frame не заявляются.
 
@@ -44,4 +52,4 @@ Scene/calls/GPU samples/CPU arrays/map estimates и exact source/harness provena
 
 ## Обязательная политика
 
-Ничего из Аркадии или внутренней инфраструктуры Яндекса: code/deps/repos/components/build systems/services/API/docs/credentials/tools/skills, прямо или черезagents. Только собственный проект, ordinary Git/GitHub и public open-source с проверенным происхождением и лицензией. Three MIT/Playwright Apache2/Vite MIT уже применялись; новых dependencies/fonts в этом раунде нет. Canonical title и texture art авторские. Foreign geometry changes возвращаются владельцам через оркестратора.
+Ничего из Аркадии или внутренней инфраструктуры Яндекса: code/deps/repos/components/build systems/services/API/docs/credentials/tools/skills, прямо или черезagents. Только собственный проект, ordinary Git/GitHub и public open-source с проверенным происхождением и лицензией. Three MIT/Playwright Apache2/Vite MIT уже применялись; новых dependencies/fonts в этом раунде нет. Canonical title и texture art авторские. Foreign geometry changes возвращаются владельцам через локальные outputs, которые читает оркестратор. Обратные сообщения не требуются; отклонённую отправку не повторять.
