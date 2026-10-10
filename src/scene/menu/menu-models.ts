@@ -286,14 +286,21 @@ function paperPlate(width: number, height: number, radius: number) {
   const x = width / 2;
   const y = height / 2;
   const r = Math.min(radius, width / 8, height / 5);
-  const wobble = Math.min(0.003, height / 90);
+  const wobble = Math.min(0.009, height / 45, r * 0.7);
   const shape = new THREE.Shape();
   shape.moveTo(-x + r, -y);
-  shape.bezierCurveTo(-x / 3, -y + wobble, x / 3, -y + wobble * 0.3, x - r, -y);
+  shape.quadraticCurveTo(-x * 0.72, -y + wobble * 1.2, -x * 0.44, -y + wobble * 0.2);
+  shape.quadraticCurveTo(-x * 0.17, -y, x * 0.08, -y + wobble * 0.65);
+  shape.quadraticCurveTo(x * 0.4, -y + wobble, x * 0.64, -y + wobble * 0.1);
+  shape.quadraticCurveTo(x * 0.85, -y, x - r, -y);
   shape.quadraticCurveTo(x, -y, x, -y + r);
-  shape.bezierCurveTo(x - wobble, -y / 3, x - wobble * 0.4, y / 3, x, y - r);
+  shape.quadraticCurveTo(x - wobble, -y * 0.4, x - wobble * 0.2, 0);
+  shape.quadraticCurveTo(x, y * 0.4, x, y - r);
   shape.quadraticCurveTo(x, y, x - r, y);
-  shape.bezierCurveTo(x / 3, y - wobble * 0.5, -x / 3, y - wobble, -x + r, y);
+  shape.quadraticCurveTo(x * 0.8, y - wobble * 0.1, x * 0.55, y - wobble * 0.8);
+  shape.quadraticCurveTo(x * 0.25, y, -x * 0.04, y - wobble * 0.2);
+  shape.quadraticCurveTo(-x * 0.34, y - wobble, -x * 0.61, y - wobble * 0.15);
+  shape.quadraticCurveTo(-x * 0.84, y, -x + r, y);
   shape.quadraticCurveTo(-x, y, -x, y - r);
   shape.bezierCurveTo(-x + wobble * 0.3, y / 3, -x + wobble, -y / 3, -x, -y + r);
   shape.quadraticCurveTo(-x, -y, -x + r, -y);
@@ -371,8 +378,8 @@ function buildInterior(root: THREE.Group, kit: MenuModelKit) {
   const back = new THREE.Shape();
   back.moveTo(-1.1, -0.9);
   back.lineTo(0.39, -0.9);
-  back.lineTo(0.39, 1.15);
-  back.quadraticCurveTo(0.7, 1.81, 1.01, 1.15);
+  back.lineTo(0.39, 1.25);
+  back.quadraticCurveTo(0.7, 2.02, 1.01, 1.25);
   back.lineTo(1.01, -0.9);
   back.lineTo(1.1, -0.9);
   back.lineTo(1.1, 2.1);
@@ -395,23 +402,70 @@ function buildInterior(root: THREE.Group, kit: MenuModelKit) {
     batch.add(menuBox(0.025, 2.25, 0.045), 'woodDark', [x + (x < 0.7 ? 0.05 : -0.05), 0.28, 0.18]);
   }
   const doorArch = new THREE.Shape();
-  doorArch.moveTo(0.325, 1.12);
-  doorArch.quadraticCurveTo(0.7, 1.92, 1.075, 1.12);
-  doorArch.lineTo(0.975, 1.12);
-  doorArch.quadraticCurveTo(0.7, 1.63, 0.425, 1.12);
+  doorArch.moveTo(0.325, 1.25);
+  doorArch.quadraticCurveTo(0.7, 2.16, 1.075, 1.25);
+  doorArch.lineTo(0.975, 1.25);
+  doorArch.quadraticCurveTo(0.7, 2.02, 0.425, 1.25);
   doorArch.closePath();
   batch.add(extrude(doorArch, 0.19, 0.01), 'wood', [0, 0, -0.03]);
   batch.add(menuBox(0.62, 0.055, 0.27), 'wood', [0.7, -0.07, 0.04]);
-  // The portal has long side reveals, a rear wall and separate outdoor/inset planes.
-  batch.add(menuBox(0.75, 3.0, 0.075), 'cream', [0.7, 0.6, -1.52]);
-  for (const x of [0.38, 1.055])
-    batch.add(verticalWood(menuBox(0.055, 2.3, 1.53)), 'wood', [x, 0.28, -0.7325]);
-  batch.add(menuBox(0.62, 0.055, 1.53), 'wood', [0.7, -0.075, -0.7325]);
-  batch.add(menuBox(0.55, 0.93, 0.08), 'wood', [0.77, 0.03, -1.445]);
-  batch.add(menuBox(0.28, 0.43, 0.022), 'sky', [0.59, 1.095, -1.472]);
-  batch.add(menuBox(0.033, 0.46, 0.06), 'wood', [0.747, 1.08, -1.43]);
-  batch.add(menuBox(0.2, 0.39, 0.2, 0.007), 'wood', [0.83, 0.1475, -0.92]);
-  batch.add(menuBox(0.24, 0.2, 0.18, 0.005), 'woodDark', [0.59, 0.0525, -1.19]);
+  // A second real arch opens onto a separate courtyard beyond the long reveals.
+  const yardWall = new THREE.Shape();
+  yardWall.moveTo(0.895, -0.9);
+  yardWall.lineTo(0.95, -0.9);
+  yardWall.lineTo(0.95, 1.25);
+  yardWall.quadraticCurveTo(1.545, 2.02, 2.14, 1.25);
+  yardWall.lineTo(2.14, -0.9);
+  yardWall.lineTo(2.22, -0.9);
+  yardWall.lineTo(2.22, 2.1);
+  yardWall.lineTo(0.895, 2.1);
+  yardWall.closePath();
+  batch.add(extrude(yardWall, 0.075, 0), 'cream', [0, 0, -1.56]);
+  for (const [front, rear] of [
+    [0.38, 1.1],
+    [1.055, 1.925],
+  ])
+    batch.add(
+      verticalWood(menuBox(0.055, 2.05, Math.hypot(rear - front, 1.53))),
+      'wood',
+      [(front + rear) / 2, 0.9775, -0.7325],
+      [0, Math.atan2(rear - front, -1.53), 0],
+    );
+  const passageFloor = new THREE.Shape();
+  passageFloor.moveTo(0.3525, -0.0325);
+  passageFloor.lineTo(1.0825, -0.0325);
+  passageFloor.lineTo(1.9525, 1.4975);
+  passageFloor.lineTo(1.0725, 1.4975);
+  passageFloor.closePath();
+  const floorGeometry = extrude(passageFloor, 0.055, 0);
+  floorGeometry.rotateX(-Math.PI / 2);
+  batch.add(floorGeometry, 'wood', [0, -0.1025, 0]);
+  batch.add(menuBox(1.35, 0.065, 1.69), 'woodDark', [1.15, 2.02, -0.76], [0, -0.4, 0]);
+  batch.add(menuBox(1.32, 0.025, 1.925), 'stone', [1.6, -0.06, -2.45]);
+  batch.add(menuBox(2.8, 1.3, 0.08), 'cream', [2.43, 0.52, -3.6]);
+  batch.add(menuBox(0.42, 0.71, 0.025), 'glass', [2.02, 0.73, -3.545]);
+  batch.add(menuBox(0.49, 0.045, 0.12), 'stone', [2.02, 0.35, -3.51]);
+  batch.add(menuBox(0.035, 0.71, 0.04), 'green', [2.02, 0.73, -3.52]);
+  batch.add(menuBox(0.42, 0.03, 0.04), 'green', [2.02, 0.86, -3.52]);
+  batch.add(menuBox(3.0, 1.5, 0.035), 'sky', [2.1, 1.85, -3.72]);
+  const yardTrunk = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(2.2, -0.0475, -2.9),
+    new THREE.Vector3(2.18, 0.6, -2.9),
+    new THREE.Vector3(2.09, 1.47, -2.94),
+  ]);
+  batch.add(new THREE.TubeGeometry(yardTrunk, 10, 0.022, 6, false), 'woodDark');
+  for (const [index, [x, y, z]] of [
+    [1.93, 1.26, -2.86],
+    [2.13, 1.44, -3.01],
+    [2.34, 1.25, -2.88],
+  ].entries()) {
+    const branch = new THREE.LineCurve3(yardTrunk.getPoint(0.67), new THREE.Vector3(x, y, z));
+    batch.add(new THREE.TubeGeometry(branch, 3, 0.014, 5, false), 'woodDark');
+    batch.add(foliageClump(0.2, index * 1.71, true), 'foliageLight', [x, y, z]);
+    batch.add(foliageClump(0.095, index * 2.13), 'foliage', [x - 0.1, y - 0.07, z + 0.08]);
+  }
+  batch.add(menuBox(0.2, 0.39, 0.2, 0.007), 'wood', [1.33, 0.1475, -0.92]);
+  batch.add(menuBox(0.24, 0.2, 0.18, 0.005), 'woodDark', [1.22, 0.0525, -1.19]);
   // Storage is an actual wall recess; interrupted partitions and parcels reveal its backs.
   for (const x of [-0.88, -0.045])
     batch.add(verticalWood(menuBox(0.047, 1.91, 0.09, 0.009)), 'wood', [x, 0.97, 0.15]);
@@ -479,6 +533,32 @@ function buildInterior(root: THREE.Group, kit: MenuModelKit) {
           ]);
       }
     }
+  }
+  for (const [x, height, material] of [
+    [-0.5, 0.24, 'burgundy'],
+    [-0.455, 0.29, 'green'],
+    [-0.41, 0.22, 'paper'],
+  ] as const) {
+    batch.add(menuBox(0.035, height, 0.145), material, [x, 0.7125 + height / 2, 0.23]);
+    batch.add(menuBox(0.027, 0.018, 0.006), 'brass', [x, 0.7125 + height * 0.77, 0.304]);
+  }
+  for (const [x, radius] of [
+    [-0.28, 0.024],
+    [-0.12, 0.019],
+  ]) {
+    const y = 1.6125 + radius;
+    batch.add(
+      new THREE.CylinderGeometry(radius, radius, 0.11, 10),
+      'paper',
+      [x, y, 0.24],
+      [0, 0, Math.PI / 2],
+    );
+    batch.add(
+      new THREE.TorusGeometry(radius + 0.001, 0.003, 5, 10),
+      'woodDark',
+      [x, y, 0.24],
+      [0, Math.PI / 2, 0],
+    );
   }
   batch.flush();
   return interior;
@@ -701,6 +781,27 @@ function buildBoard(
       'green',
       [0, 0, -0.04],
     );
+    // A dark full-depth outer lip and stepped gold bead stay outside the aperture.
+    batch.add(
+      extrude(frameShape(size.x, size.y, pixel * 1.6, pixel * 8, pixel * 6.4), 0.04, 0),
+      'iron',
+      [0, 0, -0.04],
+    );
+    batch.add(
+      extrude(
+        frameShape(
+          size.x - 2 * border + pixel * 7.2,
+          size.y - 2 * border + pixel * 7.2,
+          pixel * 1.4,
+          pixel * 6.6,
+          pixel * 5.2,
+        ),
+        0.018,
+        0,
+      ),
+      'iron',
+      [0, 0, -0.025],
+    );
     batch.add(
       extrude(
         frameShape(
@@ -724,6 +825,16 @@ function buildBoard(
     );
     for (const x of [-size.x / 2 + border * 0.5, size.x / 2 - border * 0.5])
       for (const y of [-size.y / 2 + border * 0.5, size.y / 2 - border * 0.5]) {
+        for (const horizontal of [false, true])
+          batch.add(
+            menuBox(pixel * (horizontal ? 7 : 1.6), pixel * (horizontal ? 1.6 : 7), 0.003, 0),
+            'brass',
+            [
+              x - Math.sign(x) * pixel * (horizontal ? 3.5 : 0),
+              y - Math.sign(y) * pixel * (horizontal ? 0 : 3.5),
+              -0.001,
+            ],
+          );
         batch.add(
           new THREE.CylinderGeometry(pixel * 5.9, pixel * 5.9, 0.003, 16),
           'brass',
@@ -763,6 +874,9 @@ function buildBoard(
     );
     const hangers = kit.batch(hangersRoot, 'settings-hangers');
     for (const x of [-settingsSize.x * 0.4, settingsSize.x * 0.4]) {
+      const top = settingsSize.y / 2;
+      // The eyelet pierces the sheet; its hook reaches the ring above it.
+      hangers.add(new THREE.TorusGeometry(0.016, 0.0035, 6, 12), 'brass', [x, top - 0.016, 0.001]);
       hangers.add(new THREE.TorusGeometry(0.028, 0.008, 5, 10), 'brass', [
         x,
         settingsSize.y / 2 + 0.1,
@@ -771,8 +885,8 @@ function buildBoard(
       const hook = new THREE.CubicBezierCurve3(
         new THREE.Vector3(x, settingsSize.y / 2 + 0.115, -0.02),
         new THREE.Vector3(x - 0.014, settingsSize.y / 2 + 0.065, -0.024),
-        new THREE.Vector3(x + 0.021, settingsSize.y / 2 - 0.035, 0.017),
-        new THREE.Vector3(x + 0.006, settingsSize.y / 2 + 0.012, 0.012),
+        new THREE.Vector3(x + 0.014, top + 0.015, 0.001),
+        new THREE.Vector3(x + 0.014, top - 0.016, 0.001),
       );
       hangers.add(new THREE.TubeGeometry(hook, 16, 0.006, 7, false), 'brass');
     }
@@ -1078,63 +1192,49 @@ function buildBackdrop(root: THREE.Group, kit: MenuModelKit) {
     seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
     return seed / 4294967296;
   };
-  // Sparse crowns at three depths keep the station skyline and sky channels visible.
-  for (const [x, y, z, spread, height] of [
-    [0.65, 1.75, -11.6, 0.65, 0.85],
-    [2.65, 2.35, -11.25, 0.97, 1.22],
-    [4.4, 1.8, -12.2, 0.78, 1.0],
-    [5.9, 2.07, -11.45, 0.69, 0.9],
-    [7.65, 1.8, -11.2, 0.7, 0.96],
-    [9.1, 2.0, -12.0, 0.82, 0.95],
-  ]) {
+  // Branches carry mixed-scale leaf clumps; off-centre gaps break each crown silhouette.
+  for (const [tree, [x, y, z, spread, height]] of [
+    [0.65, 1.8, -11.6, 0.66, 0.85],
+    [2.65, 2.5, -11.25, 1.05, 1.22],
+    [4.4, 1.93, -12.2, 0.78, 1.0],
+    [5.9, 2.14, -11.45, 0.72, 0.9],
+    [7.65, 1.88, -11.2, 0.73, 0.96],
+    [9.1, 2.1, -12.0, 0.86, 0.95],
+  ].entries()) {
     const trunk = new THREE.CatmullRomCurve3([
       new THREE.Vector3(x, FLOOR_Y, z),
       new THREE.Vector3(x - 0.06 * spread, 0.1, z),
       new THREE.Vector3(x + 0.09 * spread, y - height * 0.6, z + 0.05),
       new THREE.Vector3(x + 0.04 * spread, y + 0.15 * height, z - 0.06),
     ]);
-    batch.add(new THREE.TubeGeometry(trunk, 12, 0.045 * spread, 7, false), 'woodDark');
-    for (const [dx, dy, dz] of [
-      [-0.42, 0.04, 0.12],
-      [0.12, 0.33, -0.16],
-      [0.4, -0.17, 0.11],
-    ]) {
+    batch.add(new THREE.TubeGeometry(trunk, 12, 0.04 * spread, 7, false), 'woodDark');
+    for (const [limb, [dx, dy, dz]] of [
+      [-0.55, -0.15, 0.21],
+      [-0.24, 0.35, -0.2],
+      [0.26, 0.24, 0.19],
+      [0.59, -0.24, -0.06],
+    ].entries()) {
       const end = new THREE.Vector3(x + dx * spread, y + dy * height, z + dz);
       const branch = new THREE.CatmullRomCurve3([
-        trunk.getPoint(0.64),
+        trunk.getPoint(0.56 + limb * 0.035),
         new THREE.Vector3(x + dx * spread * 0.5, y - height * 0.23, z + dz * 0.5),
         end,
       ]);
-      batch.add(new THREE.TubeGeometry(branch, 8, 0.025 * spread, 6, false), 'woodDark');
-      const count = 5 + Math.floor(random() * 4);
-      for (let i = 0; i < count; i++) {
+      batch.add(new THREE.TubeGeometry(branch, 8, 0.02 * spread, 6, false), 'woodDark');
+      for (let i = 0; i < 8; i++) {
         const a = random() * Math.PI * 2;
-        const b = Math.acos(2 * random() - 1);
-        const dist = Math.cbrt(random());
-        const size = spread * (0.24 + random() * 0.18);
-        const geometry = new THREE.SphereGeometry(size, 14, 10);
-        const positions = geometry.getAttribute('position');
-        const phase = random() * Math.PI * 2;
-        for (let index = 0; index < positions.count; index++) {
-          const p = new THREE.Vector3().fromBufferAttribute(positions, index);
-          const normal = p.clone().normalize();
-          p.multiplyScalar(
-            1 +
-              0.08 * Math.sin(normal.x * 3.2 + normal.y * 2.4 + phase) +
-              0.045 * Math.cos(normal.z * 4.2 - phase),
-          );
-          positions.setXYZ(index, p.x, p.y, p.z);
-        }
-        geometry.scale(0.85 + random() * 0.5, 0.75 + random() * 0.45, 0.7 + random() * 0.5);
-        geometry.computeVertexNormals();
-        const leafY = end.y + Math.cos(b) * dist * height * 0.3;
+        const offset = i < 3 ? 0.19 : 0.4;
+        const size = spread * (i < 3 ? 0.22 + random() * 0.12 : 0.09 + random() * 0.08);
+        const geometry = foliageClump(size, tree * 2.11 + limb + i * 1.73, i < 3);
+        geometry.scale(0.8 + random() * 0.65, 0.7 + random() * 0.5, 0.7 + random() * 0.5);
+        const leafY = end.y + Math.sin(a * 1.37) * height * offset;
         batch.add(
           geometry,
-          leafY > y + height * 0.12 ? 'foliageLight' : random() < 0.1 ? 'foliageDark' : 'foliage',
+          leafY > y + height * 0.09 ? 'foliageLight' : i % 5 === 0 ? 'foliageDark' : 'foliage',
           [
-            end.x + Math.sin(b) * Math.cos(a) * dist * spread * 0.52,
+            end.x + Math.cos(a) * spread * offset,
             leafY,
-            end.z + Math.sin(b) * Math.sin(a) * dist * spread * 0.4,
+            end.z + Math.sin(a) * spread * offset * 0.7,
           ],
           [random() * 0.8, random() * Math.PI, random() * 0.6],
         );
@@ -1148,54 +1248,101 @@ function buildBackdrop(root: THREE.Group, kit: MenuModelKit) {
     [4.07, 1.72, 1.69, -10.88],
     [6.72, 2.5, 1.37, -10.32],
   ]) {
-    batch.add(menuBox(width, top - FLOOR_Y, 0.58), 'cream', [x, (top + FLOOR_Y) / 2, z]);
-    batch.add(menuBox(width + 0.26, 0.12, 1.08), 'green', [x, top + 0.06, z + 0.08]);
-    const roof = new THREE.Shape();
-    roof.moveTo(-width / 2 - 0.13, 0);
-    roof.lineTo(0, 0.28);
-    roof.lineTo(width / 2 + 0.13, 0);
-    roof.closePath();
-    batch.add(extrude(roof, 1.08, 0), 'woodDark', [x, top + 0.12, z - 0.46]);
-    batch.add(menuBox(width + 0.3, 0.065, 0.08), 'paper', [x, top, z + 0.65]);
-    for (const side of [-1, 1])
-      batch.add(menuBox(0.16, top - FLOOR_Y, 0.23), 'plasterShade', [
-        x + side * (width / 2 - 0.08),
-        (top + FLOOR_Y) / 2,
-        z + 0.38,
-      ]);
+    const facade = new THREE.Shape();
+    facade.moveTo(-width / 2, FLOOR_Y);
+    facade.lineTo(width / 2, FLOOR_Y);
+    facade.lineTo(width / 2, top);
+    facade.lineTo(-width / 2, top);
+    facade.closePath();
+    const bays = [];
     for (let bay = 0; bay < 3; bay++) {
-      const wx = x + (bay - 1) * width * 0.28;
+      const wx = (bay - 1) * width * 0.28;
       const door = bay === 1 && width < 2.5;
       const wh = door ? 1.7 : bay === 1 ? 0.9 : 1.05;
       const wy = door ? FLOOR_Y + wh / 2 + 0.16 : 0.45;
-      const ww = door ? 0.54 : 0.45;
-      batch.add(menuBox(ww + 0.16, wh + 0.14, 0.11), 'plasterShade', [wx, wy, z + 0.33]);
-      batch.add(menuBox(ww + 0.08, wh + 0.07, 0.06), 'woodDark', [wx, wy, z + 0.4]);
-      batch.add(menuBox(ww, wh, 0.024), door ? 'green' : bay === 0 ? 'glass' : 'glassWarm', [
+      const ww = width < 2 ? (door ? 0.46 : 0.38) : door ? 0.54 : 0.45;
+      const opening = new THREE.Path();
+      opening.moveTo(wx - ww / 2, wy - wh / 2);
+      opening.lineTo(wx - ww / 2, wy + wh / 2);
+      opening.lineTo(wx + ww / 2, wy + wh / 2);
+      opening.lineTo(wx + ww / 2, wy - wh / 2);
+      opening.closePath();
+      facade.holes.push(opening);
+      bays.push({ wx: x + wx, wy, ww, wh, door, bay });
+    }
+    batch.add(extrude(facade, 0.14, 0), 'cream', [x, 0, z + 0.22]);
+    batch.add(menuBox(width, top - FLOOR_Y, 0.12), 'cream', [x, (top + FLOOR_Y) / 2, z - 0.32]);
+    for (const side of [-1, 1])
+      batch.add(menuBox(0.13, top - FLOOR_Y, 0.66), 'cream', [
+        x + side * (width / 2 - 0.065),
+        (top + FLOOR_Y) / 2,
+        z,
+      ]);
+    batch.add(menuBox(width + 0.26, 0.09, 1.12), 'green', [x, top + 0.045, z + 0.08]);
+    const roof = new THREE.Shape();
+    roof.moveTo(-width / 2 - 0.13, 0);
+    roof.lineTo(0, 0.32);
+    roof.lineTo(width / 2 + 0.13, 0);
+    roof.closePath();
+    batch.add(extrude(roof, 1.12, 0), 'woodDark', [x, top + 0.09, z - 0.48]);
+    batch.add(
+      new THREE.CylinderGeometry(0.03, 0.03, 1.18, 8),
+      'iron',
+      [x, top + 0.41, z + 0.08],
+      [Math.PI / 2, 0, 0],
+    );
+    batch.add(menuBox(width + 0.3, 0.055, 0.08), 'paper', [x, top, z + 0.61]);
+    for (const { wx, wy, ww, wh, door, bay } of bays) {
+      for (const side of [-1, 1]) {
+        batch.add(menuBox(0.04, wh + 0.07, 0.2), 'woodDark', [
+          wx + side * (ww / 2 + 0.02),
+          wy,
+          z + 0.14,
+        ]);
+        batch.add(menuBox(ww + 0.08, 0.035, 0.2), 'woodDark', [
+          wx,
+          wy + side * (wh / 2 + 0.0175),
+          z + 0.14,
+        ]);
+      }
+      batch.add(extrude(frameShape(ww + 0.15, wh + 0.14, 0.047, 0.012, 0.008), 0.025, 0), 'green', [
         wx,
         wy,
-        z + 0.439,
+        z + 0.36,
       ]);
+      batch.add(
+        menuBox(ww + 0.015, wh + 0.015, 0.024),
+        door ? 'green' : bay === 0 ? 'glass' : 'glassWarm',
+        [wx, wy, z + 0.03],
+      );
       if (!door) {
-        batch.add(menuBox(0.023, wh, 0.032), 'green', [wx, wy, z + 0.467]);
-        batch.add(menuBox(ww, 0.025, 0.032), 'green', [wx, wy + wh * 0.12, z + 0.468]);
-        batch.add(menuBox(ww + 0.18, 0.065, 0.18), 'cream', [wx, wy - wh / 2 - 0.05, z + 0.44]);
+        batch.add(menuBox(0.024, wh, 0.034), 'green', [wx, wy, z + 0.06]);
+        batch.add(menuBox(ww, 0.026, 0.034), 'green', [wx, wy + wh * 0.12, z + 0.06]);
+        batch.add(menuBox(ww + 0.18, 0.055, 0.23), 'cream', [wx, wy - wh / 2 - 0.05, z + 0.34]);
       }
     }
   }
-  batch.add(menuBox(8.55, 0.105, 1.4), 'green', [4.05, 1.38, -9.65]);
-  batch.add(menuBox(8.58, 0.095, 0.1), 'paper', [4.05, 1.29, -8.97]);
-  batch.add(menuBox(8.5, 0.2, 0.08), 'woodDark', [4.05, 1.24, -9.25]);
-  for (const x of [0.15, 1.62, 3.3, 5.2, 6.84, 8.0]) {
-    batch.add(menuBox(0.09, 2.1, 0.09), 'green', [x, FLOOR_Y + 1.05, -9.25]);
-    batch.add(menuBox(0.19, 0.16, 0.19), 'plasterShade', [x, FLOOR_Y + 0.16, -9.25]);
-    for (const direction of [-1, 1])
-      batch.add(
-        menuBox(0.38, 0.06, 0.07),
-        'green',
-        [x + direction * 0.13, 1.03, -9.25],
-        [0, 0, direction * 0.55],
-      );
+  // Three separate shed bays leave depth breaks instead of a single horizontal pipe.
+  for (const [x, width, top, z] of [
+    [1.08, 2.35, 1.27, -9.43],
+    [4.0, 2.65, 1.33, -9.7],
+    [6.92, 2.3, 1.23, -9.32],
+  ]) {
+    batch.add(menuBox(width, 0.085, 1.28), 'green', [x, top, z], [-0.075, 0, 0]);
+    batch.add(menuBox(width, 0.065, 0.06), 'paper', [x, top - 0.047, z + 0.63]);
+    batch.add(menuBox(width - 0.08, 0.15, 0.07), 'woodDark', [x, top - 0.065, z + 0.4]);
+    const height = top - FLOOR_Y - 0.09;
+    for (const px of [x - width * 0.43, x + width * 0.43]) {
+      batch.add(menuBox(0.068, height, 0.075), 'green', [px, FLOOR_Y + height / 2, z + 0.4]);
+      batch.add(menuBox(0.16, 0.13, 0.17), 'plasterShade', [px, FLOOR_Y + 0.145, z + 0.4]);
+      for (const direction of [-1, 1])
+        batch.add(
+          menuBox(0.31, 0.042, 0.06),
+          'green',
+          [px + direction * 0.1, top - 0.24, z + 0.4],
+          [0, 0, direction * 0.64],
+        );
+    }
   }
   for (const [x, z] of [
     [2.0, -7.5],
@@ -1217,4 +1364,25 @@ function buildBackdrop(root: THREE.Group, kit: MenuModelKit) {
   }
   batch.flush();
   return backdropRoot;
+}
+
+/** Coherent radial warping preserves closed clumps while breaking spherical highlights. */
+function foliageClump(radius: number, phase: number, broad = false) {
+  const geometry = broad
+    ? new THREE.SphereGeometry(radius, 12, 8)
+    : new THREE.IcosahedronGeometry(radius, 1);
+  const positions = geometry.getAttribute('position');
+  for (let i = 0; i < positions.count; i++) {
+    const p = new THREE.Vector3().fromBufferAttribute(positions, i);
+    const n = p.clone().normalize();
+    const warp =
+      1 +
+      0.16 * Math.sin(n.x * 7.1 + n.y * 3.8 + phase) +
+      0.095 * Math.sin(n.z * 9.2 - n.y * 5.7 + phase * 1.7) +
+      0.045 * Math.cos(n.x * 13.3 + n.z * 7.7 - phase);
+    p.multiplyScalar(warp);
+    positions.setXYZ(i, p.x, p.y, p.z);
+  }
+  geometry.computeVertexNormals();
+  return geometry;
 }
