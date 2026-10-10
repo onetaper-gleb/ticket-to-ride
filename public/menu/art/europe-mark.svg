@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="600" height="120" viewBox="0 0 600 120" fill="currentColor" aria-hidden="true" focusable="false">
-  <!-- Original letter outlines and ornaments for the Ticket Office menu, 2026-10-10. No font outlines or publisher logo imported. -->
+  <!-- Original letter outlines for the Ticket Office menu, 2026-10-10. No font outlines or publisher logo imported. -->
   <g transform="translate(62 22)">
     <path d="M0 0h62v16h-6l-3-8H20v20h25v-6h6v23h-6v-8H20v24h35l3-10h6v18H0v-6h8V6H0Z" />
     <path d="M76 0h31v6h-8v38c0 14 5 20 17 20s17-6 17-20V6h-8V0h28v6h-8v39c0 18-11 26-29 26S87 63 87 45V6H76Z" />
@@ -8,6 +8,4 @@
     <path fill-rule="evenodd" d="M331 0h34c23 0 32 8 32 22s-9 22-32 22h-14v19h9v6h-29v-6h8V6h-8ZM351 8v28h13c15 0 21-4 21-14s-6-14-21-14Z" />
     <path d="M411 0h62v16h-6l-3-8h-33v20h25v-6h6v23h-6v-8h-25v24h35l3-10h6v18h-64v-6h8V6h-8Z" />
   </g>
-  <path d="M62 106h218v2H62zm258 0h215v2H320zM300 101l6 6-6 6-6-6Z" />
-  <path d="m40 40 4 4-4 4-4-4Zm520 0 4 4-4 4-4-4Z" />
 </svg>
