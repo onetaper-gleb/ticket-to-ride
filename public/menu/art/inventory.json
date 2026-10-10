@@ -1,0 +1,280 @@
+{
+  "version": 1,
+  "baseCommit": "bea9743c7622a7806a3d9b6824a9d912b0a41b65",
+  "assets": [
+    {
+      "file": "board-paint.png",
+      "bytes": 19013,
+      "sha256": "0fca42aa7d6bbfd317fffad68dadb43188a8545e803448109b972938a8cdfec9",
+      "dimensions": [
+        256,
+        256
+      ],
+      "alpha": false,
+      "source": "sources/generate-textures.py",
+      "rights": "project-original artwork, no new open license asserted",
+      "stage": "P1",
+      "role": "source"
+    },
+    {
+      "file": "board-paint.webp",
+      "bytes": 1210,
+      "sha256": "6160485ed4b74407a158c58a2fd28ad9c41c18bf924fb056ee9001626dad1ae5",
+      "dimensions": [
+        256,
+        256
+      ],
+      "alpha": false,
+      "source": "sources/generate-textures.py",
+      "rights": "project-original artwork, no new open license asserted",
+      "stage": "P1",
+      "role": "runtime"
+    },
+    {
+      "file": "clock-face.svg",
+      "bytes": 4558,
+      "sha256": "2a8f957922d79d2237607210c6f946196a197fcbe797646c0ce0b9a6c7d67735",
+      "dimensions": [
+        512,
+        512
+      ],
+      "alpha": true,
+      "source": "project original SVG paths",
+      "rights": "project-original artwork, no new open license asserted",
+      "stage": "P1",
+      "role": "runtime"
+    },
+    {
+      "file": "distant-sky.svg",
+      "bytes": 765,
+      "sha256": "28181a738f9a06cc1b6aa4e800696b6f5b470bbb6cce1913163c4e3580f8ffdf",
+      "dimensions": [
+        1024,
+        512
+      ],
+      "alpha": false,
+      "source": "project original SVG paths",
+      "rights": "project-original artwork, no new open license asserted",
+      "stage": "P1",
+      "role": "runtime"
+    },
+    {
+      "file": "europe-mark.svg",
+      "bytes": 1236,
+      "sha256": "e59b912bc221b149071951edffe95283b308b5a65d225ea08d659f3544e6afa8",
+      "dimensions": [
+        600,
+        120
+      ],
+      "alpha": true,
+      "source": "project original SVG paths",
+      "rights": "project-original artwork, no new open license asserted",
+      "stage": "P1",
+      "role": "runtime"
+    },
+    {
+      "file": "fallback-draft-compact.webp",
+      "bytes": 44410,
+      "sha256": "8e805e624cf3bd372381b43af076a4f4e91ffa8ecea52c2a7cb8181110ed67e8",
+      "dimensions": [
+        720,
+        960
+      ],
+      "alpha": false,
+      "source": "built-in image_gen, reference selected concept, WebP encoding Sharp",
+      "rights": "generated draft; replace with accepted scene render",
+      "stage": "draft",
+      "role": "runtime"
+    },
+    {
+      "file": "fallback-draft-wide.webp",
+      "bytes": 69238,
+      "sha256": "f4c26d9dcccee31c44310ce47a3c66bf864c393e958bd9f55def06a2a77f3d2f",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "alpha": false,
+      "source": "built-in image_gen, reference selected concept, WebP encoding Sharp",
+      "rights": "generated draft; replace with accepted scene render",
+      "stage": "draft",
+      "role": "runtime"
+    },
+    {
+      "file": "icons/continue.svg",
+      "bytes": 648,
+      "sha256": "51d2d2b415209da459b5cc4f4f12a2fc1b6c8b3dd3cb75cac8f75b37cafc6115",
+      "dimensions": [
+        32,
+        32
+      ],
+      "alpha": true,
+      "source": "project original SVG paths",
+      "rights": "project-original artwork, no new open license asserted",
+      "stage": "P1",
+      "role": "runtime"
+    },
+    {
+      "file": "icons/rules.svg",
+      "bytes": 469,
+      "sha256": "944b64b75e07d824e0cee7ee4a79708aeca2725965527ba9824fa1c135b5b6b0",
+      "dimensions": [
+        32,
+        32
+      ],
+      "alpha": true,
+      "source": "project original SVG paths",
+      "rights": "project-original artwork, no new open license asserted",
+      "stage": "P1",
+      "role": "runtime"
+    },
+    {
+      "file": "icons/settings.svg",
+      "bytes": 759,
+      "sha256": "5ac7133dda3523f915f27fe2d4a3aa79533ef7c6f31ef001469b9694c1c01a8e",
+      "dimensions": [
+        32,
+        32
+      ],
+      "alpha": true,
+      "source": "project original SVG paths",
+      "rights": "project-original artwork, no new open license asserted",
+      "stage": "P1",
+      "role": "runtime"
+    },
+    {
+      "file": "icons/start.svg",
+      "bytes": 417,
+      "sha256": "8c6d6b41e798893a1d8aa4675483fa39c30543832cabaf15c403ca3ca138d173",
+      "dimensions": [
+        32,
+        32
+      ],
+      "alpha": true,
+      "source": "project original SVG paths",
+      "rights": "project-original artwork, no new open license asserted",
+      "stage": "P1",
+      "role": "runtime"
+    },
+    {
+      "file": "icons/tutorial.svg",
+      "bytes": 522,
+      "sha256": "7acb6f0f02f7d1e0d6cc6660c6aea15fbcd045952be53a5a4f13bd0a98ca06c8",
+      "dimensions": [
+        32,
+        32
+      ],
+      "alpha": true,
+      "source": "project original SVG paths",
+      "rights": "project-original artwork, no new open license asserted",
+      "stage": "P1",
+      "role": "runtime"
+    },
+    {
+      "file": "luggage-stickers.svg",
+      "bytes": 2779,
+      "sha256": "1512467730b90e2083012203f0b7e6aef1356f63ede2d6bef0c2e92284250eae",
+      "dimensions": [
+        512,
+        512
+      ],
+      "alpha": true,
+      "source": "project original SVG paths",
+      "rights": "project-original artwork, no new open license asserted",
+      "stage": "P1",
+      "role": "runtime"
+    },
+    {
+      "file": "sources/generate-textures.py",
+      "bytes": 1624,
+      "sha256": "c8040f2604bfca6e8d5cf104a958d59eb5fc49cd0df250e9bc3136c5e9dd3eec",
+      "source": "project original Python/Pillow math",
+      "rights": "project-original artwork, no new open license asserted",
+      "stage": "P1",
+      "role": "source"
+    },
+    {
+      "file": "steam-mask-p2.png",
+      "bytes": 3094,
+      "sha256": "fa361e4341481bd6c5293bc05fd04cabb4e53cd4499bc1c7d4261874a60f08ac",
+      "dimensions": [
+        128,
+        128
+      ],
+      "alpha": true,
+      "source": "sources/generate-textures.py",
+      "rights": "project-original artwork, no new open license asserted",
+      "stage": "P2 disabled",
+      "role": "runtime"
+    },
+    {
+      "file": "ticket-print.svg",
+      "bytes": 2460,
+      "sha256": "7cbb86e8ad0d5f0f9014ddd21432b4719e6de686b30855e84882336ce501e649",
+      "dimensions": [
+        512,
+        256
+      ],
+      "alpha": false,
+      "source": "project original SVG paths",
+      "rights": "project-original artwork, no new open license asserted",
+      "stage": "P1",
+      "role": "runtime"
+    },
+    {
+      "file": "wood-tile.png",
+      "bytes": 7401,
+      "sha256": "2a573fe9cf0a3a595457b1a7937f1d3905208271ab299ac1fbda563e644769a3",
+      "dimensions": [
+        256,
+        256
+      ],
+      "alpha": false,
+      "source": "sources/generate-textures.py",
+      "rights": "project-original artwork, no new open license asserted",
+      "stage": "P1",
+      "role": "source"
+    },
+    {
+      "file": "wood-tile.webp",
+      "bytes": 876,
+      "sha256": "6b3976550ae9d8f07db1ec61488c40416d2c462f1743568b602afc1841afccb9",
+      "dimensions": [
+        256,
+        256
+      ],
+      "alpha": false,
+      "source": "sources/generate-textures.py",
+      "rights": "project-original artwork, no new open license asserted",
+      "stage": "P1",
+      "role": "runtime"
+    }
+  ],
+  "budget": {
+    "runtimeFileBytesIncludingSVG": 133441,
+    "runtimeRasterBytesBothFallbacks": 118828,
+    "runtimeRasterGoalBytes": 2000000,
+    "fallbackEachGoalBytes": 400000,
+    "gpuEstimateMiBBothFallbacksAndAllTexturesWithMips": 14.953125,
+    "note": "Conservative RGBA mip estimate for scene textures plus both fallback rasters; excludes DOM icons/EUROPE, render targets, shadow/PMREM. Normal fallback is CSS, notGPU; normally no live-scene fallback texture. Full SVG+DOM texture rasterization is unnecessary.",
+    "sceneP1MiBWithoutFallbackWithoutSteam": 6.666666666666666
+  },
+  "generation": {
+    "tool": "built-in image_gen",
+    "modelVersion": "not provided by tool",
+    "reference": {
+      "name": "menu-station-2.png",
+      "sha256": "c74c6688b8dfb7e36f258d334b543175f90e74ecb2274dfc1f0cf7c04ad70d4a"
+    },
+    "masterSources": [
+      {
+        "name": "fallback-draft-wide-source.png",
+        "sha256": "871fb7ddba23d05d8fb10304258a50f56b1a771fbb8527263053c5d197629d3a"
+      },
+      {
+        "name": "fallback-draft-compact-source.png",
+        "sha256": "a2ee4572a8ce30ec481adf3f76ef54fd544fa1b41e006ba40d199a4b65121538"
+      }
+    ]
+  }
+}

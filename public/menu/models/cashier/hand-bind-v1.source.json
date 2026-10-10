@@ -1,0 +1,15 @@
+{
+  "asset": "hand-bind-v1.bin",
+  "format": "LTMHND01 v1 little endian CPU bind surfaces",
+  "sourceCommit": "bea9743c7622a7806a3d9b6824a9d912b0a41b65",
+  "sourcePath": "src/scene/cartoon-hands.ts",
+  "menuPath": "src/scene/menu/menu-character-hands.ts",
+  "authoring": "Procedural geometry authored by this project; both native sides baked from the frozen algorithm without surface changes.",
+  "bytes": 2867976,
+  "gzipBytes": 561332,
+  "sha256": "b32c68c067a91f3a245fbb4588d187734cf434cc4558ff5a20805d7568f95ccc",
+  "verticesPerSide": 27576,
+  "trianglesPerSide": 9192,
+  "skeletonBonesPerSide": 22,
+  "externalModelsOrTextures": false
+}

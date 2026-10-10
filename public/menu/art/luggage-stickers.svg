@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>Three decorative luggage railway emblems</title>
+  <desc>Original transparent vector atlas. Circle locomotive at 16,16 in a 224 square; diamond rail crossing at 272,16 in a 224 square; shield locomotive at 144,272 in a 224 square. No text or carrier marks.</desc>
+  <g id="circle-locomotive">
+    <circle cx="128" cy="128" r="100" fill="#F4E8CF"/>
+    <circle cx="128" cy="128" r="93" fill="#223A33"/>
+    <circle cx="128" cy="128" r="83" fill="none" stroke="#AD7E41" stroke-width="5"/>
+    <g fill="#F4E8CF">
+      <path d="M70 107H133V90H146V68H185V131H177V139H70V132H58V122H70Z"/>
+      <path d="M82 82H107V103H82ZM77 73H112V81H77ZM141 62H189V70H141Z"/>
+      <circle cx="91" cy="139" r="18"/>
+      <circle cx="150" cy="139" r="24"/>
+      <path d="M56 162H197V169H56ZM63 179H192V185H63Z"/>
+    </g>
+    <path d="M155 80H175V105H155Z" fill="#223A33"/>
+    <g fill="#223A33">
+      <circle cx="91" cy="139" r="9"/>
+      <circle cx="150" cy="139" r="13"/>
+    </g>
+    <path d="M91 139H151" stroke="#AD7E41" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <g id="diamond-rails">
+    <path d="M384 28L484 128L384 228L284 128Z" fill="#F4E8CF"/>
+    <path d="M384 38L474 128L384 218L294 128Z" fill="#974A52"/>
+    <path d="M384 49L463 128L384 207L305 128Z" fill="none" stroke="#F4E8CF" stroke-width="4"/>
+    <g fill="none" stroke="#F4E8CF" stroke-width="7" stroke-linecap="square">
+      <path d="M346 93L420 168M359 80L433 155"/>
+      <path d="M337 105L368 74M352 120L383 89M367 135L398 104M382 150L413 119M397 165L428 134M412 180L443 149"/>
+    </g>
+    <path d="M374 169L338 169L338 134M394 86L430 86L430 121" fill="none" stroke="#AD7E41" stroke-width="9" stroke-linejoin="round"/>
+  </g>
+  <g id="shield-locomotive">
+    <path d="M160 288H352V387C352 432 310 462 256 482C202 462 160 432 160 387Z" fill="#F4E8CF"/>
+    <path d="M170 298H342V386C342 424 307 451 256 470C205 451 170 424 170 386Z" fill="#AD7E41"/>
+    <path d="M179 308H333V386C333 419 302 443 256 461C210 443 179 419 179 386Z" fill="none" stroke="#F4E8CF" stroke-width="4"/>
+    <g fill="#223A33">
+      <path d="M214 338Q256 319 298 338V407H214Z"/>
+      <path d="M237 324H275V334H237ZM243 311H269V324H243Z"/>
+      <path d="M207 408H305V418H207ZM211 418L196 437H316L301 418Z"/>
+    </g>
+    <path d="M226 343H248V366H226ZM264 343H286V366H264Z" fill="#F4E8CF"/>
+    <circle cx="256" cy="389" r="16" fill="#F4E8CF"/>
+    <circle cx="256" cy="389" r="9" fill="#974A52"/>
+    <path d="M208 408L193 421M304 408L319 421" fill="none" stroke="#223A33" stroke-width="6" stroke-linecap="round"/>
+    <path d="M256 420V436M232 420L225 436M280 420L287 436" fill="none" stroke="#AD7E41" stroke-width="4"/>
+  </g>
+</svg>
