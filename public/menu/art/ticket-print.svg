@@ -2,28 +2,28 @@
   <title>Decorative station ticket print</title>
   <desc>Original vector paper ticket with a geometric locomotive, print rules and a perforated stub. No UI labels, city names or game goals.</desc>
   <rect width="512" height="256" fill="#F4E8CF"/>
-  <path d="M14 24H496V232H14Z" fill="none" stroke="#AD7E41" stroke-width="3"/>
-  <path d="M22 32H488V224H22Z" fill="none" stroke="#223A33" stroke-opacity="0.6" stroke-width="2"/>
+  <path d="M14 24H496V232H14Z" fill="none" stroke="#AD7E41" stroke-width="2.5"/>
+  <path d="M22 32H488V224H22Z" fill="none" stroke="#223A33" stroke-opacity="0.6" stroke-width="1.5"/>
   <path d="M396 13V243" fill="none" stroke="#974A52" stroke-width="3" stroke-linecap="round" stroke-dasharray="3 8"/>
   <path d="M391 0H401V13H391ZM391 243H401V256H391Z" fill="#AD7E41" fill-opacity="0.18"/>
   <g id="locomotive-seal" transform="translate(31 43)">
-    <path d="M10 14H119L132 27V137L119 150H10L0 137V27Z" fill="#223A33"/>
-    <path d="M15 24H115L122 31V133L115 140H15L10 133V31Z" fill="none" stroke="#F4E8CF" stroke-width="3"/>
-    <g fill="#F4E8CF">
+    <path d="M10 14H119L132 27V137L119 150H10L0 137V27Z" fill="none" stroke="#74634C" stroke-width="2.2"/>
+    <path d="M15 24H115L122 31V133L115 140H15L10 133V31Z" fill="none" stroke="#A69273" stroke-width="3"/>
+    <g fill="#74634C">
       <path d="M25 74H73V58H83V46H100V56H113V98H100V104H27V97H20V89H25Z"/>
       <path d="M37 62H53V72H37ZM68 48H89V54H68Z"/>
       <path d="M24 100H115V106H24ZM17 111H118V116H17Z"/>
       <circle cx="39" cy="103" r="12"/>
       <circle cx="85" cy="103" r="16"/>
     </g>
-    <path d="M88 60H98V80H88Z" fill="#223A33"/>
-    <g fill="none" stroke="#223A33" stroke-width="3">
+    <path d="M88 60H98V80H88Z" fill="#F4E8CF"/>
+    <g fill="none" stroke="#F4E8CF" stroke-width="3">
       <circle cx="39" cy="103" r="6"/>
       <circle cx="85" cy="103" r="9"/>
     </g>
     <path d="M22 127H108" fill="none" stroke="#AD7E41" stroke-width="4"/>
   </g>
-  <g id="decorative-print" fill="none" stroke="#223A33" stroke-width="4" stroke-linecap="square">
+  <g id="decorative-print" fill="none" stroke="#223A33" stroke-width="3" stroke-linecap="square">
     <path d="M185 57H360M185 69H332"/>
     <path d="M185 102H360M185 119H360M185 137H278"/>
     <path d="M185 180H352M185 197H287"/>

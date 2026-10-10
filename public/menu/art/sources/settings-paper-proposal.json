@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "status": "proposal only; no model/compositor/type code changed",
+  "basisCommonCommit": "77e709e9f35bd11605ecda0a10045de5756a86ec",
+  "reason": "Independent warm settings-paper tint should not recolor clock, tickets or other paper objects sharing the accepted paper material.",
+  "api": "buildMenuModels({surfaces, materialOverrides})",
+  "typeDelta": {
+    "MenuMaterial": "add settingsPaper role with palette default identical to paper",
+    "surfaces.settingsPaper": "optional THREE.Texture, same SRGB/clone/wrap contract as paper",
+    "materialOverrides.settingsPaper": "optional MenuSurfaceOptions, same type as existing paper override"
+  },
+  "resolution": [
+    "When neither settingsPaper input is present, route exactly as current paper; preserve existing material sharing and appearance.",
+    "When a settingsPaper map or override is supplied, create one dedicated settingsPaper material through the existing model kit. Its map falls back to surfaces.paper; base options inherit the resolved paper options before the settingsPaper override.",
+    "Route only the settings paper-frame extrusion and settingsInnerPlane to the dedicated role. Preserve the current secondary strip and hanger metal roles. Clock, held ticket, ticket chain, luggage labels and all other paper uses retain paper."
+  ],
+  "recommendedTrial": {
+    "surfaces.settingsPaper": "reuse already loaded paper-tile.webp Texture; no additional file or network load",
+    "materialOverrides.settingsPaper": {
+      "color": "#F2D5BD",
+      "roughness": 0.95
+    },
+    "qualification": "Starting sRGB multiplier for a physical-paper trial, not a measured render or accepted lighting/color match. Compare on common77 after API approval."
+  },
+  "ownership": {
+    "inputTexture": "caller; never mutate or dispose in builder",
+    "clonedTextureAndMaterial": "existing model kit; idempotent models.dispose, one owner",
+    "geometry": "existing environment owner; no geometry or UV changes proposed",
+    "loaderAndLifetime": "compositor; no second lifecycle owner"
+  },
+  "cost": "No new unique image bytes/mip allocation. A dedicated mapped clone may add one GPU upload despite reusing the same input Texture; new material may alter batch/draw counts. Measure actual counters after implementation; current art candidate does not include these costs.",
+  "rights": "existing project AI-generated paper tile and own API specification; no new dependency, font or third-party artwork",
+  "nativePrototype": "desktop-print-round4.css demonstrates a warm overlay only; the physical border remains common77 paper."
+}
