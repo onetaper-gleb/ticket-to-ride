@@ -254,10 +254,17 @@ Pending room action также ждёт matching ACK и его общей рев
 App передаёт его через `Diorama.intentEpoch`. Он отменяет удержанное нажатие и capture
 без сброса камеры, масштаба, focusZone, Pointer Lock или черновика. Большой reset остаётся
 только сменой sessionId. По умолчанию solo не передаёт intentEpoch.
+Client state дополнительно хранит локальный монотонный `intentEpoch`: он растёт до каждой
+попытки command/roomAction и нового соединения. Поэтому отмена сохраняется в финальном
+render даже при синхронном отказе journal и объединённых React обновлениях pending→null.
+Токен не входит в wire protocol или частный resume journal.
 Управление комнатой открывается поверх стола, блокирует ввод игры и возвращает фокус в диалог.
 Соло-слоты `current` и `tutorial` в `last-train-europe-v1` сетевой матч не переписывает.
 Владелец точки входа должен закрывать client при размонтировании/pagehide; VoicePanel
 отдельно освобождает peer connections, media tracks, AudioContext и подписки.
+RoomVoice также прямо подписывается на window pagehide и синхронно выполняет dispose;
+ожидание React passive cleanup не требуется. Повторный dispose безопасен; поздний
+getUserMedia останавливает полученные tracks. Resume journal при этом сохраняется.
 
 ## Голос и локальная диагностика
 
@@ -320,7 +327,10 @@ create/join с restart и без него. Native socket действитель�
 Независимое ревью и 38 серверных тестов проверили изоляцию комнат, долговечный dedup,
 атомарный rollback, исторический retry, поздние authority/timer, CSPRNG, восстановление
 добора/билетов/тоннеля, бюджет, смену контроля, Origin и транспортные ограничения.
-Финальный root прогон этой ветки: 296 тестов, check/server check, format и build прошли;
+Большой root прогон до последних двух lifecycle исправлений: 296 тестов,
+check/server check, format и build прошли. После исправлений синхронного journal отказа
+и pagehide прошли 60 targeted network tests (client37/adapter4/voice19), check/format/build;
+независимое ревью подтвердило закрытие обеих P2. Весь большой набор повторно не запускался.
 100 конечных mixed симуляций сохранили инварианты. Четыре native сетевые партии завершились
 (125/242/232/211 команд для 2/3/4/5 мест), 3323 персональных пакета проверены.
 При браузерном повторном входе после reload подтверждены connected ICE, RTP bytes
