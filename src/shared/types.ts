@@ -189,6 +189,7 @@ export interface AppProps {
   onContinueTutorial: () => void;
   onStart: (options: GameOptions, difficulty: BotDifficulty) => void;
   onContinue: () => void;
+  onOpenNetwork?: () => void;
   onCommand: (command: GameCommand, expected: { sessionId: number; revision: number }) => boolean;
   onEndTurn: (expected: { sessionId: number; revision: number }) => void;
   onMenu: () => void;
