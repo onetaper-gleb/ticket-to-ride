@@ -31,7 +31,7 @@ export default function NetworkGame({
   const session = useRef({ identity, id: 1 });
   if (session.current.identity !== identity)
     session.current = { identity, id: session.current.id + 1 };
-  const inputContext = `${identity}:${state.connection}:${snapshot?.authority?.turnId}:${snapshot?.authority?.controlEpoch}:${snapshot?.room.paused}:${snapshot?.canAct}:${roomOpen}`;
+  const inputContext = `${identity}:${state.connection}:${snapshot?.authority?.turnId}:${snapshot?.authority?.controlEpoch}:${snapshot?.room.paused}:${snapshot?.canAct}:${state.pendingCommand?.commandId}:${state.pendingRequest}:${roomOpen}`;
   const input = useRef({ context: inputContext, epoch: 1 });
   if (input.current.context !== inputContext)
     input.current = { context: inputContext, epoch: input.current.epoch + 1 };
