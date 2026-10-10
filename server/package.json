@@ -1,0 +1,20 @@
+{
+  "name": "europe-private-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.19.0"
+  },
+  "scripts": {
+    "start": "node --import ../node_modules/tsx/dist/loader.mjs main.ts",
+    "check": "../node_modules/.bin/tsc -p tsconfig.json",
+    "test": "../node_modules/.bin/vitest run --root .. server"
+  },
+  "dependencies": {
+    "ws": "8.22.0"
+  },
+  "devDependencies": {
+    "@types/ws": "8.18.2"
+  }
+}
