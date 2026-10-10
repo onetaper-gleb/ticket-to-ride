@@ -7,6 +7,11 @@ import type {
 } from '../shared/types';
 
 export const NETWORK_PROTOCOL = 1 as const;
+export const TERMINAL_RESUME_ERRORS = [
+  'ROOM_NOT_FOUND',
+  'MEMBER_REMOVED',
+  'RESUME_INVALID',
+] as const;
 export type SeatCount = 2 | 3 | 4 | 5;
 export interface RoomSettings {
   seats: SeatCount;
@@ -74,7 +79,7 @@ export type RoomAction =
   | { type: 'start' }
   | { type: 'pause'; paused: boolean }
   | { type: 'kick'; memberId: string }
-  | { type: 'endMatch'; confirmed: true }
+  | { type: 'endMatch'; matchId: string; confirmed: true }
   | { type: 'lobby' }
   | { type: 'leave' };
 export interface CommandEnvelope {
@@ -85,6 +90,14 @@ export interface CommandEnvelope {
   turnId: string;
   controlEpoch: number;
   command: GameCommand | { type: 'endTurn' };
+}
+export type ExpectedCommand = Pick<
+  CommandEnvelope,
+  'matchId' | 'seatId' | 'revision' | 'turnId' | 'controlEpoch'
+>;
+export interface ExpectedRoom {
+  roomId: string;
+  revision: number;
 }
 export type VoiceSignal =
   | { type: 'description'; generation: string; description: RTCSessionDescriptionInit }
@@ -112,7 +125,7 @@ export type ClientPacket =
       protocol: typeof NETWORK_PROTOCOL;
       credential: ResumeCredential;
     }
-  | { type: 'room'; requestId: string; action: RoomAction }
+  | { type: 'room'; requestId: string; roomId: string; revision: number; action: RoomAction }
   | { type: 'command'; envelope: CommandEnvelope }
   | { type: 'sync' }
   | { type: 'voice'; targetId: string; signal: VoiceSignal };
@@ -120,6 +133,7 @@ export interface CommandAck {
   commandId: string;
   accepted: boolean;
   revision: number;
+  roomRevision: number;
   code?: string;
   message?: string;
 }
@@ -133,7 +147,7 @@ export type ServerPacket =
     }
   | { type: 'snapshot'; snapshot: RoomSnapshot }
   | { type: 'ack'; ack: CommandAck }
-  | { type: 'roomAck'; requestId: string }
+  | { type: 'roomAck'; requestId: string; roomRevision: number }
   | { type: 'error'; requestId?: string; code: string; message: string }
   | { type: 'kicked'; message: string }
   | { type: 'voice'; fromId: string; signal: VoiceSignal };
@@ -152,10 +166,10 @@ export interface NetworkClientApi {
   create(name: string, settings: RoomSettings): void;
   join(name: string, code: string): void;
   reconnect(): void;
-  roomAction(action: RoomAction): boolean;
-  command(command: GameCommand | { type: 'endTurn' }, expectedRevision: number): boolean;
+  roomAction(action: RoomAction, expected: ExpectedRoom): boolean;
+  command(command: GameCommand | { type: 'endTurn' }, expected: ExpectedCommand): boolean;
   clearError(): void;
-  leave(): void;
+  leave(expectedRoomId?: string): void;
   dispose(): void;
   sendVoice(targetId: string, signal: VoiceSignal): boolean;
   subscribeVoice(listener: (fromId: string, signal: VoiceSignal) => void): () => void;

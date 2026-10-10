@@ -1,0 +1,172 @@
+.network-panel {
+  width: min(100% - 32px, 900px);
+  max-height: calc(100dvh - 40px);
+  margin: 20px auto;
+  padding: clamp(18px, 3vw, 30px);
+  overflow-y: auto;
+  color: #eee2c6;
+  background: #202824;
+  border: 1px solid #b59661;
+  border-radius: 16px;
+  box-shadow: 0 14px 70px #0009;
+}
+.network-heading,
+.network-actions,
+.network-invite,
+.network-seats li,
+.network-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.network-heading {
+  justify-content: space-between;
+}
+.network-heading h2 {
+  margin: 8px 0;
+}
+.network-panel button,
+.network-panel input,
+.network-panel select {
+  font: inherit;
+}
+.network-panel button {
+  min-height: 42px;
+}
+.network-panel label {
+  display: grid;
+  gap: 7px;
+  margin: 12px 0;
+}
+.network-panel input,
+.network-panel select {
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 7px;
+  border: 1px solid #988666;
+  color: #f8eed7;
+  background: #111a17;
+}
+.network-panel input:focus-visible,
+.network-panel select:focus-visible,
+.network-panel button:focus-visible,
+.network-bar button:focus-visible {
+  outline: 3px solid #e0b960;
+  outline-offset: 3px;
+}
+.network-panel fieldset {
+  min-width: 0;
+  margin: 16px 0;
+  padding: 15px;
+  border: 1px solid #786d55;
+  border-radius: 10px;
+}
+.network-panel legend {
+  padding: 0 7px;
+}
+.network-panel button:disabled,
+.network-panel fieldset:disabled {
+  opacity: 0.55;
+}
+.network-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.network-status {
+  padding: 12px;
+  background: #303d35;
+  border-radius: 8px;
+}
+.network-error {
+  padding: 12px;
+  border: 1px solid #e89c77;
+  border-radius: 8px;
+}
+.network-error p {
+  margin-top: 0;
+}
+.network-invite label {
+  flex: 1 1 300px;
+}
+.network-seats {
+  list-style: none;
+  padding: 0;
+}
+.network-seats li {
+  justify-content: space-between;
+  padding: 15px 0;
+  border-bottom: 1px solid #786d55;
+}
+.network-seats p {
+  font-size: 0.9rem;
+  margin: 6px 0 0;
+}
+.network-host {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 18px;
+}
+.network-checkbox {
+  display: flex !important;
+  align-items: center;
+  grid-column: 1 / -1;
+}
+.network-checkbox input {
+  width: 20px;
+  height: 20px;
+}
+.network-note {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+.network-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: #000b;
+}
+.network-confirm {
+  width: min(100%, 500px);
+  padding: 24px;
+  border: 1px solid #b59661;
+  border-radius: 12px;
+  background: #202824;
+}
+.network-bar {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  z-index: 21;
+  width: fit-content;
+  max-width: calc(100% - 24px);
+  padding: 7px 10px;
+  border: 1px solid #988666;
+  border-radius: 9px;
+  color: #f8eed7;
+  background: #18241ded;
+  font-size: 13px;
+}
+.network-bar button {
+  padding: 6px 9px;
+  border: 1px solid #b59661;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.network-bar-error {
+  max-width: 440px;
+  color: #ffc7a6;
+}
+@media (max-width: 650px) {
+  .network-entry-grid,
+  .network-host {
+    grid-template-columns: 1fr;
+  }
+}
