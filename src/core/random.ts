@@ -1,3 +1,8 @@
+/** Trusted caller supplies a new permutation; the callback is never stored in GameState. */
+export interface CoreRandomness {
+  shuffle<T>(items: readonly T[]): T[];
+}
+
 export function hashSeed(seed: string): number {
   let value = 2166136261;
   for (const char of seed) value = Math.imul(value ^ char.charCodeAt(0), 16777619);
@@ -13,7 +18,12 @@ export function random(state: { rng: number }): number {
   return state.rng / 4294967296;
 }
 
-export function shuffle<T>(items: T[], state: { rng: number }): T[] {
+export function shuffle<T>(
+  items: readonly T[],
+  state: { rng: number },
+  randomness?: CoreRandomness,
+): T[] {
+  if (randomness) return randomness.shuffle([...items]);
   const result = [...items];
   for (let index = result.length - 1; index > 0; index--) {
     const other = Math.floor(random(state) * (index + 1));
