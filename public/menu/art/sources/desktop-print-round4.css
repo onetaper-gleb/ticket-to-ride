@@ -1,0 +1,23 @@
+
+/* Round4 own desktop token proposal; frozen preset/layout/title caller unchanged. */
+.desktop,.ultrawide{--hh:122px!important;--gap:6px!important;--fs:46px!important;--tf:32px!important;--is:56px!important;--ic:98px!important;--action-h:414px!important}
+.desktop .board,.ultrawide .board{padding-left:calc(var(--pad) + 19px)}
+.desktop .board-header,.ultrawide .board-header{padding-bottom:14px}
+.desktop .row .label,.ultrawide .row .label{line-height:1.05}
+.desktop .row .label,.ultrawide .row .label{width:calc(100% / .89);transform:scaleX(.89);transform-origin:left center}
+.desktop .row>.copy,.ultrawide .row>.copy{overflow:clip}
+.desktop .actions,.ultrawide .actions{position:relative}
+.desktop .wordmark svg,.ultrawide .wordmark svg{transform:scale(.90,1.10);transform-origin:center}
+.desktop .row>.copy,.ultrawide .row>.copy{padding-left:20px;padding-right:16px}
+
+/* Reference print samples; existing maps and physical material roles retained. */
+.row{background-image:linear-gradient(#242922a6,#242922a6),url('menu/art/board-paint.webp');color:#ECD5B2;border-color:#171e18;border-radius:4px;box-shadow:inset 0 1px 0 #92978545,inset 1px 0 0 #92978525,inset 0 -1px 0 #0f171590}
+.row>.icon{border-right-color:#1c241c;box-shadow:1px 0 0 #92978540}
+.row.primary{background-image:linear-gradient(#e49845b3,#e49845b3),url('menu/art/paper-tile.webp');color:#342b1e;border-color:#855729;box-shadow:inset 0 1px 0 #ffe2a58a,inset 1px 0 0 #ffe2a540,inset 0 -1px 0 #8e5d3280}
+.row.primary>.icon{border-right-color:#9c713c;box-shadow:1px 0 0 #ffe2a560}
+.row:disabled{color:#bccdbd}
+.row>.icon svg{filter:drop-shadow(0 -.5px 0 #17201880) drop-shadow(.6px .7px 0 #eed4a63d)}
+.settings{background-image:linear-gradient(#d69f7c96,#d69f7c96),url('menu/art/paper-tile.webp');justify-content:flex-start;padding-left:24px;gap:14px}
+.settings::after{inset:7px;border-color:#84664325}
+.desktop .settings svg,.ultrawide .settings svg{width:48px;height:48px}
+.desktop .settings .label,.ultrawide .settings .label{font-size:30px;line-height:1.10;transform:scaleX(.92);transform-origin:left center}

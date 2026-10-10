@@ -1,7 +1,7 @@
 {
   "version": 4,
   "baseCommit": "bea9743c7622a7806a3d9b6824a9d912b0a41b65",
-  "previousArtCommit": "6a48a80a6c599e74a2ee8e1980e951d6cd1cb0e2",
+  "previousArtCommit": "82a61576330d3f279aadec45b964ffc4b31bde62",
   "assets": [
     {
       "file": "board-paint.png",
@@ -103,8 +103,8 @@
     },
     {
       "file": "icons/continue.svg",
-      "bytes": 418,
-      "sha256": "284f15aeee36a6a21346af5e97bfe064e605fc26e26ff76f49de683ff8f7a00d",
+      "bytes": 438,
+      "sha256": "37e2627cfa5d13f1f0cbffcf5525e9a89c5206cba05149fc5e3a451ae4dddfc5",
       "role": "runtime",
       "stage": "P1",
       "dimensions": [
@@ -112,7 +112,7 @@
         32
       ],
       "alpha": true,
-      "source": "project-original SVG paths",
+      "source": "project-original SVG print refinement on accepted82; dimensions and existing slots retained",
       "rights": "project-original artwork; no new project license asserted"
     },
     {
@@ -131,8 +131,8 @@
     },
     {
       "file": "icons/rules.svg",
-      "bytes": 295,
-      "sha256": "e16f74f7239307c195b9e55e799f8ab44e9e45d730f4c72109e70e53ea469a6b",
+      "bytes": 345,
+      "sha256": "7b9a0573fb15e77a54a8c043deee7f9471680cbb617bb3f82e887c87b07c7e22",
       "role": "runtime",
       "stage": "P1",
       "dimensions": [
@@ -140,7 +140,7 @@
         32
       ],
       "alpha": true,
-      "source": "project-original SVG paths",
+      "source": "project-original SVG print refinement on accepted82; dimensions and existing slots retained",
       "rights": "project-original artwork; no new project license asserted"
     },
     {
@@ -201,8 +201,8 @@
     },
     {
       "file": "luggage-stickers.svg",
-      "bytes": 2779,
-      "sha256": "99fcffc2c69813608fe97248d60d63126f2a62baa10d853272de0707cf21aa7f",
+      "bytes": 3031,
+      "sha256": "ec54efd80dd43381fd530865cb0aabe681ecdabea65ce2456e8d6cfdac3bb648",
       "role": "runtime",
       "stage": "P1",
       "dimensions": [
@@ -210,7 +210,7 @@
         512
       ],
       "alpha": true,
-      "source": "project-original SVG paths",
+      "source": "project-original SVG print refinement on accepted82; dimensions and existing slots retained",
       "rights": "project-original artwork; no new project license asserted"
     },
     {
@@ -386,8 +386,8 @@
     },
     {
       "file": "ticket-print.svg",
-      "bytes": 2460,
-      "sha256": "7cbb86e8ad0d5f0f9014ddd21432b4719e6de686b30855e84882336ce501e649",
+      "bytes": 2497,
+      "sha256": "56525655cf453545121709e07ee3967e694741dea9c28baae8693048ac4ba3d5",
       "role": "runtime",
       "stage": "P1",
       "dimensions": [
@@ -395,7 +395,7 @@
         256
       ],
       "alpha": false,
-      "source": "project-original SVG paths",
+      "source": "project-original SVG print refinement on accepted82; dimensions and existing slots retained",
       "rights": "project-original artwork; no new project license asserted"
     },
     {
@@ -425,17 +425,44 @@
       "alpha": false,
       "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
       "rights": "AI-generated project material; no third-party source image"
+    },
+    {
+      "file": "sources/desktop-fit-round4.json",
+      "bytes": 33879,
+      "sha256": "408d1f23110a39e5b5569693d7db123b506b93d9a1b910a34a9ab2f1993216c9",
+      "role": "source",
+      "stage": "proposal",
+      "source": "project-original specification measured with immutable common77 fixture",
+      "rights": "project-owned source; no new distributed font, dependency or artwork"
+    },
+    {
+      "file": "sources/desktop-print-round4.css",
+      "bytes": 2080,
+      "sha256": "d827391a75f3f845f5b46df635e4a8823da7818e55a5447589d74b2ba1384994",
+      "role": "source",
+      "stage": "proposal",
+      "source": "project-original specification measured with immutable common77 fixture",
+      "rights": "project-owned source; no new distributed font, dependency or artwork"
+    },
+    {
+      "file": "sources/settings-paper-proposal.json",
+      "bytes": 2609,
+      "sha256": "577b15deb206a7862b3545800286b0ac691bfaca3818823193b0e0f809fd5b22",
+      "role": "source",
+      "stage": "proposal",
+      "source": "project-original specification measured with immutable common77 fixture",
+      "rights": "project-owned source; no new distributed font, dependency or artwork"
     }
   ],
   "budget": {
-    "runtimeFileBytesIncludingSVG": 363391,
+    "runtimeFileBytesIncludingSVG": 363750,
     "runtimeRasterBytesBothFallbacks": 348682,
     "runtimeRasterGoalBytes": 2000000,
     "fallbackEachGoalBytes": 400000,
     "allUniqueP1MapsMiBWithoutFallbackWithoutSteam": 14.0,
     "allUniqueMapsBothFallbacksAndSteamMiB": 22.286458333333332,
     "baseline316FourLoadedMapsMiB": 4.666666666666666,
-    "note": "RGBA8 full-mip estimate per unique image: six surface maps, clock, stickers, ticket and optional sky. Source-only shape SVG is excluded. Excludes duplicated GPU uploads of owned clones, DOM textures, render targets, shadows and PMREM; not renderer.info. Historical316 loads wood/clock/stickers/ticket. Frozen e9c95c2 routes the agreed environment surfaces through MenuCompositionArt/buildMenuModels; optional sky is not loaded."
+    "note": "RGBA8 full-mip estimate per unique image: six surface maps, clock, stickers, ticket and optional sky. Source-only shape SVG is excluded. Excludes duplicated GPU uploads of owned clones, DOM textures, render targets, shadows and PMREM; not renderer.info. Historical316 loads wood/clock/stickers/ticket. Frozen e9c95c2 routes the agreed environment surfaces through MenuCompositionArt/buildMenuModels; optional sky is not loaded. Round4 preserves all unique image dimensions and raster bytes. The desktop token/CSS/settings API records are source-only proposals. Actual common77 full static render: calls433, triangles681587, geometries121, textures23 before and after; no FPS/VRAM claim."
   },
   "generation": {
     "tool": "built-in image_gen",
@@ -511,6 +538,6 @@
       }
     ]
   },
-  "revision": "printed-menu-refinement",
-  "artVersion": "4.2"
+  "revision": "desktop-reference-print-round4",
+  "artVersion": "4.3-proposal"
 }
