@@ -281,6 +281,11 @@ function Menu(props: AppProps & { onRules: () => void }) {
           >
             Начать партию <span>→</span>
           </button>
+          {props.onOpenNetwork && (
+            <button className="button secondary full" onClick={props.onOpenNetwork}>
+              Играть с друзьями <span>→</span>
+            </button>
+          )}
           <button
             className="button secondary full"
             onClick={props.canContinueTutorial ? props.onContinueTutorial : props.onStartTutorial}
@@ -335,7 +340,15 @@ function ticketName(observation: Observation, ticket: Ticket) {
   return `${cityName(observation, ticket.a)} — ${cityName(observation, ticket.b)}`;
 }
 
-export default function App(props: AppProps) {
+export interface AppCommandLifecycle {
+  commandsAreAsync?: boolean;
+  commandPending?: boolean;
+  confirmedCommandId?: string | null;
+  /** Invalidates a held scene gesture without discarding payment or ticket drafts. */
+  interactionEpoch?: number;
+}
+
+export default function App(props: AppProps & AppCommandLifecycle) {
   const observation = props.observation;
   const [rules, setRules] = useState(false);
   const [rulesPage, setRulesPage] = useState(0);
@@ -397,6 +410,16 @@ export default function App(props: AppProps) {
     setTicketIds([]);
     if (['draw', 'tickets', 'tunnel'].includes(observation?.phase ?? '')) setRules(false);
   }, [observation?.phase]);
+  useEffect(() => {
+    if (!props.confirmedCommandId) return;
+    setSelection(null);
+    setTicketIds([]);
+    setInspectedTicket(null);
+    setInspectedCard(null);
+    setOptionIndex(0);
+    setManualPayment(null);
+    setFeedback('');
+  }, [props.confirmedCommandId]);
   if (!observation)
     return (
       <>
@@ -436,8 +459,11 @@ export default function App(props: AppProps) {
           ? getStationOptions(observation, city.id)
           : [];
   const option = paymentOptions[optionIndex % Math.max(1, paymentOptions.length)];
-  const paying = ownTurn && (phase === 'tunnel' || (phase === 'action' && !!(edge || city)));
-  const paymentIds = paying ? (manualPayment ?? option?.cardIds ?? []) : [];
+  const paymentVisible =
+    observation.activePlayer === observation.self.id &&
+    (phase === 'tunnel' || (phase === 'action' && !!(edge || city)));
+  const paying = ownTurn && paymentVisible;
+  const paymentIds = paymentVisible ? (manualPayment ?? option?.cardIds ?? []) : [];
   const paymentValid = paying && paymentMatches(paymentIds, paymentOptions, observation.self.hand);
   const clear = () => {
     setSelection(null);
@@ -452,6 +478,9 @@ export default function App(props: AppProps) {
     setFeedback('');
     props.onClearError();
     return props.onCommand(command, { sessionId: props.sessionId, revision: observation.revision });
+  };
+  const sendAndClear = (command: GameCommand) => {
+    if (send(command) && !props.commandsAreAsync) clear();
   };
   const controls: TableControl[] = [];
   let headline = phaseNames[phase];
@@ -477,7 +506,14 @@ export default function App(props: AppProps) {
           })),
     });
   };
-  if (!ownTurn && phase !== 'finished') {
+  if (props.commandPending && phase !== 'finished') {
+    headline = 'Ждём подтверждения';
+    notice = 'Действие отправлено. Ваш выбор сохранён до ответа сервера.';
+    detailLines = [
+      'Не закрывайте игру, если хотите дождаться ответа за столом.',
+      'При потере связи повторно отправляется то же действие.',
+    ];
+  } else if (!ownTurn && phase !== 'finished') {
     headline =
       observation.players.find((player) => player.id === observation.activePlayer)?.name ??
       'Соперник';
@@ -805,7 +841,7 @@ export default function App(props: AppProps) {
           return;
         case 'endTurn':
           setTopView(false);
-          clear();
+          if (!props.commandsAreAsync) clear();
           props.onEndTurn({ sessionId: props.sessionId, revision: observation.revision });
           return;
         case 'rules':
@@ -852,46 +888,42 @@ export default function App(props: AppProps) {
           const ids = observation.self.ticketOptions
             .filter((item) => ticketIds.includes(item.id))
             .map((item) => item.id);
-          if (send({ type: 'chooseTickets', ticketIds: ids })) setTicketIds([]);
+          if (send({ type: 'chooseTickets', ticketIds: ids }) && !props.commandsAreAsync)
+            setTicketIds([]);
           return;
         }
         case 'drawTickets':
           if (can({ type: 'drawTickets' })) {
-            clear();
-            send({ type: 'drawTickets' });
+            sendAndClear({ type: 'drawTickets' });
           }
           return;
         case 'pass':
           if (can({ type: 'pass' })) {
-            clear();
-            send({ type: 'pass' });
+            sendAndClear({ type: 'pass' });
           }
           return;
         case 'claimRoute':
           if (edge && paymentValid) {
-            send({ type: 'claim', edgeId: edge.id, cardIds: paymentIds });
-            clear();
+            sendAndClear({ type: 'claim', edgeId: edge.id, cardIds: paymentIds });
           }
           return;
         case 'buildStation':
           if (city && paymentValid) {
-            send({ type: 'buildStation', cityId: city.id, cardIds: paymentIds });
-            clear();
+            sendAndClear({ type: 'buildStation', cityId: city.id, cardIds: paymentIds });
           }
           return;
         case 'payTunnel':
           if (paymentValid) {
-            send({ type: 'resolveTunnel', pay: true, cardIds: paymentIds });
-            clear();
+            sendAndClear({ type: 'resolveTunnel', pay: true, cardIds: paymentIds });
           }
           return;
         case 'declineTunnel':
-          send({ type: 'resolveTunnel', pay: false });
-          clear();
+          sendAndClear({ type: 'resolveTunnel', pay: false });
           return;
       }
       return;
     }
+    if (props.commandPending) return;
     if (intent.kind === 'objective') {
       if (choosingTickets && ownTurn) {
         if (!observation.self.ticketOptions.some((item) => item.id === intent.id)) return;
@@ -913,8 +945,7 @@ export default function App(props: AppProps) {
         source: intent.kind === 'deck' ? 'deck' : Number(intent.id),
       };
       if (can(command)) {
-        clear();
-        send(command);
+        sendAndClear(command);
       }
       return;
     }
@@ -995,7 +1026,7 @@ export default function App(props: AppProps) {
           onInteract={interact}
           topView={topView}
           onBoardModeChange={setTopView}
-          reset={props.sessionId}
+          reset={props.interactionEpoch ?? props.sessionId}
           guidance={guidance}
           inputPolicy={inputPolicy}
         />

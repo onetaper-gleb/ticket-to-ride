@@ -31,6 +31,10 @@ export default function NetworkGame({
   const session = useRef({ identity, id: 1 });
   if (session.current.identity !== identity)
     session.current = { identity, id: session.current.id + 1 };
+  const inputContext = `${identity}:${state.connection}:${snapshot?.authority?.turnId}:${snapshot?.authority?.controlEpoch}:${snapshot?.room.paused}:${snapshot?.canAct}:${roomOpen}`;
+  const input = useRef({ context: inputContext, epoch: 1 });
+  if (input.current.context !== inputContext)
+    input.current = { context: inputContext, epoch: input.current.epoch + 1 };
   const playing = !!snapshot?.observation && snapshot.room.status !== 'lobby';
   useEffect(() => {
     if (roomOpen) closeButton.current?.focus();
@@ -52,11 +56,15 @@ export default function NetworkGame({
           <div inert={roomOpen}>
             <App
               {...networkGameProps(client, session.current.id)}
+              commandsAreAsync
+              commandPending={!!state.pendingCommand}
+              confirmedCommandId={state.confirmedCommandId}
+              interactionEpoch={input.current.epoch}
               canContinue={false}
               canContinueTutorial={false}
               onStartTutorial={() => {}}
               onContinueTutorial={() => {}}
-              onStart={() => {}}
+              onStart={() => setRoomOpen(true)}
               onContinue={() => {}}
               onMenu={() => setRoomOpen(true)}
             />

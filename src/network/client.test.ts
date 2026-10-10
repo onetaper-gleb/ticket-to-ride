@@ -191,8 +191,10 @@ describe('authoritative WebSocket client', () => {
       type: 'ack',
       ack: { commandId: id, accepted: true, revision: 2, roomRevision: 2 },
     });
+    expect(client.getState().confirmedCommandId).toBeFalsy();
     expect(client.command({ type: 'draw', source: 'deck' }, expected(0))).toBe(false);
     sockets[0]!.packet({ type: 'snapshot', snapshot: snapshot(2) });
+    expect(client.getState().confirmedCommandId).toBe(id);
     expect(client.getState().pendingCommand).toBeNull();
     sockets[0]!.packet({ type: 'snapshot', snapshot: snapshot(1) });
     expect(client.getState().snapshot?.observation?.revision).toBe(2);
@@ -200,6 +202,29 @@ describe('authoritative WebSocket client', () => {
     delayed.room.revision = 3;
     sockets[0]!.packet({ type: 'snapshot', snapshot: delayed });
     expect(client.getState().snapshot?.observation?.revision).toBe(2);
+  });
+
+  it('keeps a draft confirmation unchanged on refusal and confirms a snapshot that arrived before its ack', () => {
+    const { client, sockets } = connected();
+    expect(client.command({ type: 'draw', source: 'deck' }, expected())).toBe(true);
+    const rejected = client.getState().pendingCommand!.commandId;
+    sockets[0]!.packet({
+      type: 'ack',
+      ack: { commandId: rejected, accepted: false, revision: 0, roomRevision: 0, message: 'Отказ' },
+    });
+    expect(client.getState().pendingCommand).toBeNull();
+    expect(client.getState().confirmedCommandId).toBeFalsy();
+    expect(client.command({ type: 'draw', source: 'deck' }, expected())).toBe(true);
+    const accepted = client.getState().pendingCommand!.commandId;
+    sockets[0]!.packet({ type: 'snapshot', snapshot: snapshot(1) });
+    expect(client.getState().confirmedCommandId).toBeFalsy();
+    expect(client.getState().pendingCommand?.commandId).toBe(accepted);
+    sockets[0]!.packet({
+      type: 'ack',
+      ack: { commandId: accepted, accepted: true, revision: 1, roomRevision: 1 },
+    });
+    expect(client.getState().pendingCommand).toBeNull();
+    expect(client.getState().confirmedCommandId).toBe(accepted);
   });
 
   it('resends the exact original envelope after a lost acknowledgement, with a fresh resume handshake', () => {
