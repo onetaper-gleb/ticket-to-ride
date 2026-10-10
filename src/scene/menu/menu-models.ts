@@ -412,10 +412,10 @@ function buildInterior(root: THREE.Group, kit: MenuModelKit) {
   // A second real arch opens onto a separate courtyard beyond the long reveals.
   const yardWall = new THREE.Shape();
   yardWall.moveTo(0.895, -0.9);
-  yardWall.lineTo(0.95, -0.9);
-  yardWall.lineTo(0.95, 1.25);
-  yardWall.quadraticCurveTo(1.545, 2.02, 2.14, 1.25);
-  yardWall.lineTo(2.14, -0.9);
+  yardWall.lineTo(1.1, -0.9);
+  yardWall.lineTo(1.1, 1.25);
+  yardWall.quadraticCurveTo(1.5125, 2.1, 1.925, 1.25);
+  yardWall.lineTo(1.925, -0.9);
   yardWall.lineTo(2.22, -0.9);
   yardWall.lineTo(2.22, 2.1);
   yardWall.lineTo(0.895, 2.1);
