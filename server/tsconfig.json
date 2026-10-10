@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": { "types": ["node"], "composite": false },
+  "include": [
+    "./**/*.ts",
+    "../src/network/protocol.ts",
+    "../src/core/**/*.ts",
+    "../src/bots/**/*.ts",
+    "../src/shared/**/*.ts",
+    "../src/data/**/*.ts"
+  ]
+}
