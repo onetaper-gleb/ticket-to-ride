@@ -6,6 +6,8 @@
 
 [Адрес проекта](https://last-train-evacuation.pink-gecko-8072.chatgpt.site). Онлайн-комнаты остаются отдельным этапом.
 
+[Репозиторий GitHub](https://github.com/onetaper-gleb/ticket-to-ride).
+
 ## Запуск
 
 Нужны Node.js 22.12+ или 24 и pnpm 11.25.0.
@@ -36,6 +38,7 @@
 - [Правила, данные и источники](docs/europe-rules.md).
 - [Обучение и управление](docs/onboarding.md).
 - [Концепт](docs/concept.md), [архитектура](docs/architecture.md), [разработка и приёмка](docs/development.md).
+- [GitHub и процесс разработки](docs/github-workflow.md).
 - [Контракты агентной команды](AGENTS.md); проектные навыки лежат в .agents/skills/.
 
 Сохранения Europe используют новую IndexedDB last-train-europe-v1. Старую базу эвакуационной игры приложение не удаляет и не преобразует.
