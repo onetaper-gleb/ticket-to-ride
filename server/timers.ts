@@ -12,12 +12,23 @@ export function createTurnTimers(
   },
 ) {
   const handles = new Map<string, unknown>(),
-    versions = new Map<string, number>();
+    versions = new Map<string, number>(),
+    guards = new Map<string, TurnGuard>();
   let closed = false;
   const schedule = (roomId: string, guard: TurnGuard, delayMs: number) => {
     if (closed) return;
     const previous = handles.get(roomId);
+    const current = guards.get(roomId);
+    if (
+      previous !== undefined &&
+      current?.turnId === guard.turnId &&
+      current.controlEpoch === guard.controlEpoch &&
+      current.revision === guard.revision
+    )
+      return;
     if (previous !== undefined) port.clear(previous);
+    guard = { ...guard };
+    guards.set(roomId, guard);
     const version = (versions.get(roomId) ?? 0) + 1;
     versions.set(roomId, version);
     handles.set(
@@ -41,6 +52,7 @@ export function createTurnTimers(
       for (const handle of handles.values()) port.clear(handle);
       handles.clear();
       versions.clear();
+      guards.clear();
     },
   };
 }

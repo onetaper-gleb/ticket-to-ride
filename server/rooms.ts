@@ -34,6 +34,7 @@ interface Binding {
   memberId: string;
   lease: number;
 }
+type BootstrapPacket = Extract<ClientPacket, { type: 'create' | 'join' }>;
 class RoomError extends Error {
   constructor(
     readonly code: string,
@@ -227,9 +228,8 @@ export class RoomService {
       room.authority.deadline = this.now() + (room.remainingMs ?? this.budget(room));
     }
   }
-  private addMember(room: StoredRoom, name: string, seatId: number) {
-    const id = randomUUID(),
-      secret = randomBytes(32).toString('base64url');
+  private addMember(room: StoredRoom, name: string, seatId: number, secret: string) {
+    const id = randomUUID();
     const member: RoomMember = {
       id,
       name: cleanName(name),
@@ -248,6 +248,90 @@ export class RoomService {
       credential: { roomId: room.view.id, memberId: id, secret } satisfies ResumeCredential,
     };
   }
+  private bootstrapPayload(packet: BootstrapPacket) {
+    const { bootstrapSecret: _secret, ...publicPacket } = packet;
+    return publicPacket;
+  }
+  private bootstrapReceipt(packet: BootstrapPacket, roomId: string, memberId: string): StoredReply {
+    return {
+      scope: 'bootstrap',
+      owner: digest(packet.bootstrapSecret),
+      actor: packet.type,
+      id: packet.requestId,
+      payload: canonical(this.bootstrapPayload(packet)),
+      reply: JSON.stringify({ roomId, memberId }),
+    };
+  }
+  private replayBootstrap(connectionId: string, packet: BootstrapPacket): boolean {
+    const proof = digest(packet.bootstrapSecret),
+      previous = this.store.findBootstrap('id', packet.requestId);
+    if (previous) {
+      if (!timingSafeEqual(Buffer.from(previous.owner, 'hex'), Buffer.from(proof, 'hex')))
+        deny('BOOTSTRAP_DENIED', 'Не удалось подтвердить запрос входа.');
+      if (
+        previous.actor !== packet.type ||
+        previous.payload !== canonical(this.bootstrapPayload(packet))
+      )
+        deny('BOOTSTRAP_REUSED', 'Этот запрос входа уже использован с другими параметрами.');
+      const { roomId, memberId } = JSON.parse(previous.reply) as Pick<
+        ResumeCredential,
+        'roomId' | 'memberId'
+      >;
+      this.restoreMember(
+        connectionId,
+        { roomId, memberId, secret: packet.bootstrapSecret },
+        packet.requestId,
+      );
+      return true;
+    }
+    if (this.store.findBootstrap('owner', proof))
+      deny('BOOTSTRAP_REUSED', 'Этот запрос входа уже использован с другими параметрами.');
+    return false;
+  }
+  private restoreMember(connectionId: string, credential: ResumeCredential, requestId: string) {
+    const binding = this.connections.get(connectionId);
+    if (
+      binding &&
+      (binding.roomId !== credential.roomId || binding.memberId !== credential.memberId)
+    )
+      deny('ALREADY_JOINED', 'Вы уже вошли в комнату.');
+    const existing = this.rooms.get(credential.roomId),
+      identity = existing?.identities[credential.memberId];
+    const supplied = Buffer.from(digest(credential.secret), 'hex');
+    if (!existing) deny('ROOM_NOT_FOUND', 'Комната больше не существует.');
+    if (!identity) deny('MEMBER_REMOVED', 'Это место больше не принадлежит участнику.');
+    if (!timingSafeEqual(Buffer.from(identity.hash, 'hex'), supplied))
+      deny('RESUME_INVALID', 'Не удалось подтвердить право на место.');
+    let room = existing;
+    if (!binding || binding.lease !== identity.lease) {
+      room = copy(existing);
+      const member = room.view.members.find((m) => m.id === credential.memberId)!;
+      member.connected = true;
+      member.controlEpoch = ++room.epochs[member.seatId]!;
+      if (member.control === 'bot') member.returnPending = true;
+      const lease = ++room.identities[member.id]!.lease;
+      this.connectivity(room);
+      this.bump(room);
+      this.publish(room, { type: 'resume', memberId: member.id });
+      for (const [old, previous] of this.connections)
+        if (
+          old !== connectionId &&
+          previous?.roomId === room.view.id &&
+          previous.memberId === member.id
+        ) {
+          this.connections.delete(old);
+          this.options.disconnect?.(old);
+        }
+      this.connections.set(connectionId, { roomId: room.view.id, memberId: member.id, lease });
+    }
+    this.send(connectionId, {
+      type: 'welcome',
+      requestId,
+      protocol: 1,
+      credential,
+      snapshot: this.snapshot(room, credential.memberId),
+    });
+  }
   async receive(connectionId: string, raw: unknown): Promise<void> {
     if (this.closed || this.closing || !this.connections.has(connectionId)) return;
     if (!validPacket(raw)) {
@@ -258,11 +342,18 @@ export class RoomService {
       return;
     }
     const packet = copy(raw);
+    const bootstrapRoom =
+      packet.type === 'create' || packet.type === 'join'
+        ? this.store.findBootstrap('id', packet.requestId)
+        : null;
+    const restoredRoomId = bootstrapRoom
+      ? (JSON.parse(bootstrapRoom.reply) as { roomId: string }).roomId
+      : null;
     const key =
       packet.type === 'create'
-        ? '$create'
+        ? (restoredRoomId ?? '$create')
         : packet.type === 'join'
-          ? (this.findCode(packet.code)?.view.id ?? '$join')
+          ? (restoredRoomId ?? this.findCode(packet.code)?.view.id ?? '$join')
           : packet.type === 'resume'
             ? packet.credential.roomId
             : (this.connections.get(connectionId)?.roomId ?? '$unauth');
@@ -280,6 +371,7 @@ export class RoomService {
   }
   private handle(connectionId: string, packet: ClientPacket) {
     if (packet.type === 'create') {
+      if (this.replayBootstrap(connectionId, packet)) return;
       if (this.connections.get(connectionId)) deny('ALREADY_JOINED', 'Вы уже вошли в комнату.');
       const id = randomUUID();
       const room: StoredRoom = {
@@ -308,9 +400,17 @@ export class RoomService {
         remainingMs: null,
         turnSerial: 0,
       };
-      const { member, credential } = this.addMember(room, packet.name, 0);
+      const { member, credential } = this.addMember(room, packet.name, 0, packet.bootstrapSecret);
       room.view.hostId = member.id;
-      this.store.commit(room, { type: 'create' });
+      this.store.commit(
+        room,
+        {
+          type: 'create',
+          packet: this.bootstrapPayload(packet),
+          proofHash: digest(packet.bootstrapSecret),
+        },
+        this.bootstrapReceipt(packet, id, member.id),
+      );
       this.rooms.set(id, room);
       this.connections.set(connectionId, { roomId: id, memberId: member.id, lease: 1 });
       this.send(connectionId, {
@@ -323,6 +423,7 @@ export class RoomService {
       return;
     }
     if (packet.type === 'join') {
+      if (this.replayBootstrap(connectionId, packet)) return;
       if (this.connections.get(connectionId)) deny('ALREADY_JOINED', 'Вы уже вошли в комнату.');
       const existing = this.findCode(packet.code);
       if (!existing || existing.view.status !== 'lobby' || !existing.view.settings.admissionOpen)
@@ -330,10 +431,19 @@ export class RoomService {
       const seat = existing.view.seats.find((s) => s.kind === 'open');
       if (!seat) deny('ROOM_FULL', 'Все места заняты.');
       const room = copy(existing),
-        { member, credential } = this.addMember(room, packet.name, seat.id);
+        { member, credential } = this.addMember(room, packet.name, seat.id, packet.bootstrapSecret);
       this.connectivity(room);
       this.bump(room);
-      this.publish(room, { type: 'join', memberId: member.id });
+      this.publish(
+        room,
+        {
+          type: 'join',
+          memberId: member.id,
+          packet: this.bootstrapPayload(packet),
+          proofHash: digest(packet.bootstrapSecret),
+        },
+        this.bootstrapReceipt(packet, room.view.id, member.id),
+      );
       this.connections.set(connectionId, { roomId: room.view.id, memberId: member.id, lease: 1 });
       this.send(connectionId, {
         type: 'welcome',
@@ -346,35 +456,7 @@ export class RoomService {
     }
     if (packet.type === 'resume') {
       if (this.connections.get(connectionId)) deny('ALREADY_JOINED', 'Вы уже вошли в комнату.');
-      const existing = this.rooms.get(packet.credential.roomId),
-        identity = existing?.identities[packet.credential.memberId];
-      const supplied = Buffer.from(digest(packet.credential.secret), 'hex');
-      if (!existing) deny('ROOM_NOT_FOUND', 'Комната больше не существует.');
-      if (!identity) deny('MEMBER_REMOVED', 'Это место больше не принадлежит участнику.');
-      if (!timingSafeEqual(Buffer.from(identity.hash, 'hex'), supplied))
-        deny('RESUME_INVALID', 'Не удалось подтвердить право на место.');
-      const room = copy(existing),
-        member = room.view.members.find((m) => m.id === packet.credential.memberId)!;
-      member.connected = true;
-      member.controlEpoch = ++room.epochs[member.seatId]!;
-      if (member.control === 'bot') member.returnPending = true;
-      const lease = ++room.identities[member.id]!.lease;
-      this.connectivity(room);
-      this.bump(room);
-      this.publish(room, { type: 'resume', memberId: member.id });
-      for (const [old, binding] of this.connections)
-        if (binding?.roomId === room.view.id && binding.memberId === member.id) {
-          this.connections.delete(old);
-          this.options.disconnect?.(old);
-        }
-      this.connections.set(connectionId, { roomId: room.view.id, memberId: member.id, lease });
-      this.send(connectionId, {
-        type: 'welcome',
-        requestId: packet.requestId,
-        protocol: 1,
-        credential: packet.credential,
-        snapshot: this.snapshot(room, member.id),
-      });
+      this.restoreMember(connectionId, packet.credential, packet.requestId);
       return;
     }
     const { room, member } = this.authenticated(connectionId);

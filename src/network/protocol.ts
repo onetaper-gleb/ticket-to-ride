@@ -109,6 +109,8 @@ export type ClientPacket =
       type: 'create';
       requestId: string;
       protocol: typeof NETWORK_PROTOCOL;
+      /** Private 256-bit per-attempt proof. Persist before sending; never publish in RoomView. */
+      bootstrapSecret: string;
       name: string;
       settings: RoomSettings;
     }
@@ -116,6 +118,7 @@ export type ClientPacket =
       type: 'join';
       requestId: string;
       protocol: typeof NETWORK_PROTOCOL;
+      bootstrapSecret: string;
       name: string;
       code: string;
     }

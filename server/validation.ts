@@ -4,6 +4,8 @@ const record = (x: unknown): x is Record<string, unknown> =>
   !!x && typeof x === 'object' && !Array.isArray(x);
 const str = (x: unknown, max = 100): x is string =>
   typeof x === 'string' && x.length > 0 && x.length <= max;
+const bootstrapProof = (x: unknown): x is string =>
+  typeof x === 'string' && /^[0-9a-f]{64}$/.test(x);
 const integer = (x: unknown, min: number, max: number) =>
   typeof x === 'number' && Number.isInteger(x) && x >= min && x <= max;
 const ids = (x: unknown, max: number) =>
@@ -68,17 +70,19 @@ export function validPacket(packet: unknown): packet is ClientPacket {
   switch (packet.type) {
     case 'create':
       return (
-        keys(packet, ['type', 'protocol', 'requestId', 'name', 'settings']) &&
+        keys(packet, ['type', 'protocol', 'requestId', 'bootstrapSecret', 'name', 'settings']) &&
         packet.protocol === 1 &&
         str(packet.requestId) &&
+        bootstrapProof(packet.bootstrapSecret) &&
         str(packet.name, 100) &&
         validSettings(packet.settings)
       );
     case 'join':
       return (
-        keys(packet, ['type', 'protocol', 'requestId', 'name', 'code']) &&
+        keys(packet, ['type', 'protocol', 'requestId', 'bootstrapSecret', 'name', 'code']) &&
         packet.protocol === 1 &&
         str(packet.requestId) &&
+        bootstrapProof(packet.bootstrapSecret) &&
         str(packet.name, 100) &&
         str(packet.code, 32)
       );

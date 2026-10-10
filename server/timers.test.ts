@@ -28,6 +28,20 @@ function port() {
 }
 
 describe('guarded room timers', () => {
+  it('keeps the original deadline for an unchanged full guard and replaces it for each changed field', () => {
+    const clock = port(),
+      timers = createTurnTimers(async () => {}, clock);
+    timers.schedule('room', guard(1), 180);
+    timers.schedule('room', { ...guard(1) }, 180);
+    expect([...clock.pending.keys()]).toEqual([1]);
+    timers.schedule('room', { ...guard(1), controlEpoch: 2 }, 180);
+    expect([...clock.pending.keys()]).toEqual([2]);
+    timers.schedule('room', { ...guard(1), controlEpoch: 2, turnId: 'next' }, 180);
+    expect([...clock.pending.keys()]).toEqual([3]);
+    timers.schedule('room', { ...guard(2), controlEpoch: 2, turnId: 'next' }, 180);
+    expect([...clock.pending.keys()]).toEqual([4]);
+    timers.close();
+  });
   it('retains a newer room timer when an older async tick later fails', async () => {
     const clock = port(),
       called: number[] = [];
