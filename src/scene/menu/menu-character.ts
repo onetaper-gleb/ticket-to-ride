@@ -128,11 +128,10 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
     hand.scale.setScalar(resting ? RESTING_HAND_SCALE : HAND_SCALE);
     hand.position.copy(contact);
     if (resting) {
-      hand.rotation.set(Math.PI / 2, 0, -0.35);
+      hand.rotation.set(Math.PI / 2, 0, -0.08);
       setHandPose(hand, {
-        curl: [0.8, 1.3, 1.25, 1.3, 1.0],
-        thumbOpposition: 0.8,
-        spread: [-0.35, 0, 0, 0, 0],
+        curl: [0.35, 1.3, 1.25, 1.3, 1.0],
+        thumbOpposition: 0.35,
       });
       setPalmFlex(hand, { index: 1.3, middle: 1.25, ring: 1.3, little: 1.0 });
     } else {
@@ -167,7 +166,7 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
     root,
     [
       new THREE.Vector3(0.345, 0.465, -0.27),
-      new THREE.Vector3(0.47296, 0.24, -0.17),
+      new THREE.Vector3(0.47486, 0.24, -0.17),
       leftElbow,
       leftCuffStart,
     ],
