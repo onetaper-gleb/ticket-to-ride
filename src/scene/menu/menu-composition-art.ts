@@ -6,6 +6,7 @@ export type MenuCompositionArt = {
   luggageStickers: THREE.Texture;
   wood: THREE.Texture;
   ticketPrint: THREE.Texture;
+  distantSky: THREE.Texture;
   surfaces: MenuSurfaceMaps;
   dispose(): void;
 };
@@ -60,6 +61,7 @@ export async function loadMenuCompositionArt(
       'leather-tile.webp',
       'stone-tile.webp',
       'paper-tile.webp',
+      'distant-sky.svg',
     ].map((name) => loadTexture(base + name, signal)),
   );
   const textures = results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
@@ -68,10 +70,23 @@ export async function loadMenuCompositionArt(
     textures.forEach((texture) => texture.dispose());
     throw failure.reason;
   }
-  const [clockFace, luggageStickers, wood, ticketPrint, plaster, paint, leather, stone, paper] =
-    textures;
+  const [
+    clockFace,
+    luggageStickers,
+    wood,
+    ticketPrint,
+    plaster,
+    paint,
+    leather,
+    stone,
+    paper,
+    distantSky,
+  ] = textures;
   // The large floor has per-face 0..1 UV; finer repetition keeps stone grain in scale.
   stone.repeat.set(8, 8);
+  // The large sky box exposes its middle UV band below the canopy.
+  distantSky.repeat.set(1, 0.7);
+  distantSky.offset.set(0, 0.4);
   // The 2:1 print uses a single quarter turn on the portrait paper; the grip stays fixed.
   ticketPrint.center.set(0.5, 0.5);
   ticketPrint.rotation = Math.PI / 2;
@@ -81,6 +96,7 @@ export async function loadMenuCompositionArt(
     luggageStickers,
     wood,
     ticketPrint,
+    distantSky,
     surfaces: {
       cream: plaster,
       green: paint,
@@ -90,6 +106,7 @@ export async function loadMenuCompositionArt(
       leather,
       stone,
       paper,
+      sky: distantSky,
     },
     dispose() {
       if (disposed) return;

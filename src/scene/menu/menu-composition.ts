@@ -75,12 +75,19 @@ export async function createMenuComposition(
         woodDark: { color: '#887660' },
         leather: { roughness: 0.9 },
         cream: { color: '#c6cbd1', roughness: 0.95 },
-        stone: { color: '#ada4b0', roughness: 0.92 },
+        stone: { color: '#a0adbe', roughness: 0.92 },
         boardPaint: { roughness: 0.88 },
         paper: { roughness: 0.95 },
         iron: { color: '#3d454a', roughness: 0.6, metalness: 0.25 },
+        sky: { color: '#000000', emissive: '#ffffff', emissiveIntensity: 1 },
       },
     });
+    // The existing sky surface owns this clone; use it for unlit sky emission too.
+    const sky = models.surfaces.get('sky');
+    if (!sky?.map) throw new Error('Menu environment is missing the sky surface map');
+    sky.map.wrapS = sky.map.wrapT = THREE.ClampToEdgeWrapping;
+    sky.emissiveMap = sky.map;
+    sky.needsUpdate = true;
     models.parts.stationRoot.rotation.y = menuCompositionPreset(1672, 941).buildingYaw;
     models.parts.outerCanopySupport.position.set(1.7, 0, -0.2);
     models.parts.backdropRoot.position.x = 2;
@@ -313,6 +320,7 @@ function assemble(
       }
       models.dispose();
       models.root.removeFromParent();
+      scene.background = null;
       art.dispose();
       keyLight.shadow.dispose();
       scene.clear();
