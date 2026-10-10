@@ -1,5 +1,47 @@
 import * as THREE from 'three';
+import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js';
 import type { MenuSurfaceMaps } from './menu-model-utils';
+
+export type MenuTitleShapes = {
+  shapes: readonly THREE.Shape[];
+  sourceBounds: THREE.Box2;
+};
+
+export async function loadMenuTitleShapes(
+  baseUrl = '/menu/art/',
+  signal?: AbortSignal,
+): Promise<MenuTitleShapes> {
+  const base = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+  const response = await fetch(`${base}sources/europe-shape-source.svg`, { signal });
+  if (!response.ok) throw new Error(`Menu title HTTP ${response.status}`);
+  const source = await response.text();
+  signal?.throwIfAborted();
+  const xml = new DOMParser().parseFromString(source, 'image/svg+xml');
+  const viewBox = xml.documentElement
+    .getAttribute('viewBox')
+    ?.trim()
+    .split(/[\s,]+/)
+    .map(Number);
+  if (
+    !viewBox ||
+    viewBox.length !== 4 ||
+    !viewBox.every(Number.isFinite) ||
+    viewBox[2] <= 0 ||
+    viewBox[3] <= 0
+  )
+    throw new Error('Menu title requires a finite positive SVG viewBox');
+  const parsed = new SVGLoader().parse(source);
+  const shapes = parsed.paths.flatMap((path) => SVGLoader.createShapes(path));
+  if (!shapes.length) throw new Error('Menu title SVG contains no shapes');
+  const [x, y, width, height] = viewBox;
+  const sourceBounds = new THREE.Box2(
+    new THREE.Vector2(x, y),
+    new THREE.Vector2(x + width, y + height),
+  );
+  if (!sourceBounds.max.toArray().every(Number.isFinite))
+    throw new Error('Menu title SVG viewBox overflows');
+  return { shapes, sourceBounds };
+}
 
 export type MenuCompositionArt = {
   clockFace: THREE.Texture;
