@@ -6,19 +6,26 @@ export type MenuPoint = readonly [number, number, number];
 export type MenuMaterial = keyof typeof MENU_PALETTE;
 
 export const MENU_PALETTE = {
-  cream: '#d7c5a5',
-  green: '#263d3b',
+  cream: '#bfae92',
+  plasterShade: '#978771',
+  green: '#2e403b',
+  boardPaint: '#2e403b',
+  leather: '#713e29',
+  red: '#942e27',
+  glassWarm: '#d4a45b',
   burgundy: '#7b3536',
   iron: '#252d2d',
-  wood: '#765039',
-  woodDark: '#503723',
-  brass: '#ad7e41',
+  wood: '#865d3c',
+  woodDark: '#3d281b',
+  brass: '#ae844d',
   paper: '#f4e8cf',
   glass: '#adc5b5',
   warm: '#ffda90',
-  stone: '#b8a68c',
-  foliage: '#78855c',
-  sky: '#abcbd7',
+  stone: '#a99b87',
+  foliage: '#557242',
+  foliageLight: '#718c48',
+  foliageDark: '#36542e',
+  sky: '#9ec2e5',
 } as const;
 
 /** XY face, centered origin, thickness along Z. */
@@ -28,8 +35,35 @@ export function menuBox(width: number, height: number, depth: number, radius = 0
   return new RoundedBoxGeometry(width, height, depth, 1, bevel);
 }
 
+export type MenuSurfaceOptions = {
+  color?: THREE.ColorRepresentation;
+  roughness?: number;
+  metalness?: number;
+  emissive?: THREE.ColorRepresentation;
+  emissiveIntensity?: number;
+};
+
+/** Optional seamless base-color tiles, keyed by the actual surface material. Caller owns inputs. */
+export type MenuSurfaceMaps = Partial<Record<MenuMaterial, THREE.Texture>>;
+export type MenuSurfaceOverrides = Partial<Record<MenuMaterial, MenuSurfaceOptions>>;
+
 /** Resources belong to one environment bundle, including all prop builders. */
-export function createMenuModelKit(wood?: THREE.Texture) {
+export function createMenuModelKit(
+  wood?: THREE.Texture,
+  surfaceMaps: MenuSurfaceMaps = {},
+  overrides: MenuSurfaceOverrides = {},
+) {
+  for (const [kind, override] of Object.entries(overrides)) {
+    if (!override) continue;
+    for (const key of ['roughness', 'metalness', 'emissiveIntensity'] as const) {
+      const value = override[key];
+      if (
+        value !== undefined &&
+        (!Number.isFinite(value) || value < 0 || (key !== 'emissiveIntensity' && value > 1))
+      )
+        throw new RangeError(`Invalid menu material ${kind}/${key}`);
+    }
+  }
   const geometries = new Set<THREE.BufferGeometry>();
   const materials = new Map<MenuMaterial, THREE.MeshStandardMaterial>();
   const textures = new Set<THREE.Texture>();
@@ -44,32 +78,46 @@ export function createMenuModelKit(wood?: THREE.Texture) {
     assertAlive();
     let result = materials.get(kind);
     if (!result) {
+      const override = Object.fromEntries(
+        Object.entries(overrides[kind] ?? {}).filter(([, value]) => value !== undefined),
+      ) as MenuSurfaceOptions;
       result = new THREE.MeshStandardMaterial({
         color: MENU_PALETTE[kind],
         roughness:
-          kind === 'cream'
-            ? 0.95
+          kind === 'cream' || kind === 'stone'
+            ? 0.94
             : kind === 'green'
-              ? 0.72
-              : kind === 'brass'
-                ? 0.42
-                : kind === 'glass'
-                  ? 0.35
-                  : 0.78,
-        metalness: kind === 'brass' ? 0.5 : kind === 'iron' ? 0.25 : 0,
+              ? 0.64
+              : kind === 'leather'
+                ? 0.72
+                : kind === 'brass'
+                  ? 0.36
+                  : kind === 'iron'
+                    ? 0.56
+                    : kind === 'glass' || kind === 'glassWarm'
+                      ? 0.38
+                      : 0.76,
+        metalness: kind === 'brass' ? 0.72 : kind === 'iron' ? 0.4 : kind === 'green' ? 0.06 : 0,
         ...(kind === 'warm' ? { emissive: '#ffc35f', emissiveIntensity: 0.55 } : {}),
+        ...(kind === 'glassWarm' ? { emissive: '#ffbd64', emissiveIntensity: 0.32 } : {}),
         ...(kind === 'sky'
           ? { color: '#000000', emissive: MENU_PALETTE.sky, emissiveIntensity: 1 }
           : {}),
+        ...override,
       });
+      result.name = `menu-surface/${kind}`;
+      result.userData.menuSurface = kind;
       materials.set(kind, result);
-      if (kind === 'wood' && wood) {
-        const map = wood.clone();
+      const source = surfaceMaps[kind] ?? (kind === 'wood' ? wood : undefined);
+      if (source) {
+        const map = source.clone();
         map.colorSpace = THREE.SRGBColorSpace;
         map.wrapS = map.wrapT = THREE.RepeatWrapping;
         textures.add(map);
         result.map = map;
-        result.color.set('#ffffff');
+        // New tiles carry base color; A08 legacy wood also gets a muted varnish tint.
+        if (override.color === undefined)
+          result.color.set(kind === 'wood' && !surfaceMaps.wood ? '#ae9479' : '#ffffff');
       }
     }
     return result;
@@ -119,6 +167,9 @@ export function createMenuModelKit(wood?: THREE.Texture) {
       map.colorSpace = THREE.SRGBColorSpace;
       textures.add(map);
       surface = material(kind).clone();
+      surface.name = `menu-print/${kind}`;
+      delete surface.userData.menuSurface;
+      surface.userData.menuPrint = true;
       surface.color.set('#ffffff');
       surface.map = map;
       surface.transparent = transparent;
@@ -247,6 +298,7 @@ export function createMenuModelKit(wood?: THREE.Texture) {
     clearMeshes,
     assertAlive,
     dispose,
+    surfaces: materials as ReadonlyMap<MenuMaterial, THREE.MeshStandardMaterial>,
   };
 }
 

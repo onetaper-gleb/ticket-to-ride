@@ -1,5 +1,12 @@
 import * as THREE from 'three';
-import { createMenuModelKit, menuAnchor, menuBox, type MenuModelKit } from './menu-model-utils';
+import {
+  createMenuModelKit,
+  menuAnchor,
+  menuBox,
+  type MenuModelKit,
+  type MenuSurfaceMaps,
+  type MenuSurfaceOverrides,
+} from './menu-model-utils';
 import { buildMenuTrain } from './menu-train';
 import {
   buildMenuBell,
@@ -14,6 +21,8 @@ export type MenuModels = {
   cashierAnchor: THREE.Object3D;
   railwayRoot: THREE.Group;
   parts: MenuEnvironmentParts;
+  /** Actual owned surfaces; material values may be tuned by the scene owner. */
+  surfaces: MenuModelKit['surfaces'];
   counter: {
     handRestLeft: THREE.Object3D;
     handRestRight: THREE.Object3D;
@@ -66,11 +75,13 @@ export type MenuEnvironmentArt = {
   clockFace?: THREE.Texture;
   luggageStickers?: THREE.Texture;
   wood?: THREE.Texture;
+  surfaces?: MenuSurfaceMaps;
+  materialOverrides?: MenuSurfaceOverrides;
 };
 
 /** Independent station bundle. Contact plane is Y=0; front is +Z. */
 export function buildMenuModels(art: MenuEnvironmentArt = {}): MenuModels {
-  const kit = createMenuModelKit(art.wood);
+  const kit = createMenuModelKit(art.wood, art.surfaces, art.materialOverrides);
   const root = new THREE.Group();
   root.name = 'Ticket office environment';
   const stationRoot = part(root, 'station-root');
@@ -141,6 +152,7 @@ export function buildMenuModels(art: MenuEnvironmentArt = {}): MenuModels {
     cashierAnchor,
     railwayRoot,
     parts,
+    surfaces: kit.surfaces,
     counter,
     clock,
     train,
@@ -363,7 +375,7 @@ function buildBoard(root: THREE.Group, kit: MenuModelKit): MenuModels['board'] {
     innerPlane = kit.mesh(
       boardRoot,
       new THREE.ShapeGeometry(roundedPanel(size.x - 2 * border, size.y - 2 * border, pixel * 3), 4),
-      'green',
+      'boardPaint',
       'boardInnerPlane',
     );
     for (const x of [-size.x / 2 + border * 0.5, size.x / 2 - border * 0.5])

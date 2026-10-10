@@ -140,3 +140,28 @@ CPU timer включает только build моделей с уже загр�
 В новом общем harness: environment32194tri/75meshes, desktop99main calls/91918tri, narrow93calls/87716tri. Ошибка native corner probes ≤.047px на1672/1280/1920/900. HTTP failures0,page/console errors0. Реальные clicks по «Правилам», Escape, Tab на настройки, Enter открытия native формы и возврат focus после Escape прошли на всех четырёх размерах. Ни один диалог не запускает игровую сессию. Подробные данные — menu-round-1-current-composition-checks.json в handoff.
 
 Оркестратор согласовал (.10,0,.15) для конфигурации общей сцены, левую точку оставил (.35,0,.15). Builder defaults сохраняются. Текущий cashier tip **5cd16df3901b8101c462b354395db073696e5e45** отличается от проверенного f3c5383 только docs/menu-cashier.md; геометрия и поза побайтно прежние. В compositor сначала задать retained counter.handRestRight.position=(.10,0,.17) в station-local, затем получить оба options через актуальные localToWorld/worldToLocal относительно cashierAnchor. Не передавать hardcoded world координаты. Имена файлов current-proposed сохраняют название этапа проверки; точка уже согласована для общей композиции.
+
+## Именованные поверхности — контракт визуального раунда
+
+`MenuEnvironmentArt` совместимо сохраняет `wood`, `clockFace`, `luggageStickers`. Новые optional поля:
+
+```ts
+surfaces?: Partial<Record<MenuMaterial, THREE.Texture>>;
+materialOverrides?: Partial<Record<MenuMaterial, {
+  color?: THREE.ColorRepresentation;
+  roughness?: number;
+  metalness?: number;
+  emissive?: THREE.ColorRepresentation;
+  emissiveIntensity?: number;
+}>>;
+```
+
+Согласованные color slots: `cream` — штукатурка; `green` — крашеные стойки/фасад/состав; `wood` — арка, столешница, скамья; `woodDark` — интерьер/полки/путь; `leather` — brown luggage в следующем geometry pass; `stone` — пол/платформа; `boardPaint` — физическая `boardInnerPlane`; `paper` — физическая `settingsPlane` и другие paper детали окружения. Это единый surfaces API, отдельных top-level leather/boardPaint/paper полей нет. Другие palette kinds также типизированы, но 2D сейчас производит только эти реально нужные карты.
+
+Приоритет карты: `surfaces[kind]`, затем legacy `wood` только для kind wood, затем одноцветный материал. Все карты SRGB base-color. `Texture.clone()` сохраняет источник изображения и transform/repeat/offset/rotation/centre; клону задаётся RepeatWrapping по U/V, исходная Texture не изменяется. Default repeat `(1,1)`. Новые карты умножаются на white color, если нет `materialOverrides[kind].color`; explicit color умножает карту. Legacy A08 wood без surfaces.wood имеет muted varnish tint `#ae9479`. Без карты используется palette color с optional override. Numeric roughness/metalness требуют finite `[0,1]`, emissiveIntensity finite `>=0`. Normal/roughness maps пока не входят в этот color-only контракт.
+
+UV не являются world tri-planar mapping: Box/RoundedBox используют стандартный `(0..1)` на каждой грани; Extrude использует стандартные Shape XY coordinates и edge/depth mapping, фасад/арка сохраняют model-local метры. Для verticalWood UV меняются `(u,v)→(1-v,u)`. Batch/consolidate сохраняют UV. Art owner должен дать мелкий бесшовный tile без нарисованных объектов, текста и baked света; composer может задать repeat на входной карте перед construction, клон сохранит его. Отдельный woodDark slot не наследует legacy wood.
+
+`models.surfaces: ReadonlyMap<MenuMaterial, THREE.MeshStandardMaterial>` возвращает реально созданные shared owned surfaces. Stable name `menu-surface/<kind>`, userData.menuSurface=kind. Значения материала mutable для настройки общим дизайнером; map structure read-only на уровне TypeScript. Texture prints A05/A07 остаются отдельными mapped clones, поэтому смена color paper не перекрашивает печать. Scene owner не должен dispose эти материалы или входить в kit lifecycle. Idempotent `models.dispose()` освобождает все owned geometry/material/map clones ровно один раз, входные art textures сохраняются. После dispose surfaces map пуст.
+
+Этот API commit фиксирует только surfaces/overrides и palette. Геометрия визуального раунда и её новое измерение передаются отдельно; старые значения resource/performance выше относятся к round1 и не считаются проверкой новых карт. Камера, default contacts, stationRoot ownership, retained parts и board corners не изменены.
