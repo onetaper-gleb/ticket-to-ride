@@ -1,10 +1,12 @@
 import * as THREE from 'three';
+import type { MenuSurfaceMaps } from './menu-model-utils';
 
 export type MenuCompositionArt = {
   clockFace: THREE.Texture;
   luggageStickers: THREE.Texture;
   wood: THREE.Texture;
   ticketPrint: THREE.Texture;
+  surfaces: MenuSurfaceMaps;
   dispose(): void;
 };
 
@@ -48,9 +50,17 @@ export async function loadMenuCompositionArt(
 ): Promise<MenuCompositionArt> {
   const base = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
   const results = await Promise.allSettled(
-    ['clock-face.svg', 'luggage-stickers.svg', 'wood-tile.webp', 'ticket-print.svg'].map((name) =>
-      loadTexture(base + name, signal),
-    ),
+    [
+      'clock-face.svg',
+      'luggage-stickers.svg',
+      'wood-tile.webp',
+      'ticket-print.svg',
+      'plaster-tile.webp',
+      'board-paint.webp',
+      'leather-tile.webp',
+      'stone-tile.webp',
+      'paper-tile.webp',
+    ].map((name) => loadTexture(base + name, signal)),
   );
   const textures = results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
   const failure = results.find((r) => r.status === 'rejected');
@@ -58,8 +68,10 @@ export async function loadMenuCompositionArt(
     textures.forEach((texture) => texture.dispose());
     throw failure.reason;
   }
-  const [clockFace, luggageStickers, wood, ticketPrint] = textures;
-  wood.repeat.set(2, 4);
+  const [clockFace, luggageStickers, wood, ticketPrint, plaster, paint, leather, stone, paper] =
+    textures;
+  // The large floor has per-face 0..1 UV; finer repetition keeps stone grain in scale.
+  stone.repeat.set(8, 8);
   // The 2:1 print uses a single quarter turn on the portrait paper; the grip stays fixed.
   ticketPrint.center.set(0.5, 0.5);
   ticketPrint.rotation = Math.PI / 2;
@@ -69,6 +81,16 @@ export async function loadMenuCompositionArt(
     luggageStickers,
     wood,
     ticketPrint,
+    surfaces: {
+      cream: plaster,
+      green: paint,
+      boardPaint: paint,
+      wood,
+      woodDark: wood,
+      leather,
+      stone,
+      paper,
+    },
     dispose() {
       if (disposed) return;
       disposed = true;

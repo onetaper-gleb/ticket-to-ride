@@ -18,9 +18,11 @@ export type MenuCompositionPreset = {
     gap: number;
     headgap: number;
     fs: number;
+    tf: number;
     sf: number;
     is: number;
     im: number;
+    ic: number;
     mark: number;
     hint: number;
     touch: number;
@@ -41,7 +43,7 @@ export function menuCompositionPreset(width: number, height: number): MenuCompos
   const mix = (values: readonly number[]) =>
     THREE.MathUtils.lerp(values[index], values[index + 1], t);
   const compact = !desktop && !narrow && width >= 760;
-  const fs = desktop ? mix([26, 32, 36]) : narrow ? 23 : compact ? 24 : 27;
+  const fs = desktop ? mix([32, 40, 44]) : narrow ? 23 : compact ? 24 : 27;
   const dom = {
     pad: desktop ? mix([12, 12, 16]) : 12,
     hh: desktop ? mix([96, 136, 164]) : 80,
@@ -50,9 +52,11 @@ export function menuCompositionPreset(width: number, height: number): MenuCompos
     gap: desktop ? mix([6, 8, 10]) : 6,
     headgap: desktop ? mix([16, 12, 18]) : 12,
     fs,
-    sf: fs,
+    tf: desktop ? mix([24, 28, 32]) : fs,
+    sf: desktop ? mix([26, 32, 36]) : fs,
     is: desktop ? mix([36, 44, 48]) : 32,
     im: desktop ? mix([2, 4, 4]) : 4,
+    ic: desktop ? mix([80, 104, 116]) : 60,
     mark: desktop ? mix([300, 370, 414]) : 340,
     hint: desktop ? 24 : fs,
     touch: desktop ? 64 : narrow ? 60 : compact ? 64 : 72,
