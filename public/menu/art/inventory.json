@@ -1,7 +1,7 @@
 {
   "version": 4,
   "baseCommit": "bea9743c7622a7806a3d9b6824a9d912b0a41b65",
-  "previousArtCommit": "a1ab201ee0d6122c32ac99f7adcfe42a55650be6",
+  "previousArtCommit": "f80a7e001362ce727010def895b2a8127f2edd68",
   "assets": [
     {
       "file": "board-paint.png",
@@ -105,6 +105,20 @@
       "file": "icons/continue.svg",
       "bytes": 418,
       "sha256": "284f15aeee36a6a21346af5e97bfe064e605fc26e26ff76f49de683ff8f7a00d",
+      "role": "runtime",
+      "stage": "P1",
+      "dimensions": [
+        32,
+        32
+      ],
+      "alpha": true,
+      "source": "project-original SVG paths",
+      "rights": "project-original artwork; no new project license asserted"
+    },
+    {
+      "file": "icons/friends.svg",
+      "bytes": 320,
+      "sha256": "a5c28cd6a5e37838ce7ca0a15bf21641484cb94072d9f6cb0faee058bd2792e4",
       "role": "runtime",
       "stage": "P1",
       "dimensions": [
@@ -391,7 +405,7 @@
     }
   ],
   "budget": {
-    "runtimeFileBytesIncludingSVG": 362269,
+    "runtimeFileBytesIncludingSVG": 362589,
     "runtimeRasterBytesBothFallbacks": 348682,
     "runtimeRasterGoalBytes": 2000000,
     "fallbackEachGoalBytes": 400000,
@@ -473,5 +487,6 @@
         "sha256": "733f7fc296d0806cd0e0a5c5a1768d050d9e03fe7a3c1a330d45ca2dd3fbc87c"
       }
     ]
-  }
+  },
+  "revision": "friends-entry"
 }
