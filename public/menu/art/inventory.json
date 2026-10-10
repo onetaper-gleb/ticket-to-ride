@@ -1,7 +1,7 @@
 {
   "version": 4,
   "baseCommit": "bea9743c7622a7806a3d9b6824a9d912b0a41b65",
-  "previousArtCommit": "f80a7e001362ce727010def895b2a8127f2edd68",
+  "previousArtCommit": "6a48a80a6c599e74a2ee8e1980e951d6cd1cb0e2",
   "assets": [
     {
       "file": "board-paint.png",
@@ -47,8 +47,8 @@
     },
     {
       "file": "distant-sky.svg",
-      "bytes": 765,
-      "sha256": "28181a738f9a06cc1b6aa4e800696b6f5b470bbb6cce1913163c4e3580f8ffdf",
+      "bytes": 1025,
+      "sha256": "6e388e7b3b86d0d1b2e87a00052f558ee5deda2b8a0770ab690da494369237f1",
       "role": "runtime",
       "stage": "P1",
       "dimensions": [
@@ -56,13 +56,13 @@
         512
       ],
       "alpha": false,
-      "source": "project-original SVG paths",
+      "source": "project-original blue gradient, two diffuse cloud paths and abstract atmosphere; optional, not wired into frozen38b",
       "rights": "project-original artwork; no new project license asserted"
     },
     {
       "file": "europe-mark.svg",
-      "bytes": 1097,
-      "sha256": "55cfc472402afdf63c29db5fb74ac30a5ffc8fe41e4683e80f881fbee606f56f",
+      "bytes": 1639,
+      "sha256": "e9b0b7e69891a4fca342951ae3bce8612fa332a7cb2baa021ec0ee05846cae85",
       "role": "runtime",
       "stage": "P1",
       "dimensions": [
@@ -70,7 +70,7 @@
         120
       ],
       "alpha": true,
-      "source": "project-original SVG paths",
+      "source": "six unchanged project-original letter paths; gold gradient and three use print layers, no font outlines",
       "rights": "project-original artwork; no new project license asserted"
     },
     {
@@ -251,6 +251,20 @@
       "rights": "project-owned source; dependencies have public licenses recorded in provenance.md"
     },
     {
+      "file": "sources/europe-shape-source.svg",
+      "bytes": 959,
+      "sha256": "39b05d8b8863db9f61a6a9c31646f0fa5f9a5429e567f7c4e2d93cbae6340aed",
+      "role": "source",
+      "stage": "P1",
+      "source": "project-original vector geometry",
+      "rights": "project-original artwork; no new project license asserted",
+      "dimensions": [
+        600,
+        120
+      ],
+      "alpha": true
+    },
+    {
       "file": "sources/generate-textures.py",
       "bytes": 1624,
       "sha256": "c8040f2604bfca6e8d5cf104a958d59eb5fc49cd0df250e9bc3136c5e9dd3eec",
@@ -309,6 +323,15 @@
       "alpha": false,
       "source": "built-in image_gen; 512 RGB PNG and WebP encoding with Sharp 0.35.5",
       "rights": "AI-generated project material; no third-party source image"
+    },
+    {
+      "file": "sources/print-tokens.json",
+      "bytes": 1496,
+      "sha256": "3daf881cc6383792d5ea9b2106a50431b4266f14b40c7b5b380e2a303ed52ec4",
+      "role": "source",
+      "stage": "P1",
+      "source": "project-original print and scroll specification",
+      "rights": "project-original artwork; no new project license asserted"
     },
     {
       "file": "sources/stone-tile.png",
@@ -405,14 +428,14 @@
     }
   ],
   "budget": {
-    "runtimeFileBytesIncludingSVG": 362589,
+    "runtimeFileBytesIncludingSVG": 363391,
     "runtimeRasterBytesBothFallbacks": 348682,
     "runtimeRasterGoalBytes": 2000000,
     "fallbackEachGoalBytes": 400000,
     "allUniqueP1MapsMiBWithoutFallbackWithoutSteam": 14.0,
     "allUniqueMapsBothFallbacksAndSteamMiB": 22.286458333333332,
     "baseline316FourLoadedMapsMiB": 4.666666666666666,
-    "note": "RGBA8 full-mip estimate per unique image: six surface maps, clock, stickers, ticket and optional sky. Excludes duplicated GPU uploads of owned clones, DOM textures, render targets, shadows and PMREM; not renderer.info. Current 316 consumer loads only wood/clock/stickers/ticket plus native CSS paint/paper. New environment slots still require owner wiring."
+    "note": "RGBA8 full-mip estimate per unique image: six surface maps, clock, stickers, ticket and optional sky. Source-only shape SVG is excluded. Excludes duplicated GPU uploads of owned clones, DOM textures, render targets, shadows and PMREM; not renderer.info. Historical316 loads wood/clock/stickers/ticket. Frozen38b routes the agreed environment surfaces through MenuCompositionArt/buildMenuModels; optional sky is not loaded."
   },
   "generation": {
     "tool": "built-in image_gen",
@@ -488,5 +511,6 @@
       }
     ]
   },
-  "revision": "friends-entry"
+  "revision": "printed-menu-refinement",
+  "artVersion": "4.2"
 }
