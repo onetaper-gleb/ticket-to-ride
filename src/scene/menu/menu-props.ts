@@ -253,23 +253,30 @@ export function buildMenuBench(kit: MenuModelKit): THREE.Group {
   root.name = 'menu-bench';
   const body = kit.batch(root, 'bench');
   for (const z of [-0.05, 0.1, 0.25])
-    body.add(new RoundedBoxGeometry(1.25, 0.054, 0.13, 2, 0.012), 'wood', [0, 0.42, z]);
+    body.add(new RoundedBoxGeometry(1.25, 0.036, 0.13, 2, 0.008), 'woodDark', [0, 0.429, z]);
+  // The thinner top board keeps its established outer height and rear edge.
   for (const [y, z] of [
-    [0.76, -0.25],
-    [0.94, -0.31],
+    [0.765, -0.255],
+    [0.951807, -0.319795],
   ])
-    body.add(new RoundedBoxGeometry(1.2, 0.108, 0.055, 2, 0.012), 'wood', [0, y, z], [-0.18, 0, 0]);
+    body.add(
+      new RoundedBoxGeometry(1.2, 0.086, 0.038, 2, 0.009),
+      'woodDark',
+      [0, y, z],
+      [-0.18, 0, 0],
+    );
   for (const x of [-0.535, 0.535]) {
     body.add(
       menuTube(
         [
           [x, 0.035, 0.25],
-          [x, 0.17, 0.225],
-          [x, 0.34, 0.155],
+          [x, 0.15, 0.235],
+          [x, 0.26, 0.195],
+          [x, 0.34, 0.175],
           [x, 0.41, 0.2],
         ],
-        0.026,
-        18,
+        0.024,
+        22,
       ),
       'iron',
     );
@@ -280,44 +287,61 @@ export function buildMenuBench(kit: MenuModelKit): THREE.Group {
           [x, 0.2, -0.11],
           [x, 0.42, -0.1],
           [x, 0.55, -0.19],
-          [x, 0.94, -0.315],
+          [x, 0.735, -0.26],
+          [x, 0.952, -0.315],
         ],
-        0.026,
-        22,
+        0.024,
+        26,
       ),
       'iron',
     );
     body.add(
       menuTube(
         [
-          [x, 0.61, -0.215],
-          [x, 0.63, -0.025],
-          [x, 0.59, 0.2],
-          [x, 0.54, 0.265],
-          [x, 0.42, 0.25],
+          [x, 0.62, -0.215],
+          [x, 0.651, -0.075],
+          [x, 0.625, 0.07],
+          [x, 0.585, 0.205],
+          [x, 0.51, 0.269],
+          [x, 0.429, 0.25],
         ],
-        0.022,
-        22,
+        0.018,
+        28,
       ),
       'iron',
     );
-    body.add(menuBox(0.055, 0.035, 0.45, 0.008), 'iron', [x, 0.389, 0.095]);
+    body.add(
+      menuTube(
+        [
+          [x, 0.416, 0.2],
+          [x, 0.49, 0.16],
+          [x, 0.525, 0.04],
+          [x, 0.513, -0.065],
+          [x, 0.457, -0.11],
+          [x, 0.416, -0.1],
+        ],
+        0.012,
+        24,
+      ),
+      'iron',
+    );
+    body.add(menuBox(0.055, 0.035, 0.45, 0.008), 'iron', [x, 0.395, 0.095]);
     for (const z of [-0.22, 0.25])
       body.add(menuBox(0.09, 0.018, 0.1, 0.006), 'iron', [x, 0.009, z]);
     for (const [y, z] of [
-      [0.76, -0.22],
-      [0.94, -0.28],
+      [0.765, -0.255],
+      [0.951807, -0.319795],
     ])
       body.add(
-        new THREE.CylinderGeometry(0.009, 0.009, 0.009, 10),
+        new THREE.CylinderGeometry(0.008, 0.008, 0.007, 10),
         'iron',
-        [x, y, z],
-        [Math.PI / 2, 0, 0],
+        [x, y + 0.004, z + 0.02],
+        [Math.PI / 2 - 0.18, 0, 0],
       );
   }
   for (const z of [-0.1, 0.2])
     body.add(
-      new THREE.CylinderGeometry(0.024, 0.024, 1.07, 12),
+      new THREE.CylinderGeometry(0.02, 0.02, 1.07, 12),
       'iron',
       [0, 0.395, z],
       [0, 0, Math.PI / 2],
@@ -588,24 +612,33 @@ export function buildMenuSuitcase(
       [x * sx, centreY, 0],
     );
   }
-  const corner = suitcaseCornerGeometry(radius, 0.006 * bevelScale, 0.0025 * bevelScale);
+  const corners = suitcaseCornerGeometries(
+    radius,
+    0.04 * sx,
+    0.065 * sy,
+    0.016 * sz,
+    0.0025 * bevelScale,
+    0.0032 * bevelScale,
+  );
+  const oppositeCorners = corners.map(suitcaseOppositeCorner);
   for (const bottom of [false, true]) {
-    for (let quarter = 0; quarter < 4; quarter += 1) {
-      const rotation: [number, number, number] = [bottom ? Math.PI : 0, (quarter * Math.PI) / 2, 0];
-      const direction = new THREE.Vector3(1, 1, 1).applyEuler(new THREE.Euler(...rotation));
-      body.add(
-        corner.clone(),
-        'brass',
-        [
+    for (const back of [false, true]) {
+      for (const opposite of [false, true]) {
+        const rotation: [number, number, number] = [bottom ? Math.PI : 0, back ? Math.PI : 0, 0];
+        const direction = new THREE.Vector3(opposite ? -1 : 1, 1, 1).applyEuler(
+          new THREE.Euler(...rotation),
+        );
+        const position: MenuPoint = [
           Math.sign(direction.x) * (width / 2 - radius),
           centreY + Math.sign(direction.y) * (height / 2 - radius),
           Math.sign(direction.z) * (depth / 2 - radius),
-        ],
-        rotation,
-      );
+        ];
+        for (const corner of opposite ? oppositeCorners : corners)
+          body.add(corner.clone(), 'brass', position, rotation);
+      }
     }
   }
-  corner.dispose();
+  for (const corner of [...corners, ...oppositeCorners]) corner.dispose();
   for (const x of [-1, 1])
     for (const z of [-0.065, 0.065])
       body.add(box(0.04, 0.025, 0.03, 0.004), trim, [
@@ -694,106 +727,96 @@ function suitcaseSeamGeometry(
   return geometry;
 }
 
-type SuitcaseCapVertex = [number, number, number, number, number, number, number, number];
+/** Flat riveted plate with two narrow edge returns; the leather corner remains visible. */
+function suitcaseCornerGeometries(
+  radius: number,
+  width: number,
+  height: number,
+  flap: number,
+  shell: number,
+  rivetRadius: number,
+): THREE.BufferGeometry[] {
+  const plate = new THREE.Shape();
+  const c = Math.min(rivetRadius, width / 3, height / 3);
+  plate.moveTo(-width + c, -height);
+  plate.lineTo(-c, -height);
+  plate.lineTo(0, -height + c);
+  plate.lineTo(0, -c);
+  plate.lineTo(-c, 0);
+  plate.lineTo(-width + c, 0);
+  plate.lineTo(-width, -c);
+  plate.lineTo(-width, -height + c);
+  plate.closePath();
+  const face = new THREE.ExtrudeGeometry(plate, {
+    depth: shell * 2.2,
+    steps: 1,
+    bevelEnabled: false,
+  });
+  face.translate(0, 0, radius - shell * 1.38);
+  const top = suitcaseCornerReturnGeometry(radius, shell, flap, width, false);
+  top.rotateY(-Math.PI / 2);
+  const side = suitcaseCornerReturnGeometry(radius, shell, flap, height, true);
+  side.rotateX(Math.PI / 2);
+  const rivets = [
+    [-width * 0.28, -height * 0.2],
+    [-width * 0.72, -height * 0.77],
+  ].map(([x, y]) => {
+    const rivet = new THREE.CylinderGeometry(rivetRadius, rivetRadius, shell * 0.28, 10);
+    rivet.rotateX(Math.PI / 2);
+    rivet.translate(x, y, radius + shell * 0.86);
+    return rivet;
+  });
+  return [face, top, side, ...rivets];
+}
 
-/** A thin, closed three-face cap wraps one body corner. Other corners use proper rotations. */
-function suitcaseCornerGeometry(radius: number, flap: number, shell: number) {
-  const extent = 2 * (radius + flap + shell);
-  const source = new RoundedBoxGeometry(extent, extent, extent, 3, radius + shell);
-  const rounded = source.index ? source.toNonIndexed() : source.clone();
-  source.dispose();
-  const position = rounded.getAttribute('position');
-  const normal = rounded.getAttribute('normal');
-  const uv = rounded.getAttribute('uv');
-  const positions: number[] = [];
-  const normals: number[] = [];
-  const uvs: number[] = [];
-  const read = (index: number): SuitcaseCapVertex => [
-    position.getX(index),
-    position.getY(index),
-    position.getZ(index),
-    normal.getX(index),
-    normal.getY(index),
-    normal.getZ(index),
-    uv.getX(index),
-    uv.getY(index),
-  ];
-  const coat = (vertex: SuitcaseCapVertex, inside: boolean): SuitcaseCapVertex => {
-    const n = new THREE.Vector3(vertex[3], vertex[4], vertex[5]).normalize();
-    const offset = inside ? shell * 2.2 : 0;
-    return [
-      vertex[0] - flap - n.x * offset,
-      vertex[1] - flap - n.y * offset,
-      vertex[2] - flap - n.z * offset,
-      n.x * (inside ? -1 : 1),
-      n.y * (inside ? -1 : 1),
-      n.z * (inside ? -1 : 1),
-      vertex[6],
-      vertex[7],
-    ];
-  };
-  const triangle = (
-    a: SuitcaseCapVertex,
-    b: SuitcaseCapVertex,
-    c: SuitcaseCapVertex,
-    side = false,
-  ) => {
-    const ab = new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
-    const ac = new THREE.Vector3(c[0] - a[0], c[1] - a[1], c[2] - a[2]);
-    const n = ab.cross(ac);
-    if (n.lengthSq() < 1e-18) return;
-    n.normalize();
-    for (const vertex of [a, b, c]) {
-      positions.push(vertex[0], vertex[1], vertex[2]);
-      normals.push(...(side ? [n.x, n.y, n.z] : vertex.slice(3, 6)));
-      uvs.push(vertex[6], vertex[7]);
-    }
-  };
-  for (let index = 0; index < position.count; index += 3) {
-    let polygon = [read(index), read(index + 1), read(index + 2)];
-    for (let axis = 0; axis < 3 && polygon.length; axis += 1) {
-      const clipped: SuitcaseCapVertex[] = [];
-      for (let edge = 0; edge < polygon.length; edge += 1) {
-        const a = polygon[edge];
-        const b = polygon[(edge + 1) % polygon.length];
-        const aInside = a[axis] >= 0;
-        const bInside = b[axis] >= 0;
-        if (aInside) clipped.push(a);
-        if (aInside !== bInside) {
-          const t = a[axis] / (a[axis] - b[axis]);
-          const crossing = a.map(
-            (value, component) => value + (b[component] - value) * t,
-          ) as SuitcaseCapVertex;
-          crossing[axis] = 0;
-          clipped.push(crossing);
-        }
-      }
-      polygon = clipped;
-    }
-    if (polygon.length < 3) continue;
-    const outer = polygon.map((vertex) => coat(vertex, false));
-    const inner = polygon.map((vertex) => coat(vertex, true));
-    for (let fan = 1; fan < polygon.length - 1; fan += 1) {
-      triangle(outer[0], outer[fan], outer[fan + 1]);
-      triangle(inner[0], inner[fan + 1], inner[fan]);
-    }
-    for (let edge = 0; edge < polygon.length; edge += 1) {
-      const next = (edge + 1) % polygon.length;
-      if (
-        ![0, 1, 2].some(
-          (axis) => Math.abs(polygon[edge][axis]) < 1e-9 && Math.abs(polygon[next][axis]) < 1e-9,
-        )
-      )
-        continue;
-      triangle(outer[edge], inner[edge], outer[next], true);
-      triangle(outer[next], inner[edge], inner[next], true);
-    }
+/** Closed thin quarter-bend: cylinder-shaped edge protection instead of a spherical cap. */
+function suitcaseCornerReturnGeometry(
+  radius: number,
+  shell: number,
+  flap: number,
+  width: number,
+  side: boolean,
+) {
+  const outer = radius + shell;
+  const inner = radius - shell;
+  const shape = new THREE.Shape();
+  shape.moveTo(outer, side ? -flap : 0);
+  if (side) shape.lineTo(outer, 0);
+  shape.absarc(0, 0, outer, 0, Math.PI / 2, false);
+  if (!side) {
+    shape.lineTo(-flap, outer);
+    shape.lineTo(-flap, inner);
   }
-  rounded.dispose();
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  shape.lineTo(0, inner);
+  shape.absarc(0, 0, inner, Math.PI / 2, 0, true);
+  if (side) shape.lineTo(inner, -flap);
+  shape.closePath();
+  return new THREE.ExtrudeGeometry(shape, {
+    depth: width,
+    steps: 1,
+    curveSegments: 3,
+    bevelEnabled: false,
+  });
+}
+
+/** Reverse handedness in vertex data, including winding; every object scale stays positive. */
+function suitcaseOppositeCorner(source: THREE.BufferGeometry) {
+  const geometry = source.clone();
+  for (const name of ['position', 'normal']) {
+    const attribute = geometry.getAttribute(name);
+    for (let index = 0; index < attribute.count; index += 1)
+      attribute.setX(index, -attribute.getX(index));
+  }
+  if (!geometry.index)
+    geometry.setIndex(
+      Array.from({ length: geometry.getAttribute('position').count }, (_, index) => index),
+    );
+  const indices = geometry.index!;
+  for (let index = 0; index < indices.count; index += 3) {
+    const second = indices.getX(index + 1);
+    indices.setX(index + 1, indices.getX(index + 2));
+    indices.setX(index + 2, second);
+  }
   return geometry;
 }
 

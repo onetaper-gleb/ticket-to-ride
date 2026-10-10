@@ -15,6 +15,7 @@ export const MENU_PALETTE = {
   glassWarm: '#d4a45b',
   burgundy: '#7b3536',
   iron: '#252d2d',
+  steel: '#817c73',
   wood: '#865d3c',
   woodDark: '#3d281b',
   brass: '#ae844d',
@@ -92,12 +93,23 @@ export function createMenuModelKit(
                 ? 0.72
                 : kind === 'brass'
                   ? 0.36
-                  : kind === 'iron'
-                    ? 0.56
-                    : kind === 'glass' || kind === 'glassWarm'
-                      ? 0.38
-                      : 0.76,
-        metalness: kind === 'brass' ? 0.72 : kind === 'iron' ? 0.4 : kind === 'green' ? 0.06 : 0,
+                  : kind === 'steel'
+                    ? 0.47
+                    : kind === 'iron'
+                      ? 0.56
+                      : kind === 'glass' || kind === 'glassWarm'
+                        ? 0.38
+                        : 0.76,
+        metalness:
+          kind === 'brass'
+            ? 0.72
+            : kind === 'steel'
+              ? 0.58
+              : kind === 'iron'
+                ? 0.4
+                : kind === 'green'
+                  ? 0.06
+                  : 0,
         ...(kind === 'warm' ? { emissive: '#ffc35f', emissiveIntensity: 0.55 } : {}),
         ...(kind === 'glassWarm' ? { emissive: '#ffbd64', emissiveIntensity: 0.32 } : {}),
         ...(kind === 'sky'

@@ -260,6 +260,26 @@ function frameShape(
   return frame;
 }
 
+/** Small handmade edge variations stay inside the measured settings rectangle. */
+function paperPlate(width: number, height: number, radius: number) {
+  const x = width / 2;
+  const y = height / 2;
+  const r = Math.min(radius, width / 8, height / 5);
+  const wobble = Math.min(0.003, height / 90);
+  const shape = new THREE.Shape();
+  shape.moveTo(-x + r, -y);
+  shape.bezierCurveTo(-x / 3, -y + wobble, x / 3, -y + wobble * 0.3, x - r, -y);
+  shape.quadraticCurveTo(x, -y, x, -y + r);
+  shape.bezierCurveTo(x - wobble, -y / 3, x - wobble * 0.4, y / 3, x, y - r);
+  shape.quadraticCurveTo(x, y, x - r, y);
+  shape.bezierCurveTo(x / 3, y - wobble * 0.5, -x / 3, y - wobble, -x + r, y);
+  shape.quadraticCurveTo(-x, y, -x, y - r);
+  shape.bezierCurveTo(-x + wobble * 0.3, y / 3, -x + wobble, -y / 3, -x, -y + r);
+  shape.quadraticCurveTo(-x, -y, -x + r, -y);
+  shape.closePath();
+  return shape;
+}
+
 function buildFacade(root: THREE.Group, kit: MenuModelKit) {
   const batch = kit.batch(root, 'facade-and-counter');
   const wall = new THREE.Shape();
@@ -445,18 +465,19 @@ function buildBoard(root: THREE.Group, kit: MenuModelKit): MenuModels['board'] {
       [0, 0, -0.04],
     );
     batch.add(
-      new THREE.ShapeGeometry(
+      extrude(
         frameShape(
-          size.x - 2 * border + 2 * pixel,
-          size.y - 2 * border + 2 * pixel,
-          pixel,
-          pixel * 4,
+          size.x - 2 * border + 4.4 * pixel,
+          size.y - 2 * border + 4.4 * pixel,
+          pixel * 2.2,
+          pixel * 5.2,
           pixel * 3,
         ),
-        4,
+        0.012,
+        0,
       ),
       'brass',
-      [0, 0, -0.001],
+      [0, 0, -0.004],
     );
     innerPlane = kit.mesh(
       boardRoot,
@@ -466,26 +487,42 @@ function buildBoard(root: THREE.Group, kit: MenuModelKit): MenuModels['board'] {
     );
     for (const x of [-size.x / 2 + border * 0.5, size.x / 2 - border * 0.5])
       for (const y of [-size.y / 2 + border * 0.5, size.y / 2 - border * 0.5]) {
-        const rivet = new THREE.SphereGeometry(pixel * 4.5, 8, 6);
-        rivet.scale(1, 1, 0.006 / (pixel * 4.5));
-        batch.add(rivet, 'brass', [x, y, -0.006]);
+        batch.add(
+          new THREE.CylinderGeometry(pixel * 5.9, pixel * 5.9, 0.003, 16),
+          'brass',
+          [x, y, -0.0035],
+          [Math.PI / 2, 0, 0],
+        );
+        const fixing = new THREE.SphereGeometry(pixel * 5.6, 16, 8);
+        fixing.scale(1, 1, 0.006 / (pixel * 5.6));
+        batch.add(fixing, 'brass', [x, y, 0]);
+        batch.add(menuBox(pixel * 5, pixel * 0.55, 0.001, 0), 'iron', [x, y, 0.006]);
       }
     batch.flush();
     const settings = kit.batch(settingsRoot, 'settings-frame');
+    const paperFrame = paperPlate(settingsSize.x, settingsSize.y, settingsPixel * 2.8);
+    paperFrame.holes.push(
+      roundedPanel(
+        settingsSize.x - 2 * settingsBorder,
+        settingsSize.y - 2 * settingsBorder,
+        settingsPixel * 3,
+      ),
+    );
+    settings.add(extrude(paperFrame, 0.04, 0), 'paper', [0, 0, -0.04]);
     settings.add(
       extrude(
         frameShape(
-          settingsSize.x,
-          settingsSize.y,
-          settingsBorder,
-          settingsPixel * 8,
-          settingsPixel * 3,
+          settingsSize.x - settingsPixel * 2.2,
+          settingsSize.y - settingsPixel * 2.2,
+          settingsPixel * 0.9,
+          settingsPixel * 2.3,
+          settingsPixel * 1.4,
         ),
-        0.04,
+        0.003,
         0,
       ),
       'paper',
-      [0, 0, -0.04],
+      [0, 0, -0.0005],
     );
     const hangers = kit.batch(hangersRoot, 'settings-hangers');
     for (const x of [-settingsSize.x * 0.4, settingsSize.x * 0.4]) {
@@ -748,36 +785,124 @@ function buildBackdrop(root: THREE.Group, kit: MenuModelKit) {
     seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
     return seed / 4294967296;
   };
-  for (const [x, y, radius] of [
-    [1.8, 1.8, 1.1],
-    [3.5, 2.0, 1.3],
-    [5.8, 1.5, 1.0],
-    [7.8, 1.7, 1.1],
+  // Branch-supported, offset crowns leave sky gaps and an uneven skyline.
+  for (const [x, y, z, spread, height] of [
+    [0.3, 2.3, -11.3, 0.95, 1.1],
+    [2.0, 2.65, -11.8, 1.3, 1.35],
+    [3.9, 2.55, -11.4, 1.1, 1.4],
+    [5.85, 1.9, -11.6, 0.8, 0.95],
+    [7.1, 2.15, -11.2, 0.85, 1.2],
+    [8.65, 2.2, -12.0, 1.35, 1.05],
   ]) {
-    batch.add(new THREE.CylinderGeometry(0.065, 0.15, 2.6, 9), 'woodDark', [x, 0.35, -9.3]);
-    for (let i = 0; i < 87; i++) {
-      const a = random() * Math.PI * 2,
-        b = Math.acos(2 * random() - 1),
-        dist = Math.cbrt(random()) * radius;
-      const size = radius * (0.14 + random() * 0.1);
-      const geometry = new THREE.IcosahedronGeometry(size, 1);
-      geometry.scale(1, 0.85 + random() * 0.4, 1);
-      batch.add(geometry, i % 5 === 0 ? 'foliageDark' : i % 3 === 0 ? 'foliageLight' : 'foliage', [
-        x + Math.sin(b) * Math.cos(a) * dist,
-        y + Math.cos(b) * dist * 0.9,
-        -9.1 + Math.sin(b) * Math.sin(a) * dist,
+    const trunk = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(x, FLOOR_Y, z),
+      new THREE.Vector3(x - 0.06 * spread, 0.1, z),
+      new THREE.Vector3(x + 0.09 * spread, y - height * 0.6, z + 0.05),
+      new THREE.Vector3(x + 0.04 * spread, y + 0.15 * height, z - 0.06),
+    ]);
+    batch.add(new THREE.TubeGeometry(trunk, 12, 0.08 * spread, 7, false), 'woodDark');
+    for (const [dx, dy, dz] of [
+      [-0.55, 0.06, 0.12],
+      [0.28, 0.48, -0.12],
+      [0.58, -0.18, 0.06],
+    ]) {
+      const end = new THREE.Vector3(x + dx * spread, y + dy * height, z + dz);
+      const branch = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(x + 0.04, y - height * 0.68, z),
+        new THREE.Vector3(x + dx * spread * 0.5, y - height * 0.23, z + dz * 0.5),
+        end,
       ]);
+      batch.add(new THREE.TubeGeometry(branch, 8, 0.035 * spread, 6, false), 'woodDark');
+      const count = 12 + Math.floor(random() * 7);
+      for (let i = 0; i < count; i++) {
+        const a = random() * Math.PI * 2;
+        const b = Math.acos(2 * random() - 1);
+        const dist = Math.cbrt(random());
+        const size = spread * (0.2 + random() * 0.18);
+        const geometry = new THREE.IcosahedronGeometry(size, 1);
+        const positions = geometry.getAttribute('position');
+        const phase = random() * Math.PI * 2;
+        for (let index = 0; index < positions.count; index++) {
+          const p = new THREE.Vector3().fromBufferAttribute(positions, index);
+          const normal = p.clone().normalize();
+          p.multiplyScalar(
+            1 +
+              0.16 * Math.sin(normal.x * 5 + normal.y * 3 + phase) +
+              0.1 * Math.cos(normal.z * 7 - phase),
+          );
+          positions.setXYZ(index, p.x, p.y, p.z);
+        }
+        geometry.scale(0.75 + random() * 0.7, 0.55 + random() * 0.8, 0.6 + random() * 0.6);
+        geometry.computeVertexNormals();
+        const leafY = end.y + Math.cos(b) * dist * height * 0.45;
+        batch.add(
+          geometry,
+          leafY > y + height * 0.2 ? 'foliageLight' : random() < 0.3 ? 'foliageDark' : 'foliage',
+          [
+            end.x + Math.sin(b) * Math.cos(a) * dist * spread * 0.58,
+            leafY,
+            end.z + Math.sin(b) * Math.sin(a) * dist * spread * 0.48,
+          ],
+          [random() * 0.8, random() * Math.PI, random() * 0.6],
+        );
+      }
     }
   }
-  // A distant station has eaves, bays and a platform rather than a flat cream strip.
-  batch.add(menuBox(8, 2.2, 0.7), 'cream', [4, 0.2, -10.4]);
-  batch.add(menuBox(8.5, 0.16, 1.35), 'woodDark', [4, 1.39, -10.3]);
-  batch.add(menuBox(8.55, 0.1, 0.1), 'cream', [4, 1.29, -9.63]);
-  for (let x = 0.4; x < 8; x += 0.78) {
-    batch.add(menuBox(0.1, 2.0, 0.12), 'green', [x, 0.16, -9.96]);
-    batch.add(menuBox(0.52, 0.98, 0.03), 'woodDark', [x + 0.35, 0.39, -10.025]);
-    batch.add(menuBox(0.42, 0.79, 0.024), 'glassWarm', [x + 0.35, 0.44, -10.001]);
-    batch.add(menuBox(0.025, 0.82, 0.04), 'green', [x + 0.35, 0.44, -9.98]);
+  // Recessed bays, pitched roof volumes and a separate canopy break the golden wall.
+  batch.add(menuBox(8.7, 0.16, 1.65), 'stone', [4.2, FLOOR_Y + 0.08, -10.2]);
+  for (const [x, width, top, z] of [
+    [1.4, 2.7, 1.52, -10.6],
+    [3.98, 2.16, 1.72, -10.8],
+    [6.55, 2.7, 1.45, -10.58],
+  ]) {
+    batch.add(menuBox(width, top - FLOOR_Y, 0.58), 'cream', [x, (top + FLOOR_Y) / 2, z]);
+    batch.add(menuBox(width + 0.26, 0.12, 1.08), 'green', [x, top + 0.06, z + 0.08]);
+    const roof = new THREE.Shape();
+    roof.moveTo(-width / 2 - 0.13, 0);
+    roof.lineTo(0, 0.28);
+    roof.lineTo(width / 2 + 0.13, 0);
+    roof.closePath();
+    batch.add(extrude(roof, 1.08, 0), 'woodDark', [x, top + 0.12, z - 0.46]);
+    batch.add(menuBox(width + 0.3, 0.065, 0.08), 'paper', [x, top, z + 0.65]);
+    for (const side of [-1, 1])
+      batch.add(menuBox(0.16, top - FLOOR_Y, 0.23), 'plasterShade', [
+        x + side * (width / 2 - 0.08),
+        (top + FLOOR_Y) / 2,
+        z + 0.38,
+      ]);
+    for (let bay = 0; bay < 3; bay++) {
+      const wx = x + (bay - 1) * width * 0.28;
+      const door = bay === 1 && width < 2.5;
+      const wh = door ? 1.7 : bay === 1 ? 0.9 : 1.05;
+      const wy = door ? FLOOR_Y + wh / 2 + 0.16 : 0.45;
+      const ww = door ? 0.54 : 0.45;
+      batch.add(menuBox(ww + 0.16, wh + 0.14, 0.11), 'plasterShade', [wx, wy, z + 0.33]);
+      batch.add(menuBox(ww + 0.08, wh + 0.07, 0.06), 'woodDark', [wx, wy, z + 0.4]);
+      batch.add(menuBox(ww, wh, 0.024), door ? 'green' : bay === 0 ? 'glass' : 'glassWarm', [
+        wx,
+        wy,
+        z + 0.439,
+      ]);
+      if (!door) {
+        batch.add(menuBox(0.023, wh, 0.032), 'green', [wx, wy, z + 0.467]);
+        batch.add(menuBox(ww, 0.025, 0.032), 'green', [wx, wy + wh * 0.12, z + 0.468]);
+        batch.add(menuBox(ww + 0.18, 0.065, 0.18), 'cream', [wx, wy - wh / 2 - 0.05, z + 0.44]);
+      }
+    }
+  }
+  batch.add(menuBox(8.55, 0.105, 1.4), 'green', [4.05, 1.38, -9.65]);
+  batch.add(menuBox(8.58, 0.095, 0.1), 'paper', [4.05, 1.29, -8.97]);
+  batch.add(menuBox(8.5, 0.2, 0.08), 'woodDark', [4.05, 1.24, -9.25]);
+  for (const x of [0.15, 1.62, 3.3, 5.2, 6.84, 8.0]) {
+    batch.add(menuBox(0.09, 2.1, 0.09), 'green', [x, FLOOR_Y + 1.05, -9.25]);
+    batch.add(menuBox(0.19, 0.16, 0.19), 'plasterShade', [x, FLOOR_Y + 0.16, -9.25]);
+    for (const direction of [-1, 1])
+      batch.add(
+        menuBox(0.38, 0.06, 0.07),
+        'green',
+        [x + direction * 0.13, 1.03, -9.25],
+        [0, 0, direction * 0.55],
+      );
   }
   for (const [x, z] of [
     [2.0, -7.5],
