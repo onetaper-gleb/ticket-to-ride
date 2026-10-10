@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import type { PublicPlayer } from '../shared/types';
-import { buildCartoonHand } from './cartoon-hands';
+import { buildCartoonHand, setHandPose } from './cartoon-hands';
 
 type Point = [number, number, number];
 type Ring = { y: number; width: number; front: number; back?: number; z?: number };
@@ -769,10 +769,12 @@ function attachHand(
   grip: boolean,
   factory: Factory,
 ) {
-  const hand = buildCartoonHand(style.skin, side, grip);
+  const hand = buildCartoonHand(style.skin, grip ? (side === -1 ? 1 : -1) : side, false);
+  if (grip) setHandPose(hand, 'card');
   hand.name = grip ? 'Кисть с картами' : 'Открытая кисть';
   hand.position.set(...position);
   hand.rotation.set(...rotation);
+  if (grip) hand.rotateY(Math.PI);
   hand.scale.setScalar(1.04);
   // Rigged skin keeps its vertex colours and material; only static pieces share the palette.
   const replaced = new Set<THREE.Material>();
@@ -796,6 +798,9 @@ function attachHand(
 function buildCards(hand: THREE.Group, count: number, texture: THREE.Texture, factory: Factory) {
   const fan = new THREE.Group();
   fan.name = 'Веер рубашек карт';
+  // The dorsum faces the viewer; paper sits between thumb pad and supporting fingers.
+  fan.rotation.y = Math.PI;
+  fan.position.set(-0.67, 0.13, 0.29);
   hand.add(fan);
   const paper = factory.material('#d5c6a6');
   const back = new THREE.MeshStandardMaterial({ map: texture, roughness: 1, metalness: 0 });

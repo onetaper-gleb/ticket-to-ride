@@ -9,7 +9,11 @@ export type HandPose = {
   curl: readonly [number, number, number, number, number];
   spread?: readonly [number, number, number, number, number];
   thumbOpposition?: number;
+  /** CMC flexion, abduction and adduction override for an authored thumb contact pose. */
+  thumbBaseRotation?: Point;
   wrist?: Point;
+  /** Radians at MCP/PIP/DIP; thumb uses CMC/MCP/IP. Each hinge is independently addressable. */
+  flexion?: readonly [Point, Point, Point, Point, Point];
 };
 export type HandRig = {
   mesh: THREE.SkinnedMesh;
@@ -85,7 +89,32 @@ export const HAND_POSES = {
   bind: { curl: [0, 0, 0, 0, 0], thumbOpposition: 0 },
   open: { curl: [0.025, 0.055, 0.045, 0.07, 0.09], thumbOpposition: 0.03 },
   relaxed: { curl: [0.16, 0.25, 0.29, 0.33, 0.38], thumbOpposition: 0.22 },
-  grip: { curl: [0.42, 0.62, 0.66, 0.7, 0.74], thumbOpposition: 0.8 },
+  grip: {
+    curl: [0.42, 0.62, 0.66, 0.7, 0.74],
+    thumbOpposition: 0.35,
+  },
+  card: {
+    curl: [0, 0, 0, 0, 0],
+    thumbOpposition: 0.13,
+    flexion: [
+      [0, 0.18, 0.12],
+      [0.22, 0.4, 0.25],
+      [0.26, 0.45, 0.28],
+      [0.32, 0.5, 0.32],
+      [0.38, 0.55, 0.36],
+    ],
+  },
+  fist: {
+    curl: [0, 1, 1, 1, 1],
+    thumbBaseRotation: [0.3, -0.1, -0.1],
+    flexion: [
+      [0, 0.8, 0.65],
+      [1.25, 1.65, 1.1],
+      [1.25, 1.65, 1.1],
+      [1.25, 1.65, 1.1],
+      [1.25, 1.65, 1.1],
+    ],
+  },
 } satisfies Record<string, HandPose>;
 
 // Rest surface is cached as CPU arrays only; every hand owns its GPU resources and skeleton.
@@ -102,13 +131,12 @@ function segment(point: Point, a: Point, b: Point) {
     dy = b[1] - a[1],
     dz = b[2] - a[2];
   const length = Math.hypot(dx, dy, dz);
-  const t = THREE.MathUtils.clamp(
-    ((point[0] - a[0]) * dx + (point[1] - a[1]) * dy + (point[2] - a[2]) * dz) / (length * length),
-    0,
-    1,
-  );
+  const rawT =
+    ((point[0] - a[0]) * dx + (point[1] - a[1]) * dy + (point[2] - a[2]) * dz) / (length * length);
+  const t = THREE.MathUtils.clamp(rawT, 0, 1);
   return {
     t,
+    rawT,
     length,
     distance: Math.hypot(
       point[0] - a[0] - t * dx,
@@ -157,6 +185,20 @@ function createRestSurface(): Surface {
             finger = Math.min(
               finger,
               sample.distance - THREE.MathUtils.lerp(digit.radii[i], digit.radii[i + 1], sample.t),
+            );
+          }
+          // Dorsal knuckles are part of the continuous skin, with supporting volume at each pivot.
+          for (let i = 0; i < 3; i++) {
+            const joint = digit.points[i];
+            const radius = digit.radii[i];
+            finger = union(
+              finger,
+              ellipsoid(
+                p,
+                [joint[0], joint[1], joint[2] - radius * 0.2],
+                [radius * 1.06, radius * 0.85, radius * 0.96],
+              ),
+              0.014,
             );
           }
           const blendWidth =
@@ -248,7 +290,8 @@ function createSkeleton(side: -1 | 1) {
         digit.points[i][2],
       );
       const bone = new THREE.Bone();
-      bone.name = `hand_${digit.name}_${i === 3 ? 'tip' : ['mcp', 'pip', 'dip'][i]}`;
+      const joints = digit.name === 'thumb' ? ['cmc', 'mcp', 'ip'] : ['mcp', 'pip', 'dip'];
+      bone.name = `hand_${digit.name}_${i === 3 ? 'tip' : joints[i]}`;
       bone.position.copy(point).sub(parentPoint).applyQuaternion(parentRotation.clone().invert());
       const next = digit.points[Math.min(i + 1, 3)];
       const direction =
@@ -278,36 +321,116 @@ function assignWeights(point: Point, skeleton: ReturnType<typeof createSkeleton>
       const distance =
         sample.distance - THREE.MathUtils.lerp(digit.radii[i], digit.radii[i + 1], sample.t);
       if (!best || distance < best.distance)
-        best = { digit, s: length + sample.length * sample.t, distance };
+        best = {
+          digit,
+          s: length + sample.length * (i === 0 && sample.rawT < 0 ? sample.rawT : sample.t),
+          distance,
+        };
       length += sample.length;
     }
   }
   const wristWeight = 1 - smoothstep(-0.43, -0.18, point[1]);
-  if (wristWeight > 0 || !best || (best.digit.name !== 'thumb' && point[1] < 0.14)) {
+  if (wristWeight > 0 || !best) {
     return { indices: [0, 1, 0, 0], weights: [wristWeight, 1 - wristWeight, 0, 0] };
   }
+  const digit = best.digit;
+  const firstLength = segment(digit.points[0], digit.points[0], digit.points[1]).length;
+  const secondLength = segment(digit.points[1], digit.points[1], digit.points[2]).length;
+  const thirdLength = segment(digit.points[2], digit.points[2], digit.points[3]).length;
+  const rootInner = smoothstep(
+    -digit.radii[0] * 0.25,
+    digit.radii[0] * 0.4,
+    point[2] - digit.points[0][2],
+  );
+  const rootWidth = THREE.MathUtils.lerp(
+    digit.name === 'thumb' ? 0.095 : 0.07,
+    Math.min(firstLength * 0.6, 0.15),
+    rootInner,
+  );
+  const rootT = THREE.MathUtils.clamp((best.s + rootWidth) / (2 * rootWidth), 0, 1);
   const fingerAmount =
-    best.digit.name === 'thumb'
-      ? smoothstep(0.04, 0.3, best.s) * smoothstep(-0.2, -0.46, point[0])
-      : smoothstep(0, 0.17, best.s);
-  const weights: number[] = [];
-  let length = 0;
-  for (let i = 0; i < 3; i++) {
-    const boneLength = segment(
-      best.digit.points[i],
-      best.digit.points[i],
-      best.digit.points[i + 1],
-    ).length;
-    const center = length + boneLength * 0.5;
-    const width = boneLength * 0.56 + 0.027;
-    weights.push(Math.exp(-(((best.s - center) / width) ** 2)));
-    length += boneLength;
-  }
-  const total = weights.reduce((a, b) => a + b, 0);
+    THREE.MathUtils.lerp(rootT, smoothstep(0, 1, rootT), 0.1) *
+    (digit.name === 'thumb' ? smoothstep(-0.17, -0.35, point[0]) : 1);
+  const bendWeight = (joint: number, length: number, previous: number, next: number) => {
+    const inner = smoothstep(
+      -digit.radii[joint] * 0.25,
+      digit.radii[joint] * 0.4,
+      point[2] - digit.points[joint][2],
+    );
+    const short = Math.min(digit.radii[joint] * 0.65, Math.min(previous, next) * 0.23);
+    const width = THREE.MathUtils.lerp(short, Math.min(previous, next) * 0.65, inner);
+    const t = THREE.MathUtils.clamp((best.s - length + width) / (2 * width), 0, 1);
+    return THREE.MathUtils.lerp(t, smoothstep(0, 1, t), 0.1);
+  };
+  const pip = bendWeight(1, firstLength, firstLength, secondLength);
+  const dip = bendWeight(2, firstLength + secondLength, secondLength, thirdLength);
   const chain = skeleton.fingers[best.digit.name];
+  const baseIndices = [1, ...chain.slice(0, 3).map((bone) => skeleton.bones.indexOf(bone))];
+  const baseWeights = [
+    1 - fingerAmount,
+    fingerAmount * (1 - pip),
+    fingerAmount * pip * (1 - dip),
+    fingerAmount * pip * dip,
+  ];
+  // Webbing shares neighbouring metacarpal motion; a nearest-finger seam cannot remain rigid.
+  const rootBlend = Math.max(
+    ...digits.map(
+      (candidate) =>
+        1 -
+        smoothstep(
+          0.165,
+          0.28,
+          Math.hypot(
+            point[0] - candidate.points[0][0],
+            point[1] - candidate.points[0][1],
+            point[2] - candidate.points[0][2],
+          ),
+        ),
+    ),
+  );
+  if (rootBlend > 0) {
+    const roots = digits.map((candidate) => {
+      const sample = segment(point, candidate.points[0], candidate.points[1]);
+      const support =
+        (1 - smoothstep(candidate.radii[0] * 0.75, candidate.radii[0] * 2.5, sample.distance)) *
+        (candidate.name === 'thumb' ? smoothstep(-0.17, -0.35, point[0]) : 1);
+      const t = THREE.MathUtils.clamp((sample.rawT * sample.length + 0.15) / 0.3, 0, 1);
+      return {
+        bone: skeleton.bones.indexOf(skeleton.fingers[candidate.name][0]),
+        support,
+        amount: THREE.MathUtils.lerp(t, smoothstep(0, 1, t), 0.1),
+      };
+    });
+    const support = roots.reduce((sum, root) => sum + root.support, 0);
+    if (support > 0) {
+      const combined = new Map<number, number>();
+      baseIndices.forEach((bone, i) =>
+        combined.set(
+          bone,
+          (combined.get(bone) ?? 0) + baseWeights[i] * (i < 2 ? 1 - rootBlend : 1),
+        ),
+      );
+      const rootMass = baseWeights[0] + baseWeights[1];
+      let palm = 0;
+      for (const root of roots) {
+        const amount = (root.support / support) * rootBlend * rootMass;
+        combined.set(root.bone, (combined.get(root.bone) ?? 0) + amount * root.amount);
+        palm += amount * (1 - root.amount);
+      }
+      combined.set(1, (combined.get(1) ?? 0) + palm);
+      const strongest = [...combined].sort((a, b) => b[1] - a[1]).slice(0, 4);
+      const total = strongest.reduce((sum, [, weight]) => sum + weight, 0);
+      while (strongest.length < 4) strongest.push([0, 0]);
+      return {
+        indices: strongest.map(([bone]) => bone),
+        weights: strongest.map(([, weight]) => weight / total),
+      };
+    }
+  }
   return {
-    indices: [1, ...chain.slice(0, 3).map((bone) => skeleton.bones.indexOf(bone))],
-    weights: [1 - fingerAmount, ...weights.map((weight) => (weight / total) * fingerAmount)],
+    indices: baseIndices,
+    // Compact dorsal hinges; thicker palmar skin needs a wider finite contact band when folded.
+    weights: baseWeights,
   };
 }
 
@@ -322,26 +445,42 @@ function poseRotations(rig: HandRig, pose: HandPose) {
         .multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(x, y, z))),
     );
   const wrist: Point = pose.wrist ?? [0, 0, 0];
-  rotate(rig.wrist, ...wrist);
+  rotate(
+    rig.wrist,
+    THREE.MathUtils.clamp(wrist[0], -0.65, 0.8),
+    THREE.MathUtils.clamp(wrist[1], -0.25, 0.25) * rig.side,
+    THREE.MathUtils.clamp(wrist[2], -0.3, 0.35) * rig.side,
+  );
   rotate(rig.palm, 0);
   const opposition = THREE.MathUtils.clamp(pose.thumbOpposition ?? 0, 0, 1);
   digits.forEach((digit, i) => {
     const curl = THREE.MathUtils.clamp(pose.curl[i], 0, 1);
-    const spread = (pose.spread?.[i] ?? 0) * rig.side;
+    const spread =
+      THREE.MathUtils.clamp(pose.spread?.[i] ?? 0, -0.2, 0.2) * rig.side * (1 - curl * 0.75);
+    const requested = pose.flexion?.[i];
     const chain = rig.fingers[digit.name];
     if (digit.name === 'thumb') {
+      const base = pose.thumbBaseRotation;
       rotate(
         chain[0],
-        opposition * 0.76 + curl * 0.16,
-        -opposition * 0.12 * rig.side,
-        spread - opposition * 0.42 * rig.side,
+        THREE.MathUtils.clamp(
+          base?.[0] ??
+            opposition * 0.55 + THREE.MathUtils.clamp(requested?.[0] ?? curl * 0.16, 0, 0.4),
+          0,
+          0.95,
+        ),
+        THREE.MathUtils.clamp(base?.[1] ?? -opposition * 0.18, -0.3, 0.3) * rig.side,
+        base
+          ? THREE.MathUtils.clamp(base[2], -1.1, 0.2) * rig.side
+          : spread - opposition * 0.55 * rig.side,
       );
-      rotate(chain[1], curl * 0.48);
-      rotate(chain[2], curl * 0.43);
+      rotate(chain[1], THREE.MathUtils.clamp(requested?.[1] ?? curl * 0.9, 0, 1.1));
+      rotate(chain[2], THREE.MathUtils.clamp(requested?.[2] ?? curl * 0.85, 0, 1.25));
     } else {
-      rotate(chain[0], -curl * 0.64, 0, spread);
-      rotate(chain[1], -curl * 1.12);
-      rotate(chain[2], -curl * 0.8);
+      // +X takes the +Y phalanges towards the +Z palm; IP hinges never twist or bend sideways.
+      rotate(chain[0], THREE.MathUtils.clamp(requested?.[0] ?? curl * 1.25, 0, 1.25), 0, spread);
+      rotate(chain[1], THREE.MathUtils.clamp(requested?.[1] ?? curl * 1.65, 0, 1.85));
+      rotate(chain[2], THREE.MathUtils.clamp(requested?.[2] ?? curl * 1.1, 0, 1.3));
     }
     rotate(chain[3], 0);
   });
@@ -356,11 +495,8 @@ export function getHandRig(hand: THREE.Group): HandRig | undefined {
 export function setHandPose(hand: THREE.Group, pose: HandPose | keyof typeof HAND_POSES) {
   const rig = handRigs.get(hand);
   if (!rig) throw new Error('Hand has no rig');
-  for (const [bone, rotation] of poseRotations(
-    rig,
-    typeof pose === 'string' ? HAND_POSES[pose] : pose,
-  ))
-    bone.quaternion.copy(rotation);
+  const rotations = poseRotations(rig, typeof pose === 'string' ? HAND_POSES[pose] : pose);
+  for (const [bone, rotation] of rotations) bone.quaternion.copy(rotation);
   hand.updateMatrixWorld(true);
   rig.skeleton.update();
 }
@@ -386,7 +522,7 @@ export function createHandAnimation(
   const samples = keyframes.map((frame) =>
     poseRotations(rig, typeof frame.pose === 'string' ? HAND_POSES[frame.pose] : frame.pose),
   );
-  const tracks = rig.skeleton.bones.map(
+  const tracks: THREE.KeyframeTrack[] = rig.skeleton.bones.map(
     (bone) =>
       new THREE.QuaternionKeyframeTrack(
         `${bone.uuid}.quaternion`,
