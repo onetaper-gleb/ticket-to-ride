@@ -85,6 +85,7 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
   }
   const handRestLeft = contactAnchor('handRestLeft', leftContact, root);
   const handRestRight = contactAnchor('handRestRight', rightContact, root);
+  const ticketReach = THREE.MathUtils.clamp((rightContact.x + 0.35) / 0.52, 0, 1);
   root.add(buildCashierUpperBody());
   const materials = createCashierMaterials();
   const addSleeve = (
@@ -121,6 +122,9 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
       setHandPose(hand, { curl: [0.04, 0.06, 0.04, 0.065, 0.09], thumbOpposition: 0.06 });
     } else {
       hand.rotation.set(-Math.PI / 2, -0.18, -0.18);
+      hand.quaternion.premultiply(
+        new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -0.44 * ticketReach),
+      );
       setTicketPinch(hand);
     }
     root.add(hand);
@@ -135,16 +139,19 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
   const rightWrist = new THREE.Vector3(0, -0.5, 0).applyMatrix4(right.matrix);
   const leftElbow = leftContact.clone().add(new THREE.Vector3(0.055, 0.06, -0.21));
   const rightElbow = rightContact.clone().add(new THREE.Vector3(-0.055, 0.06, -0.21));
+  // Keep the elbow on its anatomical side when a supplied contact reaches across the counter.
+  rightElbow.x = Math.min(rightElbow.x, -0.24);
+  rightElbow.y += 0.015 * ticketReach;
   const leftCuffStart = leftElbow.clone().lerp(leftWrist, 0.7);
   addSleeve(
     root,
     [
-      new THREE.Vector3(0.27, 0.4, -0.27),
-      new THREE.Vector3(0.36, 0.29, -0.2),
+      new THREE.Vector3(0.32, 0.395, -0.27),
+      new THREE.Vector3(0.47, 0.24, -0.17),
       leftElbow,
       leftCuffStart,
     ],
-    [0.115, 0.11, 0.075, 0.052],
+    [0.135, 0.14, 0.088, 0.052],
     materials.cloth,
     'left burgundy sleeve',
     leftContact.y,
@@ -159,8 +166,8 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
   );
   addSleeve(
     root,
-    [new THREE.Vector3(-0.27, 0.4, -0.27), new THREE.Vector3(-0.37, 0.28, -0.2), rightElbow],
-    [0.115, 0.11, 0.075],
+    [new THREE.Vector3(-0.32, 0.395, -0.27), new THREE.Vector3(-0.475, 0.24, -0.17), rightElbow],
+    [0.135, 0.14, 0.088],
     materials.cloth,
     'right static upper sleeve',
     rightContact.y,
@@ -179,7 +186,7 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
       localWrist.clone().multiplyScalar(0.4),
       localWrist.clone().multiplyScalar(0.7),
     ],
-    [0.075, 0.062, 0.052],
+    [0.088, 0.058, 0.05],
     materials.cloth,
     'right moving forearm sleeve',
     rightContact.y,
