@@ -36,6 +36,14 @@ export type MenuModels = {
   train: { root: THREE.Group; chimneyAnchor: THREE.Object3D; wheels: readonly THREE.Object3D[] };
   board: {
     root: THREE.Group;
+    /** Optional owned volume title; SVG parsing and native fallback belong to the caller. */
+    titleRoot: THREE.Group;
+    setTitleShapes(
+      shapes: readonly THREE.Shape[],
+      sourceBounds: THREE.Box2,
+      titleBounds: THREE.Box2,
+    ): void;
+    clearTitleShapes(): void;
     settingsRoot: THREE.Group;
     readonly innerPlane: THREE.Mesh;
     readonly settingsPlane: THREE.Mesh;
@@ -402,6 +410,12 @@ function buildBoard(root: THREE.Group, kit: MenuModelKit): MenuModels['board'] {
   const boardRoot = new THREE.Group();
   boardRoot.name = 'boardFrame';
   root.add(boardRoot);
+  const titleRoot = new THREE.Group();
+  titleRoot.name = 'board-title';
+  titleRoot.visible = false;
+  boardRoot.add(titleRoot);
+  let titleKey = '';
+  let titleBaseSize = new THREE.Vector2();
   const settingsRoot = new THREE.Group();
   settingsRoot.name = 'settingsFrame';
   root.add(settingsRoot);
@@ -414,6 +428,133 @@ function buildBoard(root: THREE.Group, kit: MenuModelKit): MenuModels['board'] {
   let settingsPlane: THREE.Mesh;
   let boardBorder = 0;
   let settingsFrameBorder = 0;
+
+  function setTitleShapes(
+    shapes: readonly THREE.Shape[],
+    sourceBounds: THREE.Box2,
+    titleBounds: THREE.Box2,
+  ) {
+    kit.assertAlive();
+    const sourceSize = sourceBounds.getSize(new THREE.Vector2());
+    const targetSize = titleBounds.getSize(new THREE.Vector2());
+    const targetCentre = new THREE.Vector2(
+      titleBounds.min.x / 2 + titleBounds.max.x / 2,
+      titleBounds.min.y / 2 + titleBounds.max.y / 2,
+    );
+    const boardSize = bounds.getSize(new THREE.Vector3());
+    if (
+      ![
+        ...sourceBounds.min.toArray(),
+        ...sourceBounds.max.toArray(),
+        ...titleBounds.min.toArray(),
+        ...titleBounds.max.toArray(),
+        sourceSize.x,
+        sourceSize.y,
+        targetSize.x,
+        targetSize.y,
+        ...targetCentre.toArray(),
+      ].every(Number.isFinite) ||
+      sourceSize.x <= 0 ||
+      sourceSize.y <= 0 ||
+      targetSize.x <= 0 ||
+      targetSize.y <= 0 ||
+      titleBounds.min.x < -boardSize.x / 2 + boardBorder ||
+      titleBounds.max.x > boardSize.x / 2 - boardBorder ||
+      titleBounds.min.y < -boardSize.y / 2 + boardBorder ||
+      titleBounds.max.y > boardSize.y / 2 - boardBorder ||
+      !Array.isArray(shapes) ||
+      shapes.length === 0
+    )
+      throw new RangeError('Invalid menu title bounds or shapes');
+    // Sample into owned outlines: caller paths/curves and both boxes remain untouched.
+    const outlines = shapes.map((shape) => {
+      if (!(shape instanceof THREE.Shape)) throw new RangeError('Invalid menu title shape');
+      const { shape: contour, holes } = shape.extractPoints(16);
+      for (const points of [contour, ...holes]) {
+        if (
+          points.length < 3 ||
+          points.some(
+            (point) =>
+              !Number.isFinite(point.x) ||
+              !Number.isFinite(point.y) ||
+              !sourceBounds.containsPoint(point),
+          ) ||
+          !Number.isFinite(THREE.ShapeUtils.area(points)) ||
+          Math.abs(THREE.ShapeUtils.area(points)) < 1e-10 * sourceSize.x * sourceSize.y
+        )
+          throw new RangeError('Invalid menu title contour');
+      }
+      return { contour, holes };
+    });
+    const key = JSON.stringify([
+      sourceBounds.min.toArray(),
+      sourceBounds.max.toArray(),
+      outlines.map(({ contour, holes }) => [
+        contour.map((p) => p.toArray()),
+        holes.map((h) => h.map((p) => p.toArray())),
+      ]),
+    ]);
+    const reuse = key === titleKey && titleRoot.children.length > 0;
+    const nextScale = reuse
+      ? new THREE.Vector2(targetSize.x / titleBaseSize.x, targetSize.y / titleBaseSize.y)
+      : new THREE.Vector2(1, 1);
+    if (
+      !Number.isFinite(nextScale.x) ||
+      !Number.isFinite(nextScale.y) ||
+      nextScale.x <= 0 ||
+      nextScale.y <= 0
+    )
+      throw new RangeError('Invalid menu title scale');
+    if (!reuse) {
+      const points = (path: readonly THREE.Vector2[]) =>
+        path.map(
+          (p) =>
+            new THREE.Vector2(
+              ((p.x - sourceBounds.min.x) / sourceSize.x - 0.5) * targetSize.x,
+              (0.5 - (p.y - sourceBounds.min.y) / sourceSize.y) * targetSize.y,
+            ),
+        );
+      const ownedShapes = outlines.map(({ contour, holes }) => {
+        const shape = new THREE.Shape(points(contour));
+        shape.holes = holes.map((hole) => new THREE.Path(points(hole)));
+        return shape;
+      });
+      const pending = new THREE.Group();
+      let geometry: THREE.BufferGeometry | undefined;
+      try {
+        geometry = new THREE.ExtrudeGeometry(ownedShapes, {
+          depth: 0.008,
+          bevelEnabled: true,
+          bevelThickness: 0.001,
+          bevelSize: 0.001,
+          bevelSegments: 1,
+          steps: 1,
+          curveSegments: 1,
+        });
+        kit.mesh(pending, geometry, 'brass', 'board-title-letters');
+      } catch (error) {
+        if (geometry) kit.releaseGeometry(geometry);
+        throw error;
+      }
+      kit.clearMeshes(titleRoot);
+      titleRoot.add(...pending.children);
+      titleBaseSize = targetSize.clone();
+      titleKey = key;
+    }
+    titleRoot.position.set(targetCentre.x, targetCentre.y, 0);
+    titleRoot.scale.set(nextScale.x, nextScale.y, 1);
+    titleRoot.visible = true;
+  }
+
+  function clearTitleShapes() {
+    kit.assertAlive();
+    kit.clearMeshes(titleRoot);
+    titleKey = '';
+    titleBaseSize.set(0, 0);
+    titleRoot.visible = false;
+    titleRoot.position.set(0, 0, 0);
+    titleRoot.scale.set(1, 1, 1);
+  }
   function setLayout(
     nextBounds: THREE.Box3,
     nextSettings: THREE.Box3,
@@ -448,7 +589,14 @@ function buildBoard(root: THREE.Group, kit: MenuModelKit): MenuModels['board'] {
     settingsFrameBorder = settingsBorder;
     bounds.min.z = bounds.max.z - 0.04;
     settingsBounds.min.z = settingsBounds.max.z - 0.04;
-    kit.clearMeshes(boardRoot);
+    // Layout clears only the frame; a stable title extrusion survives until the next rect.
+    titleRoot.removeFromParent();
+    try {
+      kit.clearMeshes(boardRoot);
+    } finally {
+      boardRoot.add(titleRoot);
+    }
+    titleRoot.visible = false;
     kit.clearMeshes(settingsRoot);
     kit.clearMeshes(hangersRoot);
     nextBounds.getCenter(boardRoot.position);
@@ -563,6 +711,9 @@ function buildBoard(root: THREE.Group, kit: MenuModelKit): MenuModels['board'] {
   );
   return {
     root: boardRoot,
+    titleRoot,
+    setTitleShapes,
+    clearTitleShapes,
     settingsRoot,
     get innerPlane() {
       return innerPlane;

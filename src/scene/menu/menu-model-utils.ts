@@ -253,6 +253,12 @@ export function createMenuModelKit(
     }
   }
 
+  /** Release a prepared geometry when an atomic replacement fails before attachment. */
+  function releaseGeometry(geometry: THREE.BufferGeometry) {
+    assertAlive();
+    if (geometries.delete(geometry)) geometry.dispose();
+  }
+
   /** Retained roots keep their local meshes and animation/layout transforms. */
   function consolidate(root: THREE.Group, retainedRoots: readonly THREE.Object3D[]) {
     assertAlive();
@@ -325,6 +331,7 @@ export function createMenuModelKit(
     texture,
     consolidate,
     clearMeshes,
+    releaseGeometry,
     assertAlive,
     dispose,
     surfaces: materials as ReadonlyMap<MenuMaterial, THREE.MeshStandardMaterial>,
