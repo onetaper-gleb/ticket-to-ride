@@ -24,7 +24,7 @@ Optional titleRect задан относительно верхнего лево
 
 `titleVisible` читает фактическую видимость titleRoot и false после dispose. Native caller скрывает visible decorative SVG через visibility:hidden и делает board/header paint прозрачным только после successful layout. DOM размер, доступное h1 и actions сохраняются; rows имеют свой paint. Отсутствующий title rect, clear или failed hook возвращают единственный SVG и native paint. Preview fixture setVolumeTitleEnabled и ?flat-title проверяют этот переход; production wiring принадлежит интегратору. HTTP503 title source оставляет обычное меню работоспособным.
 
-## Четвёртый раунд света и глубины
+## Свет и глубина сохранённых снимков a081/1bab
 
 Неизменяемая технически принятая основа77e709e сохранена в outputs/checkpoints/menu-composition-77e709e-preview.zip, SHA256a39b1a7446fc251918a9211d56400b3e2157adbdc83c00366871ee28dff3108a. Этот собственный light/depth delta использует те же принятые env70/cashb7/art82: в этом сохранённом light/depth снимке новые модели и токены арта ещё не подключены. Сравнение before/after делается при одной камере/геометрии/maps/native sizes.
 
@@ -32,7 +32,7 @@ Optional titleRect задан относительно верхнего лево
 
 Near focal plane5/coefficient.75 мягче показывает ближние чемоданы/скамью; far focal10.5/coefficient.9 и maxradius3 сохранены, ближняя ходовая поезда/лицо/физический title остаются в резком band. AO24/radius.2/min.0003/max.015 и graph/full-depth/half-target sizing не менялись. Смена key shadow frustum влияет на multipass draws; новый RectArea добавляет один light, но не draw mesh/post target. Общая художественная приёмка pending.
 
-## Текущие параметры
+## Параметры сохранённого1bab
 
 Сохраняются existing shadow/post targets. Hemisphere#bed0e2/#918675 intensity1.1; key#fff2df intensity2 в(6,7,−3), shadow2048²/radius8/intensity.8. RectArea fill#fff1dd intensity6,size5×4 в(2,3,4), lookAt(0,.5,0). Train Spot#ffe2b1 intensity200/distance12/angle.3/penumbra.9/decay2 направлен на actual boiler local(0,.95,.55), без shadow.
 
@@ -66,7 +66,7 @@ Own native affected QA проверяет actual три размера, four/fiv
 
 В снимке4780 settingsPaper API/цвет ещё не подключён и compositor clone не имитируется. Cashier geometry/руки, env builders, production App/styles/session/config/manifest/Sites не меняются. Свет, постобработка, камера и контакты сохранены из a081. Художественная приёмка остаётся открытой; аниматор остановлен, адаптив отложен.
 
-## Сборка принятых моделей четвёртого раунда
+## Сборка принятых моделей в снимке1bab
 
 Полные rootaccepted истории cashierb7→6f2ad2a→61a1999 и environment70→606cd2e→aca3d2d→e6ba05d импортированы обычными Git merge после frozen4780. Ни один dirty foreign checkout не копировался. Изменились head/fringe/eyes/shoulders и caller-local профиль resting fingers; frozen native hands.ts/algorithm/binary/source JSON сохранены. Root identity, left.35/right.10, transform-once цепочка, мировой right grip/mainpaper/holder остаются обязательными условиями. Left.43 не применён.
 
@@ -77,3 +77,19 @@ Own native affected QA проверяет actual три размера, four/fiv
 Принятый optional settingsPaper APIaca подключён собственным materialOverrides.settingsPaper: #F2D5BD/roughness.95. Этот оттенок выбран среди трёх runtime trials под текущим общим светом; полная художественная приёмка цвета/края не заявляется. Он отделяет main physical settings frame и settingsInnerPlane, наследует resolvedpaper и прежнее paper-tile изображение. Secondary strip/clock/labels/прочиеpaper материалы не перекрашены. Clone/material принадлежат kit, compositor не создаёт и не освобождает их отдельно. Нового asset loader/input/dependency нет; расходы отдельной роли измеряются на actual renderer.
 
 Принятый canopyPaint APIe6 подключён собственной physical color linearRGB(1.1,.8,1.45)/roughness.7/metalness.08 к трём mesh каркаса, без перекраски wood ceiling. Цвет выбран совместно с поднятым canopyFill после runtime сравнений: яркие trials делали балки бледными. Материал и clone map принадлежат kit и используют прежнее green-paint изображение. Нового изображения или geometry из-за цвета/света нет. Потолок всё ещё краснее и темнее эталона; полное совпадение цвета, глубины и фона не заявляется. Animator остановлен, адаптив отложен; производство/Sites без изменений.
+
+## Пятый раунд: направленный свет и нейтральный камень
+
+Собственная дельта строится на принятом source/package1bab с art9e6/cashier61a/environmente6. Foreign camera/light/models из dirty scenes не копировались. Camera(.04,.52,6.4)/FOV34, station yaw27°, outer board/settings frames, title target и canonical SVG сохранены. Post graph, shadow resolutions и число shadow lights прежние. Полная художественная приёмка открыта.
+
+Текущий key#ffead0/intensity4 в(8,5,−4), shadowradius10/intensity.95 даёт тёплый свет сзади справа и широкую диагональную тень на полу. Hemisphere intensity.5 и existing RectArea fill3.8 уменьшают равномерное заполнение; windowlamp5 сохраняет чтение кассы. CanopyFill intensity2.5 сохраняет local/up/aim/size1bab. Слишком сильная зелёная roof bounce проба не принята: она окрашивала каркас. Новых light/mesh/map/shadow/post targets нет.
+
+Текущие material overrides: wood linearRGB(.85,1.1,1.45), stone(.38,.44,.6)/roughness.92, cream#c8c8c5/.95, green(1.35,1.45,2.1), canopyPaint(.75,.8,1.75)/.7/.08. Paper#d8d2bc прежний, settingsPaper#d9e1d7/.95. Brass#b79853/.3/.55 усиливает золотой тон физического title и фурнитуры. Inputs/13kit clones/role materials имеют прежних владельцев; borrowed images не меняются. Own native Settings overlay#e4dcc6b3 убирает pink из прошлого1bab; цвет не меняет layout/hit/keyboard contract.
+
+Три левых luggage group отодвинуты поZ на.15 до сохранения origins; resize применяет desktop luggageAdvance к этим origins без накопления. Bench group yaw−1.1 вместо−1.2; position/scale прежние. Все worldY vertices/floor contacts сохранены, geometry arrays не меняются. Railway/train/platform оставлены в прежнем общем transform: пробы horizontal retreat уменьшают train width всего на3–5% и не исправляют front proportions. Более сильный bench corner shift слишком урезает левый край относительно PNG; не применён. Camera proposal пока не требуется.
+
+Физический EUROPE остаётся одной3308tri extrusion depth.008/bevel.001. Проба нового shadow у boardlamp стоила56draws/+80648tri без достаточного выигрыша и не применена. Для читаемой gold грани owner получил точную заявку на measured bevel/depth trial. Для потолка нужна отдельная inherited canopyWood роль: общий wood grading помогает арке, но отдельная светлая древесная плоскость пока не отделяется от красноватого base map. Geometry/material API и texture changes выполняют владельцы; compositor ждёт только rootaccepted exact clean full tips.
+
+Rightworld byteequality сохраняется с текущим61a. В round5 оркестратор разрешил cashier owner будущую targeted right wrist/forearm/grip pose вместе с parent paper; для такого принятого tip прежняя world pose не будет hard invariant. Anchors/root identity/holder contacts/transform-once остаются. Старую pose compositor самостоятельно не восстанавливает. До нового принятого tip sampled61a qualification остаётся исторической границей проверки.
+
+Dynamic hints/friends/errors/обаRetry/footer24/focus/scroll и доступное h1 сохранены. Проверяются только затронутые desktop/material/light/placement/native contrast/reuse/cleanup и current draw cost; старая broad game/loader QA не повторяется. Анимация остановлена, адаптив отложен. Точные owner заявки и текущие residuals сохраняются в own outputs/master14; root читает локально, reverse messages не нужны.

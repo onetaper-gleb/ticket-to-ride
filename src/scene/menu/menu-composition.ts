@@ -92,16 +92,18 @@ export async function createMenuComposition(
     models = buildMenuModels({
       ...art,
       materialOverrides: {
+        wood: { color: new THREE.Color(0.85, 1.1, 1.45) },
         woodDark: { color: '#887660' },
         leather: { roughness: 0.9 },
-        cream: { color: '#c6cbd1', roughness: 0.95 },
-        stone: { color: '#c0b9ae', roughness: 0.92 },
+        cream: { color: '#c8c8c5', roughness: 0.95 },
+        stone: { color: new THREE.Color(0.38, 0.44, 0.6), roughness: 0.92 },
         // The mapped green already contains its base color; grade its channels in linear space.
-        green: { color: new THREE.Color(1.4, 1.05, 1.8) },
-        canopyPaint: { color: new THREE.Color(1.1, 0.8, 1.45), roughness: 0.7, metalness: 0.08 },
+        green: { color: new THREE.Color(1.35, 1.45, 2.1) },
+        canopyPaint: { color: new THREE.Color(0.75, 0.8, 1.75), roughness: 0.7, metalness: 0.08 },
         boardPaint: { color: '#abb8b0', roughness: 0.88 },
         paper: { color: '#d8d2bc', roughness: 0.95 },
-        settingsPaper: { color: '#f2d5bd', roughness: 0.95 },
+        settingsPaper: { color: '#d9e1d7', roughness: 0.95 },
+        brass: { color: '#b79853', roughness: 0.3, metalness: 0.55 },
         iron: { color: '#3d454a', roughness: 0.6, metalness: 0.25 },
         steel: { color: '#3d454a', roughness: 0.6, metalness: 0.45 },
         sky: { color: '#000000', emissive: '#ffffff', emissiveIntensity: 1 },
@@ -117,6 +119,10 @@ export async function createMenuComposition(
     models.parts.outerCanopySupport.position.set(1.7, 0, -0.2);
     models.parts.backdropRoot.position.x = 2;
     models.parts.luggage[0].position.set(-2.4, -0.9, 2.1);
+    models.parts.luggage.slice(0, 3).forEach((item) => {
+      item.position.z -= 0.15;
+    });
+    models.parts.bench.rotation.y = -1.1;
     models.root.updateMatrixWorld(true);
     const anchor = models.cashierAnchor;
     const rightContact = models.counter.handRestRight;
@@ -164,9 +170,9 @@ function assemble(
   scene.background = new THREE.Color('#a4c5e7');
   scene.add(models.root);
   const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 80);
-  const fill = new THREE.HemisphereLight('#bed0e2', '#918675', 1.1);
-  const keyLight = new THREE.DirectionalLight('#fff2df', 2);
-  keyLight.position.set(6, 7, -3);
+  const fill = new THREE.HemisphereLight('#bed0e2', '#918675', 0.5);
+  const keyLight = new THREE.DirectionalLight('#ffead0', 4);
+  keyLight.position.set(8, 5, -4);
   keyLight.castShadow = true;
   keyLight.shadow.mapSize.set(2048, 2048);
   Object.assign(keyLight.shadow.camera, {
@@ -179,18 +185,18 @@ function assemble(
   });
   keyLight.shadow.normalBias = 0.004;
   keyLight.shadow.bias = -0.00015;
-  keyLight.shadow.radius = 8;
-  keyLight.shadow.intensity = 0.8;
+  keyLight.shadow.radius = 10;
+  keyLight.shadow.intensity = 0.95;
   // Three.js owns the shared LTC lookup tables; each renderer owns their GPU upload.
   if (!areaLightsReady) {
     RectAreaLightUniformsLib.init();
     areaLightsReady = true;
   }
-  const softFill = new THREE.RectAreaLight('#fff1dd', 6, 5, 4);
+  const softFill = new THREE.RectAreaLight('#fff1dd', 3.8, 5, 4);
   softFill.position.set(2, 3, 4);
   softFill.lookAt(0, 0.5, 0);
   // Reflected platform daylight reaches the roof underside from below.
-  const canopyFill = new THREE.RectAreaLight('#dedbd0', 2, 4, 2);
+  const canopyFill = new THREE.RectAreaLight('#dedbd0', 2.5, 4, 2);
   canopyFill.name = 'canopy-bounce-fill';
   canopyFill.position.set(4.2, -0.45, -1);
   canopyFill.up.set(0, 0, 1);
@@ -204,7 +210,7 @@ function assemble(
     const distantLamp = fixture.name === 'lamp-distant';
     const light = new THREE.SpotLight(
       '#ffcf83',
-      windowLamp ? 4 : distantLamp ? 4 : 2,
+      windowLamp ? 5 : distantLamp ? 4 : 2,
       windowLamp ? 3 : distantLamp ? 3.5 : 5,
       windowLamp ? 1.1 : distantLamp ? 0.8 : 0.9,
       windowLamp ? 1 : 0.75,
