@@ -201,13 +201,14 @@ function Fallback({
       <svg viewBox="0 0 800 520" aria-label="Схема железной дороги">
         <rect x="25" y="10" width="750" height="500" rx="3" fill="#a8bfb6" />
         <path d={land} fill="#e4d6b6" fillRule="evenodd" stroke="#819b90" strokeWidth="1" />
-        {routes.map(({ edge, points }) => {
-          const polyline = points
-            .map((point) => {
-              const p = pixel(point);
-              return `${p.x},${p.y}`;
-            })
-            .join(' ');
+        {routes.map((route) => {
+          const { edge, points, inkPaths, slots } = route;
+          const color =
+            edge.owner !== null
+              ? observation.players.find((player) => player.id === edge.owner)?.color
+              : edge.color === 'white'
+                ? '#a59f8c'
+                : railColors[edge.color];
           return (
             <g
               key={edge.id}
@@ -223,18 +224,42 @@ function Fallback({
               }}
               aria-label={`Линия ${edge.id}`}
             >
-              <polyline
-                points={polyline}
-                stroke={
-                  edge.owner !== null
-                    ? observation.players.find((player) => player.id === edge.owner)?.color
-                    : railColors[edge.color]
-                }
-                fill="none"
-                strokeWidth={edge.owner !== null ? 5 : 3}
-                strokeDasharray={edge.owner !== null ? '' : '8 6'}
-              />
-              <polyline points={polyline} fill="none" stroke="transparent" strokeWidth="10" />
+              {(inkPaths ?? [points]).map((path, index) => (
+                <polyline
+                  key={index}
+                  points={path
+                    .map((point) => {
+                      const p = pixel(point);
+                      return `${p.x},${p.y}`;
+                    })
+                    .join(' ')}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth={0.03 * 31.25}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  pointerEvents="stroke"
+                />
+              ))}
+              {slots.map((slot, index) => {
+                const p = pixel(slot.position);
+                const width = route.width * 0.93 * 31.25;
+                const length = route.coachLength * 0.93 * 31.25;
+                return (
+                  <rect
+                    key={index}
+                    transform={`translate(${p.x} ${p.y}) rotate(${(-slot.angle * 180) / Math.PI})`}
+                    x={-width / 2}
+                    y={-length / 2}
+                    width={width}
+                    height={length}
+                    rx={0.018 * (route.width / 0.3) * 31.25}
+                    fill={color}
+                    stroke="#66756b"
+                    strokeWidth="0.3"
+                  />
+                );
+              })}
             </g>
           );
         })}
@@ -257,6 +282,20 @@ function Fallback({
               }}
               aria-label={station.name}
             >
+              <polyline
+                points={(label.leader ?? [station, label])
+                  .map((point) => {
+                    const vertex = pixel(point);
+                    return `${vertex.x},${vertex.y}`;
+                  })
+                  .join(' ')}
+                fill="none"
+                stroke="#696d59"
+                strokeWidth="0.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                pointerEvents="none"
+              />
               <circle cx={p.x} cy={p.y} r={5} fill="#eee5ce" stroke="#aa9265" strokeWidth="2" />
               <text
                 x={name.x}

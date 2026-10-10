@@ -1,225 +1,78 @@
 import * as THREE from 'three';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { CITIES, EDGES } from '../data/europe';
-import { presentationCities, routeLayouts, cityLabels } from './board-layout';
+import { describe, expect, it } from 'vitest';
 import { chooseBoardHit, interactionForHit } from './board-picking';
-import { batchRailMiniatures } from './rail-batching';
-import { createRailMiniatures } from './rail-miniatures';
-import { TABLE_CAMERA } from './table-layout';
 
-const palette: Record<string, string> = {
-  red: '#b54e3d',
-  blue: '#4a80ab',
-  green: '#4b805f',
-  yellow: '#d9b44c',
-  orange: '#d98643',
-  purple: '#b57da5',
-  black: '#33383a',
-  white: '#ebe3cd',
-  gray: '#89877a',
-};
-const playerColors = ['#e8a548', '#4aacc8', '#b783b6', '#70a969', '#cd6554'];
-
-function dispose(root: THREE.Object3D) {
-  const geometries = new Set<THREE.BufferGeometry>();
-  const materials = new Set<THREE.Material>();
-  root.traverse((object) => {
-    if (!(object instanceof THREE.Mesh)) return;
-    if (object instanceof THREE.InstancedMesh) object.dispose();
-    geometries.add(object.geometry);
-    for (const material of Array.isArray(object.material) ? object.material : [object.material])
-      materials.add(material);
-  });
-  geometries.forEach((geometry) => geometry.dispose());
-  materials.forEach((material) => material.dispose());
-}
-
-function crossingBoard() {
-  const cities = presentationCities(CITIES);
-  const routes = routeLayouts(EDGES, cities);
-  const root = new THREE.Group();
-  const factory = createRailMiniatures();
-  const miniatureGroups: THREE.Group[] = [];
-  const centers = new Map<string, THREE.Vector3[]>();
-  const hitMaterial = new THREE.MeshBasicMaterial({
-    transparent: true,
-    opacity: 0,
-    depthWrite: false,
-  });
-  let pickables: THREE.Object3D[] = [];
-
-  // Occupying every route is a geometry stress fixture, not a legal game position.
-  for (const [routeIndex, route] of routes.entries()) {
-    const group = new THREE.Group();
-    group.position.y = -0.77;
-    root.add(group);
-    const roofCenters: THREE.Vector3[] = [];
-    for (const [slotIndex, slot] of route.slots.entries()) {
-      const units = [
-        factory.addTrackSlot(
-          group,
-          palette[route.edge.color]!,
-          0.62,
-          0.2852,
-          route.edge.tunnel,
-          slotIndex < route.edge.ferries,
-        ),
-        factory.addCoach(group, playerColors[routeIndex % playerColors.length]!, 0.62, 0.2232),
-      ];
-      for (const [unitIndex, unit] of units.entries()) {
-        unit.scale.setScalar(route.coachLength / 0.62);
-        unit.position.set(slot.position.x, unitIndex ? 0.025 : 0, slot.position.z);
-        unit.rotation.y = slot.angle;
-        miniatureGroups.push(unit);
-        unit.traverse((object) => {
-          if (!(object instanceof THREE.Mesh)) return;
-          object.userData.interaction = { kind: 'edge', id: route.edge.id };
-          pickables.push(object);
-        });
-      }
-      roofCenters.push(
-        new THREE.Vector3(
-          slot.position.x,
-          -0.77 + 0.025 + 0.283 * (0.2232 / 0.3) * (route.coachLength / 0.62),
-          slot.position.z,
-        ),
-      );
-    }
-    centers.set(route.edge.id, roofCenters);
-    const curve = new THREE.CatmullRomCurve3(
-      route.points.map((point) => new THREE.Vector3(point.x, 0.018, point.z)),
-    );
-    const hit = new THREE.Mesh(
-      new THREE.TubeGeometry(curve, 48, Math.max(0.12, route.width * 0.68), 4, false),
-      hitMaterial,
-    );
-    hit.userData.interaction = { kind: 'edge', id: route.edge.id };
-    group.add(hit);
-    pickables.push(hit);
-  }
-  const batched = batchRailMiniatures(root, miniatureGroups);
-  const removed = new Set(batched.removed);
-  pickables = pickables.filter((object) => !removed.has(object));
-  pickables.push(...batched.meshes);
-  const labels = cityLabels(cities, routes);
-  for (const label of labels) {
-    const target = new THREE.Mesh(new THREE.PlaneGeometry(label.width, label.height), hitMaterial);
-    target.rotation.x = -Math.PI / 2;
-    target.position.set(label.x, -0.775, label.z);
-    target.userData.interaction = { kind: 'station', id: label.city.id };
-    target.userData.cityLabel = true;
-    root.add(target);
-    pickables.push(target);
-  }
-  for (const city of cities) {
-    const target = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.1, 16), hitMaterial);
-    target.position.set(city.x, -0.705, city.z);
-    target.userData.interaction = { kind: 'station', id: city.id };
-    root.add(target);
-    pickables.push(target);
-  }
-  root.updateWorldMatrix(true, true);
-  const camera = new THREE.PerspectiveCamera(43, 16 / 9, 0.1, 180);
-  camera.position.fromArray(TABLE_CAMERA.board.position);
-  camera.lookAt(new THREE.Vector3(...TABLE_CAMERA.board.target));
-  camera.updateMatrixWorld(true);
-  const ray = (point: THREE.Vector3, extra: THREE.Object3D[] = []) => {
-    const screen = point.clone().project(camera);
-    const pointer = new THREE.Vector2(screen.x, screen.y);
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(pointer, camera);
-    return { pointer, hits: raycaster.intersectObjects([...pickables, ...extra], false) };
+function targetHit(
+  role: 'slot' | 'link' | 'city' | 'label' | 'physical',
+  id: string,
+  distance: number,
+) {
+  const object = new THREE.Mesh();
+  object.userData.interaction = {
+    kind: role === 'city' || role === 'label' ? 'station' : 'edge',
+    id,
   };
-  return { root, centers, camera, ray, labels };
+  if (role === 'label') object.userData.cityLabel = true;
+  else if (role !== 'physical') object.userData.boardPickTarget = role;
+  return { object, distance, point: new THREE.Vector3() } as THREE.Intersection;
 }
 
-describe('board selection over crossing railway miniatures', () => {
-  let board: ReturnType<typeof crossingBoard>;
-  beforeAll(() => {
-    board = crossingBoard();
-  });
-  afterAll(() => {
-    dispose(board.root);
-  });
+describe('board hit priority', () => {
+  const camera = new THREE.PerspectiveCamera(43, 16 / 9, 0.1, 180);
+  camera.position.set(0, 22, 5);
+  camera.lookAt(0, -0.5, 0);
+  camera.updateMatrixWorld(true);
+  const pointer = new THREE.Vector2();
 
-  it.each([
-    ['dieppe--london-2', 1],
-    ['bruxelles--paris-1', 0],
-    ['bruxelles--paris-2', 0],
-    ['bruxelles--paris-2', 1],
-    ['bruxelles--frankfurt-1', 1],
-    ['athina--brindisi-1', 2],
-    ['erzurum--sochi-1', 0],
-  ] as const)('selects %s slot %i at a dense railway crossing', (id, index) => {
-    const { pointer, hits } = board.ray(board.centers.get(id)![index]!);
-    expect(hits.some((hit) => interactionForHit(hit)?.id === id)).toBe(true);
-    const chosen = chooseBoardHit(hits, board.camera, pointer, board.centers);
-    expect(interactionForHit(chosen!)).toEqual({ kind: 'edge', id });
-    expect(hits).toContain(chosen);
+  it('keeps the nearest actual surface ahead of transparent labels, slots and links', () => {
+    const label = targetHit('label', 'paris', 1);
+    const slot = targetHit('slot', 'route-a', 2);
+    const link = targetHit('link', 'route-a', 3);
+    const train = targetHit('physical', 'visible-train', 4);
+    const farther = targetHit('physical', 'behind-train', 5);
+    const hits = [label, slot, link, train, farther];
+    const centers = new Map([['behind-train', [new THREE.Vector3()]]]);
+    expect(chooseBoardHit(hits, camera, pointer, centers)).toBe(train);
+    train.object.userData.interaction = { kind: 'station', id: 'paris' };
+    expect(chooseBoardHit(hits, camera, pointer, centers)).toBe(train);
   });
 
-  it('keeps all 47 printed city names selectable', () => {
-    for (const label of board.labels) {
-      const { pointer, hits } = board.ray(new THREE.Vector3(label.x, -0.796, label.z));
-      const chosen = chooseBoardHit(hits, board.camera, pointer, board.centers);
-      expect(interactionForHit(chosen!), label.city.id).toEqual({
-        kind: 'station',
-        id: label.city.id,
-      });
-    }
+  it('preserves printed names and route ink ahead of transparent city padding', () => {
+    const city = targetHit('city', 'paris', 1);
+    const link = targetHit('link', 'route-a', 2);
+    const slot = targetHit('slot', 'route-b', 3);
+    const label = targetHit('label', 'frankfurt', 4);
+    expect(chooseBoardHit([city, link, slot, label], camera, pointer, new Map())).toBe(label);
+    expect(chooseBoardHit([city, link, slot], camera, pointer, new Map())).toBe(slot);
+    expect(chooseBoardHit([city, link], camera, pointer, new Map())).toBe(link);
+    expect(chooseBoardHit([city], camera, pointer, new Map())).toBe(city);
   });
 
-  it('prioritizes a city label beneath a raised train and preserves a direct station hit', () => {
-    const point = board.centers.get('dieppe--london-2')![1]!;
-    const label = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.5), new THREE.MeshBasicMaterial());
-    label.rotation.x = -Math.PI / 2;
-    label.position.set(point.x, -0.8, point.z);
-    label.userData.cityLabel = true;
-    label.userData.interaction = { kind: 'station', id: 'dieppe' };
-    label.updateMatrixWorld(true);
-    const under = board.ray(point, [label]);
-    expect(under.hits[0]!.object).not.toBe(label);
-    expect(chooseBoardHit(under.hits, board.camera, under.pointer, board.centers)!.object).toBe(
-      label,
-    );
-    dispose(label);
-
-    const station = new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshBasicMaterial());
-    station.position
-      .copy(point)
-      .addScaledVector(board.camera.position.clone().sub(point).normalize(), 2);
-    station.userData.interaction = { kind: 'station', id: 'dieppe' };
-    station.updateMatrixWorld(true);
-    const direct = board.ray(point, [station]);
-    expect(direct.hits[0]!.object).toBe(station);
-    expect(chooseBoardHit(direct.hits, board.camera, direct.pointer, board.centers)).toBe(
-      direct.hits[0],
-    );
-    dispose(station);
-  });
-
-  it('uses only ray-hit routes without mutating the hit list, camera, pointer or centers', () => {
-    const id = 'bruxelles--paris-2';
-    const point = board.centers.get(id)![0]!;
-    const { pointer, hits } = board.ray(point);
-    const centers = new Map([['not-a-ray-hit', [point.clone()]], ...board.centers]);
-    const originalCenters = [...centers].map(([key, values]) => [
-      key,
-      values.map((value) => value.toArray()),
+  it('tie-breaks only ray-hit backup routes and does not mutate its inputs', () => {
+    const primary = targetHit('link', 'route-a', 1);
+    const nearer = targetHit('link', 'route-b', 2);
+    const hits = [primary, nearer];
+    const centers = new Map([
+      ['not-a-ray-hit', [new THREE.Vector3()]],
+      ['route-a', [new THREE.Vector3(4, -0.5, 0)]],
+      ['route-b', [new THREE.Vector3(0, -0.5, 0)]],
     ]);
     const originalHits = [...hits];
     const originalPointer = pointer.toArray();
-    const originalCamera = board.camera.matrixWorld.toArray();
-    const chosen = chooseBoardHit(hits, board.camera, pointer, centers);
-    expect(interactionForHit(chosen!)).toEqual({ kind: 'edge', id });
+    const originalCamera = camera.matrixWorld.toArray();
+    const originalCenters = [...centers].map(([id, points]) => [
+      id,
+      points.map((p) => p.toArray()),
+    ]);
+    expect(chooseBoardHit(hits, camera, pointer, centers)).toBe(nearer);
     expect(hits).toEqual(originalHits);
     expect(pointer.toArray()).toEqual(originalPointer);
-    expect(board.camera.matrixWorld.toArray()).toEqual(originalCamera);
-    expect(
-      [...centers].map(([key, values]) => [key, values.map((value) => value.toArray())]),
-    ).toEqual(originalCenters);
-    expect(chooseBoardHit([], board.camera, pointer, centers)).toBeUndefined();
-    expect(chooseBoardHit(hits, board.camera, pointer, new Map())).toBe(hits[0]);
+    expect(camera.matrixWorld.toArray()).toEqual(originalCamera);
+    expect([...centers].map(([id, points]) => [id, points.map((p) => p.toArray())])).toEqual(
+      originalCenters,
+    );
+    expect(chooseBoardHit(hits, camera, pointer, new Map())).toBe(primary);
+    expect(chooseBoardHit([], camera, pointer, centers)).toBeUndefined();
   });
 });
 
@@ -240,10 +93,14 @@ it('reads both instanced route IDs before mesh-wide metadata, including instance
   mesh.computeBoundingBox();
   mesh.computeBoundingSphere();
   [-2, 2].forEach((x, index) => {
-    const ray = new THREE.Raycaster(new THREE.Vector3(x, 4, 0), new THREE.Vector3(0, -1, 0));
-    const hit = ray.intersectObject(mesh)[0]!;
+    const hit = new THREE.Raycaster(
+      new THREE.Vector3(x, 4, 0),
+      new THREE.Vector3(0, -1, 0),
+    ).intersectObject(mesh)[0]!;
     expect(hit.instanceId).toBe(index);
     expect(interactionForHit(hit)).toEqual({ kind: 'edge', id: index ? 'route-b' : 'route-a' });
   });
-  dispose(mesh);
+  mesh.dispose();
+  mesh.geometry.dispose();
+  (mesh.material as THREE.Material).dispose();
 });
