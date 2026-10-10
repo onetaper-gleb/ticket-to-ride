@@ -125,7 +125,11 @@ function roundRestingKnuckles(hand: THREE.Group, contactY: number) {
       .join(':');
     keys.push(key);
     const point = bind.clone().applyMatrix4(matrix);
-    const delta = lift * fingerWeight * smooth(0.28, 0.5, bind.y) * smooth(contactY + 0.02, contactY + 0.04, point.y);
+    const delta =
+      lift *
+      fingerWeight *
+      smooth(0.28, 0.5, bind.y) *
+      smooth(contactY + 0.02, contactY + 0.04, point.y);
     point.y += delta;
     if (delta > 1e-10) changed.add(key);
     points.push(point);
