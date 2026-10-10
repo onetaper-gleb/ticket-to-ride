@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import type { PublicPlayer } from '../shared/types';
 import { buildCartoonHand, setHandPose } from './cartoon-hands';
+import { buildArmRig, solveArmPose } from './arm-rig';
 
 type Point = [number, number, number];
 type Ring = { y: number; width: number; front: number; back?: number; z?: number };
@@ -769,9 +770,10 @@ function attachHand(
   grip: boolean,
   factory: Factory,
 ) {
-  const hand = buildCartoonHand(style.skin, grip ? (side === -1 ? 1 : -1) : side, false);
+  const hand = buildCartoonHand(style.skin, side, false);
   if (grip) setHandPose(hand, 'card');
-  hand.name = grip ? 'Кисть с картами' : 'Открытая кисть';
+  hand.name = grip ? 'Кисть с картами' : 'Расслабленная кисть';
+  if (!grip) setHandPose(hand, { curl: [0.15, 0.08, 0.1, 0.12, 0.15], thumbOpposition: 0.12 });
   hand.position.set(...position);
   hand.rotation.set(...rotation);
   if (grip) hand.rotateY(Math.PI);
@@ -798,20 +800,18 @@ function attachHand(
 function buildCards(hand: THREE.Group, count: number, texture: THREE.Texture, factory: Factory) {
   const fan = new THREE.Group();
   fan.name = 'Веер рубашек карт';
-  // The dorsum faces the viewer; paper sits between thumb pad and supporting fingers.
-  fan.rotation.y = Math.PI;
-  fan.position.set(-0.67, 0.13, 0.29);
+  // A compact common base rests on the fingers; the opposing thumb secures its back.
+  fan.position.set(0.76, 0.425, 0.13);
   hand.add(fan);
   const paper = factory.material('#d5c6a6');
   const back = new THREE.MeshStandardMaterial({ map: texture, roughness: 1, metalness: 0 });
-  const geometry = new THREE.BoxGeometry(0.82, 1.4, 0.034);
-  geometry.translate(0, 0.7, 0);
+  const geometry = new THREE.BoxGeometry(0.82, 1.4, 0.004);
+  geometry.translate(-0.41, 0.7, 0);
   for (let index = 0; index < count; index++) {
-    const spread = index - (count - 1) / 2;
     const card = new THREE.Mesh(geometry, [paper, paper, paper, paper, back, back]);
     card.name = 'Закрытая карта';
-    card.position.set(spread * 0.055, -0.14 + Math.abs(spread) * 0.014, 0.145 - index * 0.016);
-    card.rotation.z = -spread * 0.175;
+    card.position.set(0, 0, (index - (count - 1)) * 0.004);
+    card.rotation.z = -(count - 1 - index) * 0.14;
     card.castShadow = true;
     card.receiveShadow = true;
     fan.add(card);
@@ -897,7 +897,7 @@ export function buildDispatcher(
   person.rotation.y = Math.atan2(-x, -z);
   parent.add(person);
   const factory = characterFactory(person);
-  const { mesh, round, oval } = factory;
+  const { round } = factory;
   round([4.4, 0.32, 2.15], '#445351', [0, -0.38, -0.4]);
   for (const side of [-1, 1]) round([0.2, 3.92, 0.23], '#445351', [side * 1.76, 1.32, -1.23]);
   round([3.76, 0.42, 0.27], '#52605a', [0, 2.84, -1.23]);
@@ -911,8 +911,8 @@ export function buildDispatcher(
     person,
     style,
     -1,
-    [-0.83, 0.84, 2.73],
-    [-0.1, 0.045, -0.1],
+    hasCards ? [0.15, 1.35, 3] : [-1.2, 0.03, 3.1],
+    hasCards ? [0.35, -0.1, -0.6] : [Math.PI / 2, 0, -0.28],
     hasCards,
     factory,
   );
@@ -920,8 +920,8 @@ export function buildDispatcher(
     person,
     style,
     1,
-    [1.27, 0.72, 2.83],
-    [0.18, -0.09, -0.28],
+    [1.2, 0.03, 3.1],
+    [Math.PI / 2, 0, 0.28],
     false,
     factory,
   );
@@ -929,19 +929,29 @@ export function buildDispatcher(
     [-1, cardHand],
     [1, openHand],
   ] as const) {
-    const shoulder: Point = [side * style.width * 0.8, 2.38, -0.04];
-    const elbow: Point = [side * (style.width + 0.32), 0.75, 1.32];
+    const shoulder = new THREE.Vector3(side * style.width * 0.8, 2.38, -0.04);
+    const pole = new THREE.Vector3(side * (style.width + 0.5), 0.25, 0.9);
     const wrist = attachment.wrist;
-    mesh(
+    const pose = solveArmPose(shoulder, wrist, pole, 2.25, 2.35);
+    const forearmDirection = wrist.clone().sub(pose.elbow).normalize();
+    const forearmEnd = wrist.clone().addScaledVector(forearmDirection, -0.62);
+    const cuffStart = wrist.clone().addScaledVector(forearmDirection, -0.22);
+    buildArmRig(
+      person,
+      pose,
+      pole,
+      attachment.hand,
       curvedVolume(
-        [shoulder, [side * (style.width + 0.05), 1.96, 0.42], elbow, [wrist.x, wrist.y, wrist.z]],
-        [0.67, 0.65, 0.48, 0.27],
-        [0.61, 0.59, 0.43, 0.25],
+        [
+          shoulder.toArray(),
+          shoulder.clone().lerp(pose.elbow, 0.5).toArray(),
+          pose.elbow.toArray(),
+          [forearmEnd.x, forearmEnd.y, forearmEnd.z],
+          [wrist.x, wrist.y, wrist.z],
+        ],
+        [0.67, 0.65, 0.48, 0.32, 0.27],
+        [0.61, 0.59, 0.43, 0.29, 0.25],
       ),
-      kind === 2 || kind === 3 ? style.shirt : style.cloth,
-    );
-    const cuffStart = new THREE.Vector3(...elbow).lerp(wrist, 0.86);
-    mesh(
       curvedVolume(
         [
           [cuffStart.x, cuffStart.y, cuffStart.z],
@@ -951,10 +961,9 @@ export function buildDispatcher(
         [0.28, 0.26],
         6,
       ),
-      kind === 2 || kind === 3 ? style.cloth : style.trim,
+      factory.material(kind === 2 || kind === 3 ? style.shirt : style.cloth),
+      factory.material(kind === 2 || kind === 3 ? style.cloth : style.trim),
     );
-    oval([0.31, 0.14, 0.09], style.trim, [elbow[0], elbow[1] + 0.15, elbow[2] + 0.39]).rotation.z =
-      side * -0.15;
   }
   if (hasCards) buildCards(cardHand.hand, Math.min(5, player.handCount), cardBack, factory);
   consolidateCharacter(person);

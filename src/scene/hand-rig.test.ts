@@ -137,6 +137,18 @@ describe('hand animation contract', () => {
           expect(hasSkinCrossing(patch), `${pose} ${name} joint ${joint}`).toBe(false);
           disposeObjects(patch.mesh);
         }
+      if (pose === 'card') {
+        // The thenar web must not fold into the thumb MCP when the thumb opposes paper.
+        const thumbWeb = skinPatch(
+          rig.mesh,
+          (vertex) =>
+            new THREE.Vector3()
+              .fromBufferAttribute(rig.mesh.geometry.getAttribute('position'), vertex)
+              .distanceTo(pivots.thumb[1]) < 0.165,
+        );
+        expect(hasSkinCrossing(thumbWeb), 'card thumb MCP and thenar web').toBe(false);
+        disposeObjects(thumbWeb.mesh);
+      }
       const thumb = skinPatch(
         rig.mesh,
         (vertex) => boneWeight(vertex, [rig.fingers.thumb[2]]) > 0.98,
@@ -306,6 +318,98 @@ describe('hand animation contract', () => {
     disposeObjects(hand);
   });
 
+  it('holds one card and a fan between the thumb and fingers without cutting the paper', () => {
+    for (const count of [1, 5]) {
+      const scene = new THREE.Group();
+      const character = buildDispatcher(
+        scene,
+        {
+          id: 1,
+          name: 'Test',
+          color: '#5588aa',
+          handCount: count,
+          ticketCount: 2,
+          trainsRemaining: 45,
+          stationsRemaining: 3,
+          stations: [],
+          score: 0,
+        },
+        0.5,
+        -15,
+        0,
+        new THREE.Texture(),
+      );
+      scene.updateMatrixWorld(true);
+      const hand = character.getObjectByName('Кисть с картами') as THREE.Group;
+      const rig = getHandRig(hand)!;
+      rig.skeleton.update();
+      const skin = rig.mesh;
+      const source = skin.geometry.getAttribute('position');
+      const indices = skin.geometry.getAttribute('skinIndex');
+      const weights = skin.geometry.getAttribute('skinWeight');
+      const boneWeight = (vertex: number, name: 'thumb' | 'middle') => {
+        const ids = rig.fingers[name].slice(0, 3).map((b) => rig.skeleton.bones.indexOf(b));
+        let total = 0;
+        for (let c = 0; c < 4; c++)
+          if (ids.includes(indices.getComponent(vertex, c)))
+            total += weights.getComponent(vertex, c);
+        return total;
+      };
+      const cards: THREE.Mesh[] = [];
+      character.traverse((o) => {
+        if (o instanceof THREE.Mesh && o.name === 'Закрытая карта') cards.push(o);
+      });
+      expect(cards).toHaveLength(count);
+      let thumbGap = Infinity,
+        supportGap = Infinity;
+      for (const card of cards) {
+        card.geometry.computeBoundingBox();
+        const box = card.geometry.boundingBox!;
+        const transform = card.matrixWorld.clone().invert().multiply(skin.matrixWorld);
+        const points = Array.from({ length: source.count }, (_, i) =>
+          skin.getVertexPosition(i, new THREE.Vector3()).applyMatrix4(transform),
+        );
+        for (let i = 0; i < points.length; i++) {
+          const p = points[i];
+          const depth = Math.min(
+            p.x - box.min.x,
+            box.max.x - p.x,
+            p.y - box.min.y,
+            box.max.y - p.y,
+            p.z - box.min.z,
+            box.max.z - p.z,
+          );
+          expect(depth, `${count} cards: skin inside paper`).toBeLessThanOrEqual(1e-5);
+          if (p.z >= box.max.z && boneWeight(i, 'thumb') > 0.8)
+            thumbGap = Math.min(thumbGap, box.distanceToPoint(p));
+          if (p.z <= box.min.z && boneWeight(i, 'middle') > 0.8)
+            supportGap = Math.min(supportGap, box.distanceToPoint(p));
+        }
+        const ray = new THREE.Ray();
+        for (let i = 0; i < points.length; i += 3)
+          for (let edge = 0; edge < 3; edge++) {
+            const start = points[i + edge],
+              end = points[i + ((edge + 1) % 3)];
+            const direction = end.clone().sub(start),
+              length = direction.length();
+            if (length < 2e-5) continue;
+            ray.set(start, direction.multiplyScalar(1 / length));
+            const hit = ray.intersectBox(box, new THREE.Vector3());
+            if (hit) {
+              const distance = hit.distanceTo(start);
+              expect(
+                distance > 1e-5 && distance < length - 1e-5,
+                `${count} cards: skin edge cuts paper`,
+              ).toBe(false);
+            }
+          }
+      }
+      expect(thumbGap, 'thumb presses the owner side of the cards').toBeLessThan(0.02);
+      expect(supportGap, 'middle finger supports the backs facing opponents').toBeLessThan(0.02);
+      disposeObjects(scene);
+    }
+  });
+
   it('keeps live hand rigs inside each finished character and disposes their bone textures', () => {
     for (let kind = 0; kind < 4; kind++) {
       const scene = new THREE.Group();
@@ -329,7 +433,8 @@ describe('hand animation contract', () => {
       );
       const meshes: THREE.SkinnedMesh[] = [];
       character.traverse((object) => {
-        if (object instanceof THREE.SkinnedMesh) meshes.push(object);
+        if (object instanceof THREE.SkinnedMesh && object.skeleton.bones.length === 22)
+          meshes.push(object);
       });
       expect(meshes).toHaveLength(2);
       let texturesDisposed = 0;
