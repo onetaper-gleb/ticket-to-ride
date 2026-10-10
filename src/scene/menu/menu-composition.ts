@@ -98,8 +98,10 @@ export async function createMenuComposition(
         stone: { color: '#c0b9ae', roughness: 0.92 },
         // The mapped green already contains its base color; grade its channels in linear space.
         green: { color: new THREE.Color(1.4, 1.05, 1.8) },
+        canopyPaint: { color: new THREE.Color(1.1, 0.8, 1.45), roughness: 0.7, metalness: 0.08 },
         boardPaint: { color: '#abb8b0', roughness: 0.88 },
         paper: { color: '#d8d2bc', roughness: 0.95 },
+        settingsPaper: { color: '#f2d5bd', roughness: 0.95 },
         iron: { color: '#3d454a', roughness: 0.6, metalness: 0.25 },
         steel: { color: '#3d454a', roughness: 0.6, metalness: 0.45 },
         sky: { color: '#000000', emissive: '#ffffff', emissiveIntensity: 1 },
@@ -188,9 +190,10 @@ function assemble(
   softFill.position.set(2, 3, 4);
   softFill.lookAt(0, 0.5, 0);
   // Reflected platform daylight reaches the roof underside from below.
-  const canopyFill = new THREE.RectAreaLight('#dedbd0', 3, 4, 2);
+  const canopyFill = new THREE.RectAreaLight('#dedbd0', 2, 4, 2);
   canopyFill.name = 'canopy-bounce-fill';
-  canopyFill.position.set(4.2, -1.4, 1.1);
+  canopyFill.position.set(4.2, -0.45, -1);
+  canopyFill.up.set(0, 0, 1);
   canopyFill.lookAt(4.2, 0, -1);
   models.parts.canopy.add(canopyFill);
   const railFill = new THREE.SpotLight('#ffe2b1', 200, 12, 0.3, 0.9, 2);
