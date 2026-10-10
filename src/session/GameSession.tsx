@@ -13,7 +13,11 @@ import { loadMatch, saveMatch, type Save } from './storage';
 import { getTurnAcknowledgement, restoreTurnAcknowledgement } from './turn-handoff';
 import { tutorialCommandAllowed } from '../ui/tutorial';
 
-export default function GameSession() {
+export interface GameSessionProps {
+  onOpenNetwork?: () => void;
+}
+
+export default function GameSession({ onOpenNetwork }: GameSessionProps = {}) {
   const [state, setState] = useState<GameState | null>(null);
   const [difficulty, setDifficulty] = useState<BotDifficulty>('normal');
   const difficultyRef = useRef(difficulty);
@@ -231,6 +235,7 @@ export default function GameSession() {
       onContinueTutorial={() => startTutorial(true)}
       onStart={start}
       onContinue={continueMatch}
+      onOpenNetwork={onOpenNetwork}
       onCommand={(command, expected) => {
         if (current.current?.activePlayer !== 0 || expected.sessionId !== sessionEpoch.current)
           return false;
