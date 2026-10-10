@@ -1,9 +1,12 @@
 import * as THREE from 'three';
+import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { buildMenuModels, type MenuModels } from './menu-models';
 import { buildMenuCashier, type MenuCashier } from './menu-character';
 import { preloadMenuHandSurfaces } from './menu-character-hands';
 import { loadMenuCompositionArt, type MenuCompositionArt } from './menu-composition-art';
 import { menuCompositionPreset, type MenuRect } from './menu-composition-presets';
+
+let areaLightsReady = false;
 
 export type MenuScreenPoint = { x: number; y: number };
 /** Clockwise, starting at the top left of the physical front face. */
@@ -43,6 +46,11 @@ export type MenuComposition = {
   cashier: MenuCashier;
   art: MenuCompositionArt;
   keyLight: THREE.DirectionalLight;
+  lighting: {
+    sky: THREE.HemisphereLight;
+    softFill: THREE.RectAreaLight;
+    lamps: readonly THREE.SpotLight[];
+  };
   layout(width: number, height: number, board?: MenuRect, settings?: MenuRect): void;
   projectFrame(width: number, height: number): { board: MenuRect; settings: MenuRect };
   projectCorners(width: number, height: number): { board: MenuQuad; settings: MenuQuad };
@@ -108,17 +116,58 @@ function assemble(
   art: MenuCompositionArt,
 ): MenuComposition {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#abcbd7');
+  scene.background = new THREE.Color('#a4c5e7');
   scene.add(models.root);
   const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 80);
-  const fill = new THREE.HemisphereLight('#fff7e7', '#738381', 2.6);
-  const keyLight = new THREE.DirectionalLight('#fff0d7', 3.0);
-  keyLight.position.set(-3, 6, 8);
+  const fill = new THREE.HemisphereLight('#bed0e2', '#65503b', 0.7);
+  const keyLight = new THREE.DirectionalLight('#fff0d4', 2.2);
+  keyLight.position.set(6, 8, 2);
   keyLight.castShadow = true;
-  keyLight.shadow.mapSize.set(1024, 1024);
-  Object.assign(keyLight.shadow.camera, { left: -7, right: 7, top: 6, bottom: -6 });
-  keyLight.shadow.normalBias = 0.025;
-  scene.add(fill, keyLight);
+  keyLight.shadow.mapSize.set(2048, 2048);
+  Object.assign(keyLight.shadow.camera, {
+    left: -5.5,
+    right: 6,
+    top: 4.5,
+    bottom: -4,
+    near: 0.1,
+    far: 25,
+  });
+  keyLight.shadow.normalBias = 0.004;
+  keyLight.shadow.bias = -0.00015;
+  keyLight.shadow.radius = 5;
+  // Three.js owns the shared LTC lookup tables; each renderer owns their GPU upload.
+  if (!areaLightsReady) {
+    RectAreaLightUniformsLib.init();
+    areaLightsReady = true;
+  }
+  const softFill = new THREE.RectAreaLight('#ffe9c8', 3, 5, 4);
+  softFill.position.set(2, 3, 4);
+  softFill.lookAt(0, 0.5, 0);
+  scene.add(fill, keyLight, softFill);
+  const lampLights = models.parts.lamps.map((fixture, index) => {
+    const windowLamp = index === 1;
+    const light = new THREE.SpotLight(
+      '#ffcf83',
+      windowLamp ? 4 : 12,
+      windowLamp ? 3 : 5,
+      windowLamp ? 1.1 : 0.9,
+      0.75,
+      2,
+    );
+    light.name = `${fixture.name}-light`;
+    light.position.set(0, -fixture.userData.contact.height - 0.02, 0.015);
+    const target = new THREE.Object3D();
+    target.name = `${fixture.name}-light-target`;
+    target.position.set(0, light.position.y - (windowLamp ? 1 : 1.5), windowLamp ? 0.3 : -0.5);
+    fixture.add(light, target);
+    light.target = target;
+    light.castShadow = windowLamp;
+    light.shadow.mapSize.set(1024, 1024);
+    light.shadow.normalBias = 0.002;
+    light.shadow.bias = -0.0001;
+    light.shadow.radius = 2;
+    return light;
+  });
   let disposed = false;
   const luggageOrigins = models.parts.luggage.map((item) => item.position.clone());
   function alive() {
@@ -224,6 +273,7 @@ function assemble(
     cashier,
     art,
     keyLight,
+    lighting: { sky: fill, softFill, lamps: lampLights },
     layout,
     projectFrame,
     projectCorners,
@@ -231,6 +281,11 @@ function assemble(
       if (disposed) return;
       disposed = true;
       cashier.dispose();
+      for (const light of lampLights) {
+        light.shadow.dispose();
+        light.removeFromParent();
+        light.target.removeFromParent();
+      }
       models.dispose();
       models.root.removeFromParent();
       art.dispose();
