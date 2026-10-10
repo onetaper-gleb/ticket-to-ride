@@ -397,8 +397,8 @@ function buildInterior(root: THREE.Group, kit: MenuModelKit) {
   batch.add(menuBox(0.55, 0.93, 0.08), 'wood', [0.77, 0.03, -1.43]);
   batch.add(menuBox(0.28, 0.43, 0.022), 'sky', [0.59, 1.095, -1.47]);
   batch.add(menuBox(0.033, 0.46, 0.06), 'wood', [0.747, 1.08, -1.43]);
-  batch.add(menuBox(0.2, 0.39, 0.2, 0.007), 'wood', [0.83, 0.195, -0.92]);
-  batch.add(menuBox(0.24, 0.2, 0.18, 0.005), 'woodDark', [0.59, 0.1, -1.19]);
+  batch.add(menuBox(0.2, 0.39, 0.2, 0.007), 'wood', [0.83, 0.1475, -0.92]);
+  batch.add(menuBox(0.24, 0.2, 0.18, 0.005), 'woodDark', [0.59, 0.0525, -1.19]);
   // Storage is an actual wall recess; interrupted partitions and parcels reveal its backs.
   for (const x of [-0.88, -0.045])
     batch.add(verticalWood(menuBox(0.047, 1.91, 0.09, 0.009)), 'wood', [x, 0.97, 0.15]);
@@ -823,26 +823,26 @@ function buildBoard(root: THREE.Group, kit: MenuModelKit): MenuModels['board'] {
 function buildCanopy(root: THREE.Group, kit: MenuModelKit) {
   const canopy = part(root, 'station-canopy', [0, 2.63, 0]);
   const batch = kit.batch(canopy, 'canopy');
-  batch.add(menuBox(5.9, 0.15, 1.7), 'green', [-1.885, 0, -0.93]);
+  batch.add(menuBox(5.9, 0.12, 1.7), 'green', [-1.885, 0.015, -0.93]);
   batch.add(menuBox(5.84, 0.05, 1.58), 'wood', [-1.885, -0.1, -0.93]);
-  batch.add(menuBox(6.2, 0.18, 3.6), 'green', [4.05, 0, -1.0]);
+  batch.add(menuBox(6.2, 0.12, 3.6), 'green', [4.05, 0.03, -1.0]);
   batch.add(menuBox(6.14, 0.045, 3.43), 'wood', [4.05, -0.1125, -1.0]);
   for (const z of [0.73, -0.13, -1.45, -2.68])
-    batch.add(menuBox(6.2, 0.17, 0.13, 0.015), 'green', [4.05, -0.15, z]);
+    batch.add(flangedBeam(0.13, 0.15, 6.2, true), 'green', [4.05, -0.155, z]);
   for (const x of [1.01, 2.5, 4.1, 6.0, 7.08])
-    batch.add(menuBox(0.12, 0.145, 3.45, 0.014), 'green', [x, -0.17, -1.0]);
-  batch.add(menuBox(6.2, 0.13, 0.12, 0.015), 'cream', [4.05, -0.17, 0.78]);
-  batch.add(menuBox(6.3, 0.16, 0.17, 0.018), 'green', [0, -0.1, -0.14]);
+    batch.add(flangedBeam(0.12, 0.2, 3.45), 'green', [x, -0.12, -1.0]);
+  batch.add(menuBox(6.2, 0.072, 0.085, 0.008), 'cream', [4.05, -0.142, 0.78]);
+  batch.add(flangedBeam(0.17, 0.135, 6.3, true), 'green', [0, -0.1, -0.14]);
   batch.add(menuBox(0.045, 0.04, 0.64), 'iron', [-2.0, -0.08, 0.1]);
   const scallop = new THREE.Shape();
   scallop.moveTo(-0.17, 0);
   scallop.lineTo(0.17, 0);
   scallop.lineTo(0.17, -0.035);
-  scallop.quadraticCurveTo(0.16, -0.19, 0, -0.19);
-  scallop.quadraticCurveTo(-0.16, -0.19, -0.17, -0.035);
+  scallop.quadraticCurveTo(0.16, -0.165, 0, -0.165);
+  scallop.quadraticCurveTo(-0.16, -0.165, -0.17, -0.035);
   scallop.closePath();
   for (let x = 1.12; x < 7.15; x += 0.34)
-    batch.add(extrude(scallop, 0.065, 0.006), 'cream', [x, -0.21, 0.75]);
+    batch.add(extrude(scallop, 0.045, 0.004), 'cream', [x, -0.17, 0.76]);
   batch.flush();
   const supports = part(root, 'station-supports', [0, FLOOR_Y, 0]);
   const posts = kit.batch(supports, 'canopy-supports');
@@ -878,11 +878,45 @@ function buildCanopy(root: THREE.Group, kit: MenuModelKit) {
     corbel.lineTo(0.66, height + 0.015);
     corbel.lineTo(0, height + 0.015);
     corbel.closePath();
+    const opening = new THREE.Path();
+    opening.moveTo(0.17, height - 0.3);
+    opening.lineTo(0.17, height - 0.07);
+    opening.lineTo(0.46, height - 0.07);
+    opening.lineTo(0.46, height - 0.155);
+    opening.quadraticCurveTo(0.2, height - 0.2, 0.17, height - 0.3);
+    opening.closePath();
+    corbel.holes.push(opening);
     target.add(extrude(corbel, 0.15, 0.008), 'green', [localX, 0, localZ - 0.075]);
   }
   posts.flush();
   rightPost.flush();
   return { canopy, supports, outerCanopySupport };
+}
+
+/** Closed I section; the tall longitudinal web joins the liner to the roofing. */
+function flangedBeam(width: number, height: number, length: number, across = false) {
+  const w = width / 2,
+    h = height / 2,
+    web = 0.014,
+    flange = 0.022;
+  const section = new THREE.Shape();
+  section.moveTo(-w, -h);
+  section.lineTo(w, -h);
+  section.lineTo(w, -h + flange);
+  section.lineTo(web, -h + flange);
+  section.lineTo(web, h - flange);
+  section.lineTo(w, h - flange);
+  section.lineTo(w, h);
+  section.lineTo(-w, h);
+  section.lineTo(-w, h - flange);
+  section.lineTo(-web, h - flange);
+  section.lineTo(-web, -h + flange);
+  section.lineTo(-w, -h + flange);
+  section.closePath();
+  const geometry = extrude(section, length, 0);
+  geometry.translate(0, 0, -length / 2);
+  if (across) geometry.rotateY(Math.PI / 2);
+  return geometry;
 }
 
 function profiledPost(width: number, depth: number, height: number) {
@@ -930,10 +964,10 @@ function buildPlatform(root: THREE.Group, kit: MenuModelKit) {
   trackRoot.rotation.y = -0.65;
   railwayRoot.add(trackRoot);
   const batch = kit.batch(trackRoot, 'platform-and-track');
-  batch.add(menuBox(0.66, 0.2, 9), 'stone', [-0.98, -0.15, -3]);
+  batch.add(slopedBed(0.66, 0.76, -0.05, -0.25, 9), 'stone', [-0.98, 0, -3]);
   for (let z = -7.125; z < 1.1; z += 0.75)
     batch.add(menuBox(0.68, 0.035, 0.745, 0.006), 'cream', [-0.98, -0.0675, z]);
-  batch.add(menuBox(1.3, 0.12, 9), 'stone', [0, -0.19, -3]);
+  batch.add(slopedBed(1.12, 1.6, -0.13, -0.25, 9), 'stone', [0, 0, -3]);
   for (let z = -7.3; z < 1.1; z += 0.42) {
     batch.add(menuBox(1.3, 0.06, 0.13, 0.005), 'woodDark', [0, -0.1, z]);
     for (const x of [-0.41, 0.41])
@@ -951,6 +985,25 @@ function buildPlatform(root: THREE.Group, kit: MenuModelKit) {
   }
   batch.flush();
   return { railwayRoot, platform: trackRoot };
+}
+
+/** Ballast meets the floor with a slope while the sleeper bearing plane stays fixed. */
+function slopedBed(
+  topWidth: number,
+  baseWidth: number,
+  top: number,
+  bottom: number,
+  length: number,
+) {
+  const section = new THREE.Shape();
+  section.moveTo(-baseWidth / 2, bottom);
+  section.lineTo(baseWidth / 2, bottom);
+  section.lineTo(topWidth / 2, top);
+  section.lineTo(-topWidth / 2, top);
+  section.closePath();
+  const geometry = extrude(section, length, 0);
+  geometry.translate(0, 0, -length / 2);
+  return geometry;
 }
 
 function buildLuggage(root: THREE.Group, kit: MenuModelKit, stickers?: THREE.Texture) {
