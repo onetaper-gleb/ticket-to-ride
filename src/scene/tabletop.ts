@@ -11,6 +11,8 @@ import { createRailMiniatures } from './rail-miniatures';
 import { drawTrainCard } from './card-art';
 import { batchRailMiniatures } from './rail-batching';
 import { buildPlayerReserve } from './player-reserve';
+import { createBoardRouteTargets } from './board-pick-targets';
+import { printBoardLayout } from './board-print';
 
 export const railColors: Record<string, string> = {
   red: '#b54e3d',
@@ -345,36 +347,7 @@ export function buildBoard(
       const w = 3072,
         h = 2048;
       renderEuropeAtlas(ctx, w, h);
-      const pixel = (x: number, z: number) => ({
-        x: (x / width + 0.5) * w,
-        y: (z / depth + 0.5) * h,
-      });
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      for (const label of labels) {
-        const center = pixel(label.x, label.z),
-          pin = pixel(label.city.x, label.city.z);
-        const marked =
-          view?.routeStationIds.includes(label.city.id) ||
-          (selection?.kind === 'station' && selection.id === label.city.id);
-        ctx.strokeStyle = marked ? '#8b622d' : '#696d59';
-        ctx.lineWidth = marked ? 3.8 : 2.5;
-        ctx.beginPath();
-        ctx.moveTo(pin.x, pin.y);
-        ctx.lineTo(center.x, center.y);
-        ctx.stroke();
-        const bw = (label.width / width) * w,
-          bh = (label.height / depth) * h;
-        ctx.fillStyle = marked ? '#e5c479' : '#ede6cc';
-        ctx.globalAlpha = 0.93;
-        ctx.beginPath();
-        ctx.roundRect(center.x - bw / 2, center.y - bh / 2, bw, bh, 5);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = '#283b36';
-        ctx.font = `500 ${Math.round(bh * 0.7)}px "IBM Plex Sans", Arial, sans-serif`;
-        ctx.fillText(label.city.name, center.x, center.y + 1, bw - 9);
-      }
+      printBoardLayout(ctx, w, h, width, depth, routes, labels, railColors, selection, view);
     },
     3072,
     2048,
@@ -391,9 +364,7 @@ export function buildBoard(
   const models = createRailMiniatures();
   const miniatureGroups: THREE.Group[] = [];
   const hitMaterial = new THREE.MeshBasicMaterial({
-    transparent: true,
-    opacity: 0,
-    depthWrite: false,
+    side: THREE.DoubleSide,
   });
   for (const route of routes) {
     const { edge } = route;
@@ -414,18 +385,20 @@ export function buildBoard(
     const group = new THREE.Group();
     eng.board.add(group);
     group.position.y = -0.77;
-    const highlightCurve = new THREE.CatmullRomCurve3(
-      route.points.map((p) => new THREE.Vector3(p.x, 0.018, p.z)),
-    );
-    const halo = new THREE.Mesh(
-      new THREE.TubeGeometry(highlightCurve, 48, route.width * 0.65, 5, false),
+    const halo = createBoardRouteTargets(
+      { ...route, slots: [] },
       new THREE.MeshBasicMaterial({
         color: '#ddb458',
         transparent: true,
         opacity: 0.7,
         depthWrite: false,
+        side: THREE.DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1,
       }),
-    );
+      { surfaceY: -0.025, linkWidth: 0.09 },
+    )[0]!;
     halo.userData.highlightForTable = { kind: 'edge', id: edge.id };
     halo.userData.selected = selected;
     halo.visible = selected;
@@ -466,24 +439,20 @@ export function buildBoard(
         });
       }
     });
-    const hit = new THREE.Mesh(
-      new THREE.TubeGeometry(highlightCurve, 48, Math.max(0.12, route.width * 0.68), 4, false),
-      hitMaterial,
-    );
-    hit.userData.interaction = { kind: 'edge', id: edge.id };
-    hit.userData.enabled = true;
-    group.add(hit);
-    eng.pickables.push(hit);
+    const targets = createBoardRouteTargets(route, hitMaterial);
+    group.add(...targets);
+    eng.pickables.push(...targets);
     if (detailed && selected) {
-      const p = route.points[Math.floor(route.points.length / 2)]!;
       const extra = edge.tunnel ? ' · тоннель' : edge.ferries ? ` · паром ${edge.ferries}` : '';
+      const price =
+        edge.length === 1 ? '1 карта' : `${edge.length} ${edge.length < 5 ? 'карты' : 'карт'}`;
       const face = placard(
         eng.board,
-        `${edge.length} карт${extra}`,
+        `${price}${extra}`,
         [],
         2.25,
         0.4,
-        new THREE.Vector3(p.x, 0.17, p.z - 0.5),
+        new THREE.Vector3(8.5, -0.55, depth / 2 + 0.4),
         { kind: 'edge', id: edge.id },
         true,
       );
@@ -497,10 +466,11 @@ export function buildBoard(
   for (const label of labels) {
     const target = new THREE.Mesh(new THREE.PlaneGeometry(label.width, label.height), hitMaterial);
     target.rotation.x = -Math.PI / 2;
-    target.position.set(label.x, -0.775, label.z);
+    target.position.set(label.x, -0.795, label.z);
     target.userData.interaction = { kind: 'station', id: label.city.id };
     target.userData.cityLabel = true;
     target.userData.enabled = true;
+    target.visible = false;
     eng.board.add(target);
     eng.pickables.push(target);
   }
@@ -521,7 +491,9 @@ export function buildBoard(
     const target = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.1, 16), hitMaterial);
     target.position.set(city.x, -0.705, city.z);
     target.userData.interaction = { kind: 'station', id: city.id };
+    target.userData.boardPickTarget = 'city';
     target.userData.enabled = true;
+    target.visible = false;
     eng.board.add(target);
     eng.pickables.push(target);
     const owner = observation.players.find((player) => player.stations.includes(city.id));
@@ -539,6 +511,12 @@ export function buildBoard(
       const roof = mesh('cone', [0.32, 0.2, 0.25], '#394642', [0, 0.39, 0], group);
       roof.rotation.y = Math.PI / 4;
       box([0.095, 0.135, 0.015], '#eee4cc', [0, 0.125, 0.155], group);
+      group.traverse((object) => {
+        if (!(object instanceof THREE.Mesh)) return;
+        object.userData.interaction = { kind: 'station', id: city.id };
+        object.userData.enabled = true;
+        eng.pickables.push(object);
+      });
     }
   }
 }

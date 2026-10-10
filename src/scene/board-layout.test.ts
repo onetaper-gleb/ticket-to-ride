@@ -123,6 +123,41 @@ describe('geographic Europe board and table layout', () => {
     }
   });
 
+  it('keeps placement attached to city and route IDs after ordering or ownership changes', () => {
+    const reversedCities = presentationCities([...CITIES].reverse());
+    const reversedRoutes = routeLayouts([...EDGES].reverse(), reversedCities);
+    const ownedRoutes = routeLayouts(
+      EDGES.map((edge) => ({ ...edge, owner: 1 })),
+      cities,
+    );
+    const geometry = (route: RouteLayout) => ({
+      points: route.points,
+      slots: route.slots,
+      coachLength: route.coachLength,
+      width: route.width,
+    });
+    for (const route of routes) {
+      expect(
+        geometry(reversedRoutes.find((other) => other.edge.id === route.edge.id)!),
+        `${route.edge.id} reordered observation`,
+      ).toEqual(geometry(route));
+      expect(
+        geometry(ownedRoutes.find((other) => other.edge.id === route.edge.id)!),
+        `${route.edge.id} ownership rebuild`,
+      ).toEqual(geometry(route));
+    }
+    const originals = cityLabels(cities, routes);
+    const reversedLabels = cityLabels(reversedCities, reversedRoutes);
+    for (const label of originals) {
+      const other = reversedLabels.find((candidate) => candidate.city.id === label.city.id)!;
+      expect(
+        { x: other.x, z: other.z, width: other.width, height: other.height },
+        label.city.id,
+      ).toEqual({ x: label.x, z: label.z, width: label.width, height: label.height });
+      expect(other.city).toBe(reversedCities.find((city) => city.id === label.city.id));
+    }
+  });
+
   it('keeps all eleven double routes physically separated when both are occupied', () => {
     const doubles = new Map<string, RouteLayout[]>();
     for (const route of routes) {

@@ -11,20 +11,37 @@ export function interactionForHit(hit: THREE.Intersection): TableInteraction | u
     hit.object.userData.selection) as TableInteraction | undefined;
 }
 
-/** Printed city names remain targets when a transparent railway hit tube passes above them. */
+function targetPriority(hit: THREE.Intersection) {
+  if (hit.object.userData.cityLabel) return 1;
+  switch (hit.object.userData.boardPickTarget) {
+    case 'slot':
+      return 2;
+    case 'link':
+      return 3;
+    case 'city':
+      return 4;
+    default:
+      return 0;
+  }
+}
+
+/** Visible miniature surfaces win over transparent backup targets. */
 export function chooseBoardHit(
   hits: THREE.Intersection[],
   camera: THREE.PerspectiveCamera,
   pointer: THREE.Vector2,
   centers: Map<string, THREE.Vector3[]>,
 ): THREE.Intersection | undefined {
-  const label = hits.find((hit) => hit.object.userData.cityLabel);
-  if (label) return label;
-  const primary = hits[0];
+  let priority = Infinity;
+  for (const hit of hits) priority = Math.min(priority, targetPriority(hit));
+  const eligible = hits.filter((hit) => targetPriority(hit) === priority);
+  const primary = eligible[0];
+  // A nearest-center tie-break must never replace a visible, nearer mesh or instance.
+  if (priority === 0) return primary;
   if (!primary || interactionForHit(primary)?.kind !== 'edge') return primary;
 
   const candidates = new Map<string, THREE.Intersection>();
-  for (const hit of hits) {
+  for (const hit of eligible) {
     const interaction = interactionForHit(hit);
     if (interaction?.kind === 'edge' && !candidates.has(interaction.id))
       candidates.set(interaction.id, hit);
