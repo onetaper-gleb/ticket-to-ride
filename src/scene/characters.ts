@@ -1,85 +1,102 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import type { PublicPlayer } from '../shared/types';
+import { buildCartoonHand } from './cartoon-hands';
 
 type Point = [number, number, number];
-type Ring = { y: number; width: number; front: number; back?: number; z?: number; x?: number };
+type Ring = { y: number; width: number; front: number; back?: number; z?: number };
 type CharacterStyle = {
+  name: string;
   skin: string;
-  skinShadow: string;
+  cheek: string;
   hair: string;
   cloth: string;
-  clothShadow: string;
+  trim: string;
   shirt: string;
   width: number;
   headWidth: number;
   headHeight: number;
-  headY: number;
+  nose: Point;
 };
 
 const styles: CharacterStyle[] = [
   {
-    skin: '#b88b6c',
-    skinShadow: '#95694f',
-    hair: '#878579',
-    cloth: '#384b50',
-    clothShadow: '#29393d',
-    shirt: '#c6bba1',
-    width: 2.48,
-    headWidth: 1.12,
-    headHeight: 2.12,
-    headY: 4.2,
+    name: 'Начальник станции',
+    skin: '#d6a57f',
+    cheek: '#d49475',
+    hair: '#a6a69b',
+    cloth: '#334e68',
+    trim: '#213a50',
+    shirt: '#e6d7b7',
+    width: 1.88,
+    headWidth: 1.29,
+    headHeight: 1.42,
+    nose: [0.4, 0.34, 0.47],
   },
   {
-    skin: '#c9a185',
-    skinShadow: '#a5785f',
-    hair: '#302c28',
-    cloth: '#526b65',
-    clothShadow: '#304b48',
-    shirt: '#9da68c',
-    width: 1.91,
-    headWidth: 0.89,
-    headHeight: 2.4,
-    headY: 4.27,
+    name: 'Билетная кассирша',
+    skin: '#edbb96',
+    cheek: '#df9f87',
+    hair: '#563e32',
+    cloth: '#974a52',
+    trim: '#71363e',
+    shirt: '#efe0c6',
+    width: 1.66,
+    headWidth: 1.24,
+    headHeight: 1.33,
+    nose: [0.3, 0.31, 0.37],
   },
   {
-    skin: '#86654e',
-    skinShadow: '#684937',
-    hair: '#3a322b',
-    cloth: '#77704a',
-    clothShadow: '#414e3d',
-    shirt: '#b6a17c',
-    width: 2.77,
-    headWidth: 1.15,
-    headHeight: 2.2,
-    headY: 4.0,
+    name: 'Путеец',
+    skin: '#aa7555',
+    cheek: '#a36c50',
+    hair: '#362e28',
+    cloth: '#60796b',
+    trim: '#3e584c',
+    shirt: '#cbb78b',
+    width: 2.02,
+    headWidth: 1.39,
+    headHeight: 1.34,
+    nose: [0.44, 0.32, 0.46],
+  },
+  {
+    name: 'Проводник',
+    skin: '#d9aa84',
+    cheek: '#c99171',
+    hair: '#39342d',
+    cloth: '#bb8748',
+    trim: '#8d6137',
+    shirt: '#dce1cf',
+    width: 1.71,
+    headWidth: 1.17,
+    headHeight: 1.46,
+    nose: [0.34, 0.38, 0.42],
   },
 ];
 
-// Continuous sections describe the silhouette; flat normals make the large planes legible.
-function loft(rings: Ring[], sides = 12) {
+function loft(rings: Ring[], exponent = 2.5, sides = 32) {
   const positions: number[] = [];
+  const indices: number[] = [];
+  const rounded = (value: number) => Math.sign(value) * Math.abs(value) ** (2 / exponent);
   for (const ring of rings) {
     for (let i = 0; i < sides; i++) {
       const angle = (i / sides) * Math.PI * 2;
-      const cosine = Math.cos(angle);
+      const cosine = rounded(Math.cos(angle));
       positions.push(
-        Math.sin(angle) * ring.width + (ring.x ?? 0),
+        rounded(Math.sin(angle)) * ring.width,
         ring.y,
-        (cosine >= 0
-          ? Math.min(cosine * 1.12, 1) * ring.front
-          : cosine * (ring.back ?? ring.front)) + (ring.z ?? 0),
+        cosine * (cosine >= 0 ? ring.front : (ring.back ?? ring.front)) + (ring.z ?? 0),
       );
     }
   }
-  const indices: number[] = [];
   for (let level = 0; level < rings.length - 1; level++) {
     for (let i = 0; i < sides; i++) {
       const next = (i + 1) % sides;
-      const a = level * sides + i,
-        b = level * sides + next;
-      const c = (level + 1) * sides + next,
-        d = (level + 1) * sides + i;
+      const a = level * sides + i;
+      const b = level * sides + next;
+      const c = (level + 1) * sides + next;
+      const d = (level + 1) * sides + i;
       indices.push(a, b, c, a, c, d);
     }
   }
@@ -91,84 +108,79 @@ function loft(rings: Ring[], sides = 12) {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geometry.setIndex(indices);
-  const faceted = geometry.toNonIndexed();
-  geometry.dispose();
-  faceted.computeVertexNormals();
-  return faceted;
+  geometry.computeVertexNormals();
+  return geometry;
 }
 
-function outline(points: [number, number][], depth = 0.055) {
-  const shape = new THREE.Shape();
-  shape.moveTo(...points[0]);
-  points.slice(1).forEach((point) => shape.lineTo(...point));
-  shape.closePath();
-  return new THREE.ExtrudeGeometry(shape, {
-    depth,
-    bevelEnabled: false,
-    steps: 1,
-    curveSegments: 1,
-  });
-}
-
-function bentVolume(points: Point[], widths: number[], depths: number[]) {
-  const positions: number[] = [],
-    indices: number[] = [];
-  const up = new THREE.Vector3(0, 1, 0);
-  const sections = points.map((point) => new THREE.Vector3(...point));
-  for (let i = 0; i < sections.length; i++) {
-    const before = sections[Math.max(0, i - 1)],
-      after = sections[Math.min(sections.length - 1, i + 1)];
-    const tangent = after.clone().sub(before).normalize();
-    const horizontal = new THREE.Vector3().crossVectors(up, tangent).normalize();
-    if (horizontal.lengthSq() < 0.1) horizontal.set(1, 0, 0);
-    const vertical = new THREE.Vector3().crossVectors(tangent, horizontal).normalize();
-    for (let s = 0; s < 8; s++) {
-      const angle = (s * Math.PI) / 4;
-      const vertex = sections[i]
+function curvedVolume(points: Point[], widths: number[], depths = widths, segments = 20) {
+  const curve = new THREE.CatmullRomCurve3(points.map((point) => new THREE.Vector3(...point)));
+  const frames = curve.computeFrenetFrames(segments, false);
+  const positions: number[] = [];
+  const indices: number[] = [];
+  const sides = 12;
+  for (let section = 0; section <= segments; section++) {
+    const t = section / segments;
+    const sample = t * (widths.length - 1);
+    const index = Math.min(widths.length - 2, Math.floor(sample));
+    const amount = sample - index;
+    const width = THREE.MathUtils.lerp(widths[index], widths[index + 1], amount);
+    const depth = THREE.MathUtils.lerp(depths[index], depths[index + 1], amount);
+    const center = curve.getPointAt(t);
+    for (let side = 0; side < sides; side++) {
+      const angle = (side / sides) * Math.PI * 2;
+      const vertex = center
         .clone()
-        .addScaledVector(horizontal, Math.cos(angle) * widths[i])
-        .addScaledVector(vertical, Math.sin(angle) * depths[i]);
+        .addScaledVector(frames.normals[section], Math.cos(angle) * width)
+        .addScaledVector(frames.binormals[section], Math.sin(angle) * depth);
       positions.push(vertex.x, vertex.y, vertex.z);
     }
   }
-  for (let i = 0; i < sections.length - 1; i++) {
-    for (let s = 0; s < 8; s++) {
-      const next = (s + 1) % 8;
-      const a = i * 8 + s,
-        b = i * 8 + next,
-        c = (i + 1) * 8 + next,
-        d = (i + 1) * 8 + s;
+  for (let section = 0; section < segments; section++) {
+    for (let side = 0; side < sides; side++) {
+      const next = (side + 1) % sides;
+      const a = section * sides + side;
+      const b = section * sides + next;
+      const c = (section + 1) * sides + next;
+      const d = (section + 1) * sides + side;
       indices.push(a, b, c, a, c, d);
     }
   }
-  for (let s = 1; s < 7; s++) {
-    indices.push(0, s + 1, s);
-    const last = (sections.length - 1) * 8;
-    indices.push(last, last + s, last + s + 1);
+  for (let side = 1; side < sides - 1; side++) {
+    indices.push(0, side + 1, side);
+    const last = segments * sides;
+    indices.push(last, last + side, last + side + 1);
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geometry.setIndex(indices);
-  const faceted = geometry.toNonIndexed();
-  geometry.dispose();
-  faceted.computeVertexNormals();
-  return faceted;
+  geometry.computeVertexNormals();
+  return geometry;
 }
 
-const palettes = new WeakMap<THREE.Group, Map<string, THREE.MeshStandardMaterial>>();
+function softPatch(points: [number, number][], depth = 0.1) {
+  const shape = new THREE.Shape();
+  shape.moveTo(...points[0]);
+  for (const point of points.slice(1)) shape.lineTo(...point);
+  shape.closePath();
+  return new THREE.ExtrudeGeometry(shape, {
+    depth,
+    bevelEnabled: true,
+    bevelSize: 0.065,
+    bevelThickness: 0.065,
+    bevelSegments: 3,
+    steps: 1,
+    curveSegments: 8,
+  });
+}
 
 function characterFactory(parent: THREE.Group) {
-  let materials = palettes.get(parent);
-  if (!materials) {
-    materials = new Map<string, THREE.MeshStandardMaterial>();
-    palettes.set(parent, materials);
-  }
-  const material = (color: string, roughness = 0.92) => {
+  const materials = new Map<string, THREE.MeshStandardMaterial>();
+  const material = (color: string, roughness = 0.94) => {
     const key = `${color}:${roughness}`;
-    let result = materials!.get(key);
+    let result = materials.get(key);
     if (!result) {
-      result = new THREE.MeshStandardMaterial({ color, roughness, flatShading: true });
-      materials!.set(key, result);
+      result = new THREE.MeshStandardMaterial({ color, roughness, metalness: 0 });
+      materials.set(key, result);
     }
     return result;
   };
@@ -185,19 +197,622 @@ function characterFactory(parent: THREE.Group) {
     target.add(result);
     return result;
   };
+  const round = (size: Point, color: string, position: Point, target: THREE.Object3D = parent) =>
+    mesh(new RoundedBoxGeometry(...size, 3, Math.min(...size) * 0.22), color, position, target);
+  const oval = (size: Point, color: string, position: Point, target: THREE.Object3D = parent) => {
+    const geometry = new THREE.SphereGeometry(1, 24, 16);
+    geometry.scale(...size);
+    return mesh(geometry, color, position, target);
+  };
   const patch = (
     points: [number, number][],
     color: string,
     position: Point,
     target: THREE.Object3D = parent,
-    depth = 0.055,
-  ) => mesh(outline(points, depth), color, position, target);
-  const block = (size: Point, color: string, position: Point, target: THREE.Object3D = parent) =>
-    mesh(new THREE.BoxGeometry(...size), color, position, target);
-  return { mesh, patch, block, material };
+    depth = 0.1,
+  ) => mesh(softPatch(points, depth), color, position, target);
+  return { mesh, round, oval, patch, material };
 }
 
-// Static skin and fabric share one draw call per material, while textured card backs stay separate.
+type Factory = ReturnType<typeof characterFactory>;
+
+type FaceForm = ReturnType<typeof sculptedFace>;
+
+/** The face is one closed surface; facial volumes are displacements of that surface. */
+function sculptedFace(style: CharacterStyle, kind: number) {
+  const w = style.headWidth;
+  const h = style.headHeight;
+  const exponent = kind === 2 ? 2.65 : 2.3;
+  const profile = [
+    [-1, 0, 0, 0],
+    [-0.92, 0.36, 0.43, 0.34],
+    [-0.76, kind === 2 ? 0.76 : 0.67, 0.67, 0.54],
+    [-0.5, kind === 2 ? 0.95 : 0.88, 0.77, 0.74],
+    [-0.18, 1, 0.81, 0.87],
+    [0.18, 1, 0.79, 0.92],
+    [0.52, 0.94, 0.74, 0.87],
+    [0.79, 0.76, 0.58, 0.7],
+    [0.95, 0.35, 0.29, 0.36],
+    [1, 0, 0, 0],
+  ];
+  const section = (y: number) => {
+    const t = THREE.MathUtils.clamp(y / h, -1, 1);
+    let index = 0;
+    while (index < profile.length - 2 && profile[index + 1][0] < t) index++;
+    const a = profile[index];
+    const b = profile[index + 1];
+    const before = profile[Math.max(0, index - 1)];
+    const after = profile[Math.min(profile.length - 1, index + 2)];
+    const length = b[0] - a[0];
+    const u = (t - a[0]) / length;
+    const u2 = u * u;
+    const u3 = u2 * u;
+    return [1, 2, 3].map((component) => {
+      const firstSlope = (b[component] - before[component]) / (b[0] - before[0]);
+      const lastSlope = (after[component] - a[component]) / (after[0] - a[0]);
+      return Math.max(
+        0,
+        (2 * u3 - 3 * u2 + 1) * a[component] +
+          (u3 - 2 * u2 + u) * length * firstSlope +
+          (-2 * u3 + 3 * u2) * b[component] +
+          (u3 - u2) * length * lastSlope,
+      );
+    });
+  };
+  const gaussian = (x: number, y: number, cx: number, cy: number, rx: number, ry: number) =>
+    Math.exp(-(((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2));
+  const eyeX = w * 0.41;
+  const eyeY = kind === 2 ? 0.13 : 0.19;
+  const eyeWidth = kind === 1 ? 0.255 : 0.265;
+  const eyeHeight = kind === 2 ? 0.135 : kind === 1 ? 0.16 : 0.15;
+  const mouthY = (x: number) => -0.7 + (kind === 1 || kind === 3 ? 0.095 : 0.035) * (x / 0.36) ** 2;
+  const noseWidth = style.nose[0] * (kind === 2 ? 1.11 : kind === 1 ? 0.96 : 1.03);
+  const noseY = kind === 1 ? -0.13 : kind === 3 ? -0.265 : -0.2;
+  const noseHeight = style.nose[1] * (kind === 2 ? 0.79 : kind === 1 ? 0.77 : 0.88);
+  const displacement = (x: number, y: number) => {
+    // Wide cheek and jaw fields overlap the muzzle instead of forming circular cheek objects.
+    let result = 0.085 * gaussian(x, y, 0, -0.99, w * 0.56, 0.29);
+    result += 0.045 * gaussian(x, y, 0, -0.6, 0.58, 0.31);
+    for (const side of [-1, 1]) {
+      result += (kind === 1 ? 0.115 : 0.14) * gaussian(x, y, side * w * 0.56, -0.37, w * 0.42, 0.4);
+      result += 0.055 * gaussian(x, y, side * w * 0.64, -0.05, w * 0.36, 0.4);
+      result -= 0.09 * gaussian(x, y, side * eyeX, eyeY, 0.31, 0.235);
+      const ex = (x - side * eyeX) / (eyeWidth * 1.12);
+      const ey = (y - eyeY) / (eyeHeight * 1.34);
+      const radius = Math.hypot(ex, ey);
+      result += 0.035 * Math.exp(-(((radius - 1.05) / 0.26) ** 2));
+      result += 0.06 * gaussian(x, y, side * eyeX, eyeY + 0.24, 0.38, 0.15);
+    }
+    // Bridge, broad tip, alae and columella all belong to the same skin mesh.
+    result +=
+      (kind === 3 ? 0.21 : kind === 1 ? 0.13 : 0.18) *
+      gaussian(x, y, 0, 0.16, noseWidth * 0.69, kind === 3 ? 0.57 : 0.49);
+    result += (style.nose[2] + 0.1) * gaussian(x, y, 0, noseY, noseWidth, noseHeight);
+    for (const side of [-1, 1])
+      result +=
+        0.065 * gaussian(x, y, side * noseWidth * 0.7, noseY - 0.075, noseWidth * 0.57, 0.17);
+    result += 0.055 * gaussian(x, y, 0, noseY - 0.19, noseWidth * 0.46, 0.15);
+    const lipY = mouthY(x);
+    const lipMask = Math.exp(-((x / 0.39) ** 4));
+    result += lipMask * (0.035 * Math.exp(-(((y - lipY - 0.045) / 0.06) ** 2)));
+    result += lipMask * (0.038 * Math.exp(-(((y - lipY + 0.06) / 0.075) ** 2)));
+    result -= lipMask * (0.022 * Math.exp(-(((y - lipY) / 0.025) ** 2)));
+    return result;
+  };
+  const front = (x: number, y: number) => {
+    const [width, depth] = section(y);
+    const contour =
+      Math.max(0, 1 - (Math.abs(x) / Math.max(0.001, width * w)) ** exponent) ** (1 / exponent);
+    return depth * contour + displacement(x, y) * THREE.MathUtils.smoothstep(contour, 0, 0.3);
+  };
+  const positions: number[] = [0, -h, 0];
+  const colors: number[] = [];
+  const skin = new THREE.Color(style.skin);
+  const blush = new THREE.Color(style.cheek);
+  const colorAt = (x: number, y: number, facing: number) => {
+    const warmth =
+      0.18 *
+      (gaussian(x, y, w * 0.58, -0.35, 0.49, 0.37) + gaussian(x, y, -w * 0.58, -0.35, 0.49, 0.37)) *
+      Math.max(0, facing);
+    const color = skin.clone().lerp(blush, warmth);
+    colors.push(color.r, color.g, color.b);
+  };
+  colorAt(0, -h, 0);
+  const sides = 128;
+  const levels = 80;
+  const indices: number[] = [];
+  for (let level = 1; level < levels; level++) {
+    const y = -Math.cos((level / levels) * Math.PI) * h;
+    const [width, faceDepth, backDepth] = section(y);
+    for (let side = 0; side < sides; side++) {
+      const angle = (side / sides) * Math.PI * 2;
+      const sine = Math.sin(angle);
+      const cosine = Math.cos(angle);
+      const x = Math.sign(sine) * Math.abs(sine) ** (2 / exponent) * width * w;
+      const contour = Math.sign(cosine) * Math.abs(cosine) ** (2 / exponent);
+      const z = cosine > 0 ? front(x, y) : contour * backDepth;
+      positions.push(x, y, z);
+      colorAt(x, y, cosine);
+    }
+  }
+  const top = positions.length / 3;
+  positions.push(0, h, 0);
+  colorAt(0, h, 0);
+  for (let side = 0; side < sides; side++) {
+    const next = (side + 1) % sides;
+    indices.push(0, 1 + next, 1 + side);
+    for (let level = 0; level < levels - 2; level++) {
+      const a = 1 + level * sides + side;
+      const b = 1 + level * sides + next;
+      const c = b + sides;
+      const d = a + sides;
+      indices.push(a, b, c, a, c, d);
+    }
+    const last = 1 + (levels - 2) * sides;
+    indices.push(last + side, last + next, top);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return { geometry, front, eyeX, eyeY, eyeWidth, eyeHeight, mouthY };
+}
+
+/** A shaped surface patch follows the sculpt rather than intersecting it as a sphere. */
+function facePatch(
+  face: FaceForm,
+  center: [number, number],
+  size: [number, number],
+  offset: number,
+  almond = false,
+) {
+  const positions: number[] = [center[0], center[1], face.front(...center) + offset];
+  const indices: number[] = [];
+  const sides = 48;
+  const rings = 6;
+  for (let ring = 1; ring <= rings; ring++) {
+    const r = ring / rings;
+    for (let side = 0; side < sides; side++) {
+      const theta = (side / sides) * Math.PI * 2;
+      const x = center[0] + Math.cos(theta) * size[0] * r;
+      const y =
+        center[1] +
+        Math.sin(theta) * size[1] * r * (almond ? 1 - 0.28 * Math.abs(Math.cos(theta)) : 1);
+      positions.push(x, y, face.front(x, y) + offset + 0.006 * (1 - r * r));
+    }
+  }
+  for (let side = 0; side < sides; side++) {
+    const next = (side + 1) % sides;
+    indices.push(0, 1 + side, 1 + next);
+    for (let ring = 0; ring < rings - 1; ring++) {
+      const a = 1 + ring * sides + side;
+      const b = 1 + ring * sides + next;
+      const c = b + sides;
+      const d = a + sides;
+      indices.push(a, d, c, a, c, b);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+/** Tapered sculpted ridges stay embedded in the face along both edges. */
+function faceRibbon(
+  face: FaceForm,
+  points: [number, number][],
+  widths: number[],
+  height: number,
+  segments = 28,
+) {
+  const curve = new THREE.CatmullRomCurve3(points.map(([x, y]) => new THREE.Vector3(x, y, 0)));
+  const positions: number[] = [];
+  const indices: number[] = [];
+  const across = 8;
+  for (let level = 0; level <= segments; level++) {
+    const t = level / segments;
+    const center = curve.getPointAt(t);
+    const tangent = curve.getTangentAt(t);
+    const sample = t * (widths.length - 1);
+    const index = Math.min(widths.length - 2, Math.floor(sample));
+    const width = THREE.MathUtils.lerp(widths[index], widths[index + 1], sample - index);
+    for (let step = 0; step <= across; step++) {
+      const u = (step / across) * 2 - 1;
+      const x = center.x - tangent.y * width * u;
+      const y = center.y + tangent.x * width * u;
+      positions.push(x, y, face.front(x, y) + 0.007 + height * (1 - u * u));
+    }
+  }
+  for (let level = 0; level < segments; level++) {
+    for (let step = 0; step < across; step++) {
+      const a = level * (across + 1) + step;
+      const b = a + 1;
+      const c = b + across + 1;
+      const d = a + across + 1;
+      indices.push(a, d, c, a, c, b);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function buildHead(person: THREE.Group, style: CharacterStyle, kind: number, factory: Factory) {
+  const { mesh, oval, round, patch } = factory;
+  const head = new THREE.Group();
+  head.position.set(kind === 1 ? -0.07 : 0.03, 4.05, 0.04);
+  head.rotation.set(
+    -0.075,
+    kind === 1 ? -0.055 : kind === 3 ? 0.065 : 0,
+    kind === 1 ? 0.05 : -0.02,
+  );
+  person.add(head);
+  const w = style.headWidth;
+  const h = style.headHeight;
+  const face = sculptedFace(style, kind);
+  const faceMaterial = new THREE.MeshStandardMaterial({
+    color: '#ffffff',
+    vertexColors: true,
+    roughness: 0.94,
+    metalness: 0,
+  });
+  faceMaterial.name = 'Скульптура лица: ' + style.name;
+  const skinMesh = new THREE.Mesh(face.geometry, faceMaterial);
+  skinMesh.name = 'Цельная скульптура головы';
+  skinMesh.castShadow = true;
+  skinMesh.receiveShadow = true;
+  head.add(skinMesh);
+  for (const side of [-1, 1]) {
+    const ear = new THREE.SphereGeometry(1, 40, 28);
+    const position = ear.getAttribute('position');
+    for (let vertex = 0; vertex < position.count; vertex++) {
+      const x = position.getX(vertex),
+        y = position.getY(vertex),
+        z = position.getZ(vertex);
+      const bowl = Math.exp(-((x / 0.55) ** 2 + (y / 0.65) ** 2));
+      position.setXYZ(
+        vertex,
+        x * 0.235 * (1 - y * 0.12),
+        y * 0.395,
+        z >= 0
+          ? 0.08 + 0.1 * z - 0.075 * bowl * THREE.MathUtils.smoothstep(z, 0, 0.35)
+          : 0.08 + 0.24 * z,
+      );
+    }
+    ear.computeVertexNormals();
+    mesh(ear, style.skin, [side * w * 1.015, -0.035, -0.08], head);
+    const cx = side * face.eyeX;
+    const cy = face.eyeY;
+    mesh(
+      facePatch(face, [cx, cy], [face.eyeWidth, face.eyeHeight], 0.014, true),
+      '#e2dac9',
+      [0, 0, 0],
+      head,
+    );
+    const pupilX = cx - side * 0.035;
+    mesh(
+      facePatch(face, [pupilX, cy - 0.009], [0.135, face.eyeHeight * 0.9], 0.026),
+      '#24272a',
+      [0, 0, 0],
+      head,
+    );
+    mesh(
+      facePatch(face, [pupilX - 0.028, cy + 0.035], [0.024, 0.026], 0.036),
+      '#f0e6d2',
+      [0, 0, 0],
+      head,
+    );
+    // The eyelid volume is part of the head; only the narrow upper lash line is a patch.
+    mesh(
+      faceRibbon(
+        face,
+        [
+          [cx - face.eyeWidth * 0.96, cy],
+          [cx - face.eyeWidth * 0.44, cy + face.eyeHeight * 0.85],
+          [cx + face.eyeWidth * 0.42, cy + face.eyeHeight * 0.85],
+          [cx + face.eyeWidth * 0.96, cy],
+        ],
+        [0.003, 0.015, 0.014, 0.003],
+        0.004,
+      ),
+      '#604a3c',
+      [0, 0, 0],
+      head,
+    );
+    const browY = cy + (kind === 2 ? 0.22 : 0.27);
+    mesh(
+      faceRibbon(
+        face,
+        [
+          [side * (face.eyeX - 0.29), browY - 0.025],
+          [side * (face.eyeX - 0.13), browY + (kind === 2 ? 0.045 : 0.07)],
+          [side * (face.eyeX + 0.13), browY + 0.045],
+          [side * (face.eyeX + 0.32), browY - 0.07],
+        ],
+        [0.015, kind === 2 ? 0.12 : 0.105, 0.09, 0.012],
+        0.065,
+      ),
+      style.hair,
+      [0, 0, 0],
+      head,
+    );
+  }
+  const mouthPoints: [number, number][] = [-0.36, -0.2, 0, 0.2, 0.36].map((x) => [
+    x,
+    face.mouthY(x),
+  ]);
+  mesh(
+    faceRibbon(face, mouthPoints, [0.005, 0.016, 0.021, 0.016, 0.005], 0.004),
+    '#775044',
+    [0, 0, 0],
+    head,
+  );
+  if (kind === 0 || kind === 2) {
+    for (const side of [-1, 1]) {
+      mesh(
+        faceRibbon(
+          face,
+          [
+            [side * 0.055, -0.465],
+            [side * 0.24, -0.51],
+            [side * 0.47, -0.565],
+            [side * (kind === 0 ? 0.73 : 0.62), -0.51],
+          ],
+          [0.065, 0.145, 0.14, 0.008],
+          kind === 0 ? 0.12 : 0.1,
+        ),
+        style.hair,
+        [0, 0, 0],
+        head,
+      );
+    }
+    if (kind === 0) {
+      for (const side of [-1, 1])
+        mesh(
+          faceRibbon(
+            face,
+            [
+              [side * w * 0.86, -0.17],
+              [side * w * 0.9, -0.43],
+              [side * w * 0.84, -0.72],
+            ],
+            [0.04, 0.09, 0.015],
+            0.035,
+          ),
+          style.hair,
+          [0, 0, 0],
+          head,
+        );
+      mesh(
+        loft(
+          [
+            { y: h * 0.67, width: w * 0.92, front: 0.77, back: 0.84 },
+            { y: h * 0.82, width: w * 1.05, front: 0.82, back: 0.92 },
+            { y: h * 1.05, width: w, front: 0.78, back: 0.86 },
+            { y: h * 1.2, width: w * 0.73, front: 0.55, back: 0.64 },
+            { y: h * 1.24, width: 0.05, front: 0.05 },
+          ],
+          2.7,
+        ),
+        style.cloth,
+        [0, 0, -0.08],
+        head,
+      );
+      round([w * 1.93, 0.16, 0.17], style.trim, [0, h * 0.72, 0.73], head);
+      oval([1.03, 0.13, 0.5], style.trim, [0, h * 0.67, 0.73], head).rotation.x = -0.08;
+      round([0.39, 0.28, 0.085], '#d3b578', [0, h * 0.9, 0.76], head);
+    } else {
+      mesh(
+        loft(
+          [
+            { y: h * 0.65, width: w * 0.88, front: 0.72, back: 0.84 },
+            { y: h * 0.86, width: w * 1.02, front: 0.79, back: 0.9 },
+            { y: h * 1.05, width: w * 0.93, front: 0.66, back: 0.76 },
+            { y: h * 1.13, width: w * 0.48, front: 0.38, back: 0.43 },
+            { y: h * 1.16, width: 0.035, front: 0.035 },
+          ],
+          2.4,
+        ),
+        '#896d4c',
+        [0, 0, -0.1],
+        head,
+      );
+      oval([0.87, 0.12, 0.43], '#6c543e', [0, h * 0.65, 0.72], head);
+      mesh(
+        faceRibbon(
+          face,
+          [
+            [-0.24, -0.97],
+            [0, -1.035],
+            [0.24, -0.97],
+          ],
+          [0.015, 0.105, 0.015],
+          0.025,
+        ),
+        style.hair,
+        [0, 0, 0],
+        head,
+      );
+    }
+  } else if (kind === 1) {
+    mesh(
+      loft([
+        { y: -h * 0.76, width: w * 0.86, front: 0.17, back: 0.66, z: -0.29 },
+        { y: -h * 0.45, width: w * 1.08, front: 0.29, back: 0.76, z: -0.29 },
+        { y: h * 0.43, width: w * 1.09, front: 0.38, back: 0.85, z: -0.19 },
+        { y: h * 0.81, width: w * 0.94, front: 0.57, back: 0.75, z: -0.11 },
+        { y: h * 1.03, width: w * 0.62, front: 0.45, back: 0.5 },
+        { y: h * 1.09, width: 0.04, front: 0.04 },
+      ]),
+      style.hair,
+      [0, 0, 0],
+      head,
+    );
+    const fringe = patch(
+      [
+        [-1.06, -0.33],
+        [-1.05, 0.39],
+        [-0.54, 0.64],
+        [0.5, 0.56],
+        [0.92, 0.32],
+        [0.38, 0.21],
+        [-0.18, 0.12],
+        [-0.7, -0.36],
+      ],
+      style.hair,
+      [0, h * 0.6, 0.65],
+      head,
+      0.19,
+    );
+    fringe.rotation.z = -0.07;
+    for (const side of [-1, 1])
+      oval([0.24, 0.78, 0.24], style.hair, [side * w * 0.99, -0.08, 0.15], head);
+    round([0.4, 0.16, 0.11], '#ccb375', [w * 0.77, h * 0.55, 0.77], head).rotation.z = -0.25;
+  } else {
+    mesh(
+      loft([
+        { y: h * 0.49, width: w * 0.95, front: 0.25, back: 0.76, z: -0.18 },
+        { y: h * 0.79, width: w * 1.04, front: 0.63, back: 0.84, z: -0.06 },
+        { y: h * 1.08, width: w * 0.83, front: 0.62, back: 0.68 },
+        { y: h * 1.24, width: w * 0.42, front: 0.39, back: 0.35, z: 0.14 },
+        { y: h * 1.28, width: 0.04, front: 0.04, z: 0.19 },
+      ]),
+      style.hair,
+      [0, 0, 0],
+      head,
+    );
+    oval([0.71, 0.39, 0.31], style.hair, [-0.35, h * 0.83, 0.7], head).rotation.z = -0.27;
+  }
+}
+
+function buildClothes(person: THREE.Group, style: CharacterStyle, kind: number, factory: Factory) {
+  const { mesh, round, oval, patch } = factory;
+  const w = style.width;
+  mesh(
+    loft(
+      [
+        { y: -0.51, width: w * 0.46, front: 0.53, back: 0.55, z: -0.12 },
+        { y: -0.24, width: w * 0.72, front: 0.76, back: 0.66, z: -0.13 },
+        { y: 0.57, width: w * 0.9, front: 0.86, back: 0.7, z: -0.12 },
+        { y: 1.47, width: w, front: 0.88, back: 0.74, z: -0.1 },
+        { y: 2.22, width: w * 0.99, front: 0.81, back: 0.69, z: -0.06 },
+        { y: 2.65, width: w * 0.86, front: 0.64, back: 0.53 },
+        { y: 2.91, width: w * 0.54, front: 0.4, back: 0.37, z: 0.02 },
+        { y: 3.0, width: 0.49, front: 0.34, back: 0.33, z: 0.03 },
+      ],
+      2.6,
+    ),
+    kind === 2 ? style.shirt : style.cloth,
+  );
+  oval([0.48, 0.5, 0.43], style.skin, [0, 2.98, 0.02]);
+  if (kind === 2) {
+    round([2.28, 2.15, 0.17], style.cloth, [0, 1.13, 0.77]);
+    for (const side of [-1, 1]) {
+      round([0.28, 1.73, 0.16], style.cloth, [side * 0.89, 2.15, 0.72]).rotation.z = side * -0.12;
+      oval([0.115, 0.115, 0.07], '#d6b577', [side * 0.91, 1.86, 0.91]);
+    }
+    round([0.83, 0.6, 0.09], style.trim, [0, 1.3, 0.89]);
+  } else {
+    round([0.84, 2.08, 0.16], style.shirt, [0, 1.84, 0.79]);
+    for (const side of [-1, 1]) {
+      const lapel = patch(
+        [
+          [-0.14, 0.81],
+          [0.53, 0.81],
+          [0.82, 0.14],
+          [0.48, -0.03],
+          [0.03, -0.88],
+          [-0.19, -0.09],
+        ],
+        style.trim,
+        [side * 0.43, 2.02, 0.84],
+        person,
+        0.1,
+      );
+      lapel.scale.x = side;
+      lapel.rotation.y = side * 0.09;
+      const collar = patch(
+        [
+          [-0.13, 0.22],
+          [0.35, 0.33],
+          [0.69, -0.05],
+          [0.15, -0.35],
+        ],
+        style.shirt,
+        [side * 0.29, 2.71, 0.87],
+        person,
+        0.09,
+      );
+      collar.scale.x = side;
+    }
+    for (const y of [1.14, 0.57]) oval([0.085, 0.085, 0.06], '#ccb477', [0.13, y, 0.83]);
+    round([0.66, 0.29, 0.08], style.trim, [-w * 0.58, 1.24, 0.81]).rotation.z = -0.08;
+    if (kind === 1) {
+      oval([0.25, 0.21, 0.13], '#b79361', [0, 2.59, 1.01]);
+      for (const side of [-1, 1])
+        oval([0.36, 0.22, 0.14], '#b79361', [side * 0.26, 2.54, 0.96]).rotation.z = side * 0.17;
+    } else if (kind === 3) round([0.26, 1.36, 0.11], '#476b6a', [0, 2.04, 0.94]).rotation.z = 0.065;
+  }
+}
+
+function attachHand(
+  person: THREE.Group,
+  style: CharacterStyle,
+  side: -1 | 1,
+  position: Point,
+  rotation: Point,
+  grip: boolean,
+  factory: Factory,
+) {
+  const hand = buildCartoonHand(style.skin, side, grip);
+  hand.name = grip ? 'Кисть с картами' : 'Открытая кисть';
+  hand.position.set(...position);
+  hand.rotation.set(...rotation);
+  hand.scale.setScalar(1.04);
+  // Rigged skin keeps its vertex colours and material; only static pieces share the palette.
+  const replaced = new Set<THREE.Material>();
+  hand.traverse((object) => {
+    if (
+      !(object instanceof THREE.Mesh) ||
+      object instanceof THREE.SkinnedMesh ||
+      Array.isArray(object.material)
+    )
+      return;
+    replaced.add(object.material);
+    object.material = factory.material(style.skin, 0.88);
+  });
+  replaced.forEach((material) => material.dispose());
+  person.add(hand);
+  hand.updateMatrix();
+  const wrist = new THREE.Vector3(0, -0.5, 0).applyMatrix4(hand.matrix);
+  return { hand, wrist };
+}
+
+function buildCards(hand: THREE.Group, count: number, texture: THREE.Texture, factory: Factory) {
+  const fan = new THREE.Group();
+  fan.name = 'Веер рубашек карт';
+  hand.add(fan);
+  const paper = factory.material('#d5c6a6');
+  const back = new THREE.MeshStandardMaterial({ map: texture, roughness: 1, metalness: 0 });
+  const geometry = new THREE.BoxGeometry(0.82, 1.4, 0.034);
+  geometry.translate(0, 0.7, 0);
+  for (let index = 0; index < count; index++) {
+    const spread = index - (count - 1) / 2;
+    const card = new THREE.Mesh(geometry, [paper, paper, paper, paper, back, back]);
+    card.name = 'Закрытая карта';
+    card.position.set(spread * 0.055, -0.14 + Math.abs(spread) * 0.014, 0.145 - index * 0.016);
+    card.rotation.z = -spread * 0.175;
+    card.castShadow = true;
+    card.receiveShadow = true;
+    fan.add(card);
+  }
+}
+
 function consolidateCharacter(person: THREE.Group) {
   person.updateMatrixWorld(true);
   const inverseRoot = person.matrixWorld.clone().invert();
@@ -206,18 +821,22 @@ function consolidateCharacter(person: THREE.Group) {
     { geometry: THREE.BufferGeometry; object: THREE.Mesh }[]
   >();
   person.traverse((object) => {
-    if (!(object instanceof THREE.Mesh) || Array.isArray(object.material)) return;
+    if (
+      !(object instanceof THREE.Mesh) ||
+      object instanceof THREE.SkinnedMesh ||
+      Array.isArray(object.material)
+    )
+      return;
     if (!(object.material instanceof THREE.MeshStandardMaterial) || object.material.map) return;
     const geometry = object.geometry.index
       ? object.geometry.toNonIndexed()
       : object.geometry.clone();
     for (const key of Object.keys(geometry.attributes))
-      if (key !== 'position' && key !== 'normal') geometry.deleteAttribute(key);
+      if (key !== 'position' && key !== 'normal' && key !== 'color') geometry.deleteAttribute(key);
     const transform = inverseRoot.clone().multiply(object.matrixWorld);
     geometry.applyMatrix4(transform);
-    // Mirrored lapels and thumbs need matching winding after their transform is baked.
     if (transform.determinant() < 0) {
-      for (const key of ['position', 'normal']) {
+      for (const key of Object.keys(geometry.attributes)) {
         const attribute = geometry.getAttribute(key) as THREE.BufferAttribute;
         for (let vertex = 0; vertex < attribute.count; vertex += 3) {
           for (let component = 0; component < attribute.itemSize; component++) {
@@ -256,507 +875,7 @@ function consolidateCharacter(person: THREE.Group) {
   obsolete.forEach((geometry) => geometry.dispose());
 }
 
-function buildFace(person: THREE.Group, style: CharacterStyle, kind: number) {
-  const { mesh, patch, block } = characterFactory(person);
-  const head = new THREE.Group();
-  head.position.set(kind === 1 ? -0.12 : 0.05, style.headY, 0.06);
-  // Raise the face towards the seated camera, rather than hiding it under the brow or cap.
-  head.rotation.set(-0.12, kind === 1 ? -0.12 : kind === 2 ? 0.06 : 0, kind === 1 ? 0.065 : -0.025);
-  person.add(head);
-  const w = style.headWidth,
-    h = style.headHeight;
-  mesh(
-    loft([
-      { y: 0, width: w * 0.45, front: 0.5, back: 0.4, z: 0.1 },
-      { y: h * 0.14, width: w * 0.73, front: 0.69, back: 0.52 },
-      { y: h * 0.32, width: w * 0.95, front: 0.73, back: 0.64 },
-      { y: h * 0.54, width: w, front: 0.77, back: 0.7 },
-      { y: h * 0.76, width: w * 0.93, front: 0.71, back: 0.73 },
-      { y: h * 0.94, width: w * 0.72, front: 0.49, back: 0.56, z: -0.03 },
-      { y: h, width: w * 0.36, front: 0.29, back: 0.35, z: -0.08 },
-    ]),
-    style.skin,
-    [0, 0, 0],
-    head,
-  );
-  for (const side of [-1, 1]) {
-    const ear = mesh(
-      loft(
-        [
-          { y: -0.32, width: 0.12, front: 0.1, back: 0.12 },
-          { y: -0.1, width: 0.22, front: 0.15, back: 0.15 },
-          { y: 0.22, width: 0.19, front: 0.15, back: 0.12 },
-          { y: 0.35, width: 0.1, front: 0.08, back: 0.08 },
-        ],
-        8,
-      ),
-      style.skin,
-      [side * w * 1.02, h * 0.48, -0.01],
-      head,
-    );
-    ear.rotation.z = side * -0.17;
-    patch(
-      [
-        [-0.07, -0.12],
-        [0.06, -0.1],
-        [0.1, 0.12],
-        [-0.04, 0.18],
-      ],
-      style.skinShadow,
-      [side * w * 1.02, h * 0.48, 0.14],
-      head,
-    );
-    // The lid, recess and narrow iris are planes; there are no protruding eyeballs.
-    const eye = new THREE.Group();
-    eye.position.set(side * w * 0.43, h * 0.59, 0.761);
-    eye.rotation.y = side * 0.11;
-    head.add(eye);
-    patch(
-      [
-        [-0.25, -0.08],
-        [-0.2, 0.07],
-        [0.13, 0.09],
-        [0.25, -0.025],
-        [0.16, -0.11],
-        [-0.12, -0.12],
-      ],
-      style.skinShadow,
-      [0, 0, 0],
-      eye,
-    );
-    patch(
-      [
-        [-0.205, -0.034],
-        [-0.13, 0.017],
-        [0.13, 0.015],
-        [0.19, -0.04],
-        [0.1, -0.07],
-        [-0.13, -0.074],
-      ],
-      '#d0c3a5',
-      [0, 0, 0.035],
-      eye,
-    );
-    patch(
-      [
-        [-0.045, -0.065],
-        [-0.048, 0.014],
-        [0.043, 0.014],
-        [0.05, -0.063],
-      ],
-      '#30312b',
-      [side * -0.025, 0, 0.052],
-      eye,
-    );
-    patch(
-      [
-        [-0.255, 0.085],
-        [-0.18, 0.2],
-        [0.14, 0.205],
-        [0.28, 0.112],
-        [0.17, 0.076],
-        [-0.11, 0.103],
-      ],
-      style.skin,
-      [0, 0, 0.09],
-      eye,
-    );
-    const brow = patch(
-      [
-        [-0.25, -0.035],
-        [-0.17, 0.065],
-        [0.12, 0.075],
-        [0.25, -0.005],
-        [0.2, -0.065],
-        [-0.12, -0.036],
-      ],
-      style.hair,
-      [0, 0.235, 0.105],
-      eye,
-      0.075,
-    );
-    brow.rotation.z = side * (kind === 1 ? 0.13 : -0.095);
-    // A cheek plane supports the eye and changes the profile below it.
-    const cheek = patch(
-      [
-        [-0.24, 0.13],
-        [0.17, 0.14],
-        [0.3, -0.08],
-        [0.06, -0.25],
-        [-0.23, -0.14],
-      ],
-      style.skin,
-      [side * w * 0.67, h * 0.43, 0.61],
-      head,
-      0.09,
-    );
-    cheek.rotation.y = side * 0.43;
-  }
-  // One angular nose with a bridge, projecting tip, nostril wings and a shaded underside.
-  const nose = new THREE.BufferGeometry();
-  nose.setAttribute(
-    'position',
-    new THREE.Float32BufferAttribute(
-      [
-        -0.115,
-        h * 0.72,
-        0.76,
-        0.115,
-        h * 0.72,
-        0.76,
-        -0.18,
-        h * 0.43,
-        0.81,
-        0.18,
-        h * 0.43,
-        0.81,
-        -0.14,
-        h * 0.46,
-        1.2,
-        0.14,
-        h * 0.46,
-        1.2,
-        0,
-        h * 0.35,
-        0.97,
-      ],
-      3,
-    ),
-  );
-  nose.setIndex([0, 1, 5, 0, 5, 4, 0, 4, 2, 1, 3, 5, 2, 4, 6, 4, 5, 6, 5, 3, 6, 2, 6, 3]);
-  const facetedNose = nose.toNonIndexed();
-  nose.dispose();
-  facetedNose.computeVertexNormals();
-  mesh(facetedNose, style.skin, [0, 0, 0], head);
-  for (const side of [-1, 1])
-    patch(
-      [
-        [-0.07, -0.025],
-        [0.07, -0.025],
-        [0.08, 0.035],
-        [-0.06, 0.045],
-      ],
-      style.skinShadow,
-      [side * 0.16, h * 0.39, 0.88],
-      head,
-    );
-  patch(
-    [
-      [-0.3, 0.023],
-      [-0.12, 0.036],
-      [0.02, 0.003],
-      [0.2, 0.025],
-      [0.3, 0],
-      [0.22, -0.046],
-      [-0.21, -0.044],
-    ],
-    '#785344',
-    [0, h * 0.235, 0.744],
-    head,
-    0.028,
-  );
-  patch(
-    [
-      [-0.28, 0.03],
-      [0.25, 0.03],
-      [0.18, -0.12],
-      [-0.16, -0.15],
-    ],
-    style.skin,
-    [0, h * 0.145, 0.7],
-    head,
-    0.06,
-  );
-
-  if (kind === 0) {
-    // Short grey beard follows the jaw; a wide split moustache leaves the mouth readable.
-    mesh(
-      loft([
-        { y: -0.035, width: w * 0.37, front: 0.53, back: 0.1, z: 0.13 },
-        { y: h * 0.12, width: w * 0.68, front: 0.66, back: 0.13, z: 0.11 },
-        { y: h * 0.25, width: w * 0.96, front: 0.75, back: 0.13, z: 0.03 },
-        { y: h * 0.32, width: w * 0.97, front: 0.73, back: 0.12, z: 0.03 },
-      ]),
-      style.hair,
-      [0, 0, 0],
-      head,
-    );
-    for (const side of [-1, 1]) {
-      const moustache = patch(
-        [
-          [-0.04, 0.02],
-          [0.17, 0.13],
-          [0.4, 0.1],
-          [0.54, -0.05],
-          [0.3, -0.08],
-          [0.1, -0.045],
-        ],
-        style.hair,
-        [0, h * 0.295, 0.9],
-        head,
-        0.075,
-      );
-      moustache.scale.x = side;
-    }
-    mesh(
-      loft([
-        { y: h * 0.88, width: w * 1.0, front: 0.66, back: 0.74, z: -0.04 },
-        { y: h * 1.02, width: w * 1.05, front: 0.61, back: 0.76, z: -0.06 },
-        { y: h * 1.13, width: w * 0.91, front: 0.5, back: 0.62, z: -0.06 },
-      ]),
-      style.cloth,
-      [0, 0, 0],
-      head,
-    );
-    block([w * 1.91, 0.12, 0.11], '#27363a', [0, h * 0.885, 0.64], head);
-    // A shallow wedge, not a broad shelf over the entire face.
-    const visor = patch(
-      [
-        [-w * 0.8, 0],
-        [w * 0.8, 0],
-        [w * 0.7, 0.43],
-        [-w * 0.7, 0.43],
-      ],
-      '#29373a',
-      [0, h * 0.877, 0.49],
-      head,
-      0.08,
-    );
-    visor.rotation.x = Math.PI / 2 + 0.09;
-    block([0.34, 0.19, 0.085], '#b0a17a', [0, h * 0.98, 0.64], head);
-  } else if (kind === 1) {
-    mesh(
-      loft([
-        { y: h * 0.57, width: w * 0.93, front: 0.24, back: 0.76, z: -0.19 },
-        { y: h * 0.82, width: w * 1.03, front: 0.37, back: 0.83, z: -0.18 },
-        { y: h * 0.99, width: w * 0.85, front: 0.48, back: 0.64, z: -0.13 },
-        { y: h * 1.05, width: w * 0.42, front: 0.29, back: 0.4, z: -0.13 },
-      ]),
-      style.hair,
-      [0, 0, 0],
-      head,
-    );
-    // These two joined slabs form a side part, rather than a collection of black beads.
-    const fringe = patch(
-      [
-        [-0.91, -0.58],
-        [-0.77, 0.44],
-        [-0.33, 0.73],
-        [0.27, 0.69],
-        [0.44, 0.43],
-        [-0.1, 0.28],
-        [-0.4, -0.25],
-        [-0.69, -0.74],
-      ],
-      style.hair,
-      [0, h * 0.75, 0.69],
-      head,
-      0.15,
-    );
-    fringe.rotation.y = -0.12;
-    patch(
-      [
-        [0.16, 0.64],
-        [0.65, 0.49],
-        [0.9, 0.16],
-        [0.86, -0.61],
-        [0.69, -0.43],
-        [0.61, 0.12],
-        [0.26, 0.38],
-      ],
-      style.hair,
-      [0, h * 0.75, 0.6],
-      head,
-      0.16,
-    );
-    mesh(
-      loft(
-        [
-          { y: -0.36, width: 0.24, front: 0.27, back: 0.31 },
-          { y: -0.08, width: 0.48, front: 0.37, back: 0.43 },
-          { y: 0.29, width: 0.41, front: 0.35, back: 0.34 },
-          { y: 0.49, width: 0.2, front: 0.19, back: 0.2 },
-        ],
-        10,
-      ),
-      style.hair,
-      [0.05, h * 0.82, -0.9],
-      head,
-    );
-    // An open contour runs over the crown to a single headset cup.
-    mesh(
-      bentVolume(
-        [
-          [-1.0, h * 0.48, -0.1],
-          [-1.05, h * 0.9, -0.14],
-          [-0.65, h * 1.07, -0.14],
-          [0.34, h * 1.08, -0.14],
-          [0.92, h * 0.93, -0.14],
-        ],
-        [0.075, 0.075, 0.075, 0.075, 0.075],
-        [0.09, 0.09, 0.09, 0.09, 0.09],
-      ),
-      '#494d46',
-      [0, 0, 0],
-      head,
-    );
-    mesh(
-      loft(
-        [
-          { y: -0.31, width: 0.18, front: 0.28, back: 0.27 },
-          { y: 0, width: 0.24, front: 0.3, back: 0.28 },
-          { y: 0.29, width: 0.18, front: 0.24, back: 0.23 },
-        ],
-        8,
-      ),
-      '#444a43',
-      [-1.02, h * 0.48, -0.05],
-      head,
-    );
-    mesh(
-      bentVolume(
-        [
-          [-1.01, h * 0.4, 0.2],
-          [-0.78, h * 0.29, 0.73],
-          [-0.31, h * 0.28, 0.99],
-        ],
-        [0.044, 0.043, 0.04],
-        [0.044, 0.043, 0.04],
-      ),
-      '#495147',
-      [0, 0, 0],
-      head,
-    );
-    block([0.14, 0.09, 0.11], '#596151', [-0.28, h * 0.28, 1], head);
-  } else {
-    mesh(
-      loft([
-        { y: -0.3, width: w * 0.38, front: 0.56, back: 0.13, z: 0.15 },
-        { y: h * 0.04, width: w * 0.64, front: 0.79, back: 0.19, z: 0.06 },
-        { y: h * 0.24, width: w * 0.93, front: 0.8, back: 0.25 },
-        { y: h * 0.39, width: w * 0.98, front: 0.7, back: 0.2 },
-      ]),
-      style.hair,
-      [0, 0, 0],
-      head,
-    );
-    // The beard returns into sideburns; two large facets give it a jaw rather than a cone.
-    for (const side of [-1, 1]) {
-      const cheekHair = patch(
-        [
-          [-0.19, -0.55],
-          [0.2, -0.45],
-          [0.27, 0.56],
-          [0.15, 0.72],
-          [-0.13, 0.62],
-          [-0.2, 0.12],
-        ],
-        style.hair,
-        [side * w * 0.89, h * 0.4, 0.38],
-        head,
-        0.13,
-      );
-      cheekHair.rotation.y = side * 0.65;
-      const moustache = patch(
-        [
-          [-0.02, 0.02],
-          [0.19, 0.15],
-          [0.46, 0.1],
-          [0.55, -0.08],
-          [0.13, -0.09],
-        ],
-        style.hair,
-        [0, h * 0.3, 0.96],
-        head,
-        0.08,
-      );
-      moustache.scale.x = side;
-    }
-    mesh(
-      loft([
-        { y: h * 0.87, width: w * 1.01, front: 0.64, back: 0.76, z: -0.05 },
-        { y: h * 0.95, width: w * 1.06, front: 0.68, back: 0.78, z: -0.05 },
-        { y: h * 1.14, width: w * 0.95, front: 0.61, back: 0.65, z: -0.06 },
-        { y: h * 1.25, width: w * 0.65, front: 0.36, back: 0.43, z: -0.06 },
-        { y: h * 1.28, width: w * 0.28, front: 0.2, back: 0.23, z: -0.06 },
-      ]),
-      '#555d47',
-      [0, 0, 0],
-      head,
-    );
-    mesh(
-      loft(
-        [
-          { y: h * 0.84, width: w * 1.03, front: 0.65, back: 0.76, z: -0.04 },
-          { y: h * 0.95, width: w * 1.09, front: 0.7, back: 0.8, z: -0.04 },
-        ],
-        12,
-      ),
-      '#717559',
-      [0, 0, 0],
-      head,
-    );
-    for (const side of [-1, 1]) {
-      const seam = block([0.037, 0.29, 0.035], '#85876b', [side * 0.48, h * 1.055, 0.57], head);
-      seam.rotation.z = side * 0.2;
-    }
-  }
-  return head;
-}
-
-function buildPalm(
-  parent: THREE.Group,
-  position: Point,
-  style: CharacterStyle,
-  side: number,
-  lifted = false,
-) {
-  const { patch, block } = characterFactory(parent);
-  // One connected palm/finger outline and a thumb; grooves do not detach the fingers.
-  const palm = patch(
-    [
-      [-0.31, -0.25],
-      [0.26, -0.23],
-      [0.32, 0.13],
-      [0.25, 0.4],
-      [0.17, 0.52],
-      [0.09, 0.55],
-      [0.02, 0.5],
-      [-0.04, 0.55],
-      [-0.13, 0.51],
-      [-0.18, 0.46],
-      [-0.25, 0.45],
-      [-0.31, 0.33],
-      [-0.35, 0.1],
-    ],
-    style.skin,
-    position,
-    parent,
-    0.19,
-  );
-  palm.scale.x = side;
-  palm.rotation.set(lifted ? -0.27 : -Math.PI / 2, lifted ? side * 0.1 : 0, side * -0.14);
-  const thumb = patch(
-    [
-      [-0.05, -0.22],
-      [0.14, -0.17],
-      [0.25, 0.07],
-      [0.16, 0.25],
-      [-0.015, 0.19],
-      [-0.1, 0.02],
-    ],
-    style.skin,
-    [side * 0.32, -0.02, 0.055],
-    palm,
-    0.14,
-  );
-  thumb.rotation.z = side * -0.24;
-  for (const x of [-0.17, -0.01, 0.15])
-    block([0.014, 0.19, 0.008], style.skinShadow, [x, 0.3, 0.197], palm);
-  return palm;
-}
-
-/** Original dispatchers: no external mesh or texture, and no private player data. */
+/** Original railway characters show public hand counts through a shared printed back. */
 export function buildDispatcher(
   parent: THREE.Group,
   player: PublicPlayer,
@@ -765,212 +884,74 @@ export function buildDispatcher(
   index: number,
   cardBack: THREE.Texture | null,
 ) {
-  const kind = index % styles.length,
-    style = styles[kind];
+  const kind = index % styles.length;
+  const style = styles[kind];
   const person = new THREE.Group();
-  person.name = ['Старший диспетчер', 'Связистка', 'Путеец'][kind];
+  person.name = style.name;
   person.position.set(x, -1.28, z);
   person.rotation.y = Math.atan2(-x, -z);
   parent.add(person);
-  const { mesh, patch, block, material } = characterFactory(person);
-  // The chair is behind the jacket, with broad rails rather than a solid block through the torso.
-  block([4.5, 0.28, 2.2], '#29332f', [0, -0.28, -0.35]);
-  for (const side of [-1, 1]) block([0.21, 4.5, 0.22], '#303b35', [side * 1.8, 1.65, -1.13]);
-  block([3.8, 0.44, 0.27], '#364139', [0, 3.23, -1.13]);
-  block([3.8, 0.32, 0.27], '#303b35', [0, 1.65, -1.13]);
-  const w = style.width;
-  mesh(
-    loft([
-      { y: -0.55, width: w * 0.57, front: 0.55, back: 0.6, z: -0.17 },
-      { y: 0.17, width: w * 0.67, front: 0.67, back: 0.65, z: -0.17 },
-      { y: 1.55, width: w * 0.76, front: 0.8, back: 0.65, z: -0.15 },
-      { y: 2.97, width: w, front: 0.69, back: 0.62, z: -0.15 },
-      { y: 3.58, width: w * 0.83, front: 0.53, back: 0.45, z: -0.07 },
-      { y: 3.82, width: 0.6, front: 0.36, back: 0.36, z: 0.03 },
-    ]),
-    style.cloth,
-  );
-  mesh(
-    loft(
-      [
-        { y: 3.67, width: 0.43, front: 0.39, back: 0.37 },
-        { y: 4.46, width: 0.44, front: 0.37, back: 0.36 },
-      ],
-      10,
-    ),
-    style.skin,
-    [0, 0, 0.08],
-  );
-  patch(
-    [
-      [-0.54, 3.63],
-      [0.57, 3.63],
-      [0.66, 2.68],
-      [0.47, 1.13],
-      [-0.3, 1.1],
-      [-0.6, 2.52],
-    ],
-    style.shirt,
-    [0, 0, 0.65],
+  const factory = characterFactory(person);
+  const { mesh, round, oval } = factory;
+  round([4.4, 0.32, 2.15], '#445351', [0, -0.38, -0.4]);
+  for (const side of [-1, 1]) round([0.2, 3.92, 0.23], '#445351', [side * 1.76, 1.32, -1.23]);
+  round([3.76, 0.42, 0.27], '#52605a', [0, 2.84, -1.23]);
+  round([3.76, 0.3, 0.27], '#445351', [0, 1.12, -1.23]);
+  buildClothes(person, style, kind, factory);
+  buildHead(person, style, kind, factory);
+  round([0.67, 0.42, 0.07], '#ddc28a', [style.width * 0.55, 2.13, 0.76]).rotation.y = 0.12;
+  round([0.5, 0.26, 0.08], player.color, [style.width * 0.55, 2.13, 0.807]).rotation.y = 0.12;
+  const hasCards = player.handCount > 0 && cardBack !== null;
+  const cardHand = attachHand(
     person,
-    0.08,
+    style,
+    -1,
+    [-0.83, 0.84, 2.73],
+    [-0.1, 0.045, -0.1],
+    hasCards,
+    factory,
   );
-  // Wide asymmetric lapels and collar stand away from the chest and cast real shadows.
-  for (const side of [-1, 1]) {
-    const lapel = patch(
-      [
-        [-0.1, 3.61],
-        [0.59, 3.4],
-        [0.94, 2.49],
-        [0.53, 2.36],
-        [0.07, 1.71],
-        [-0.26, 2.56],
-      ],
-      style.clothShadow,
-      [side * 0.45, 0, 0.76],
-      person,
-      0.12,
-    );
-    lapel.scale.x = side;
-    lapel.rotation.y = side * 0.08;
-    const collar = patch(
-      [
-        [-0.12, 3.72],
-        [0.52, 3.84],
-        [0.81, 3.42],
-        [0.28, 3.08],
-        [-0.06, 3.42],
-      ],
-      style.shirt,
-      [side * 0.38, 0, 0.86],
-      person,
-      0.11,
-    );
-    collar.scale.x = side;
-  }
-  // Three broad fold planes, subordinate to the continuous fabric surface.
-  patch(
-    [
-      [-0.35, 2.75],
-      [-0.53, 1.91],
-      [-0.28, 0.38],
-      [-0.08, 1.8],
-    ],
-    style.clothShadow,
-    [-w * 0.47, 0, 0.66],
+  const openHand = attachHand(
     person,
-    0.025,
-  ).rotation.y = -0.19;
-  patch(
-    [
-      [-0.12, 2.41],
-      [0.12, 2.16],
-      [0.26, 0.44],
-      [0.1, 0.13],
-      [-0.08, 1.9],
-    ],
-    style.clothShadow,
-    [w * 0.55, 0, 0.69],
-    person,
-    0.025,
-  ).rotation.y = 0.18;
-  patch(
-    [
-      [-0.65, 0.38],
-      [0.23, 0.29],
-      [0.61, 0.39],
-      [0.48, 0.53],
-      [-0.43, 0.54],
-    ],
-    style.clothShadow,
-    [0, 0, 0.61],
-    person,
-    0.03,
+    style,
+    1,
+    [1.27, 0.72, 2.83],
+    [0.18, -0.09, -0.28],
+    false,
+    factory,
   );
-  for (const y of [2.48, 1.72, 0.96]) {
-    const button = mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.045, 8), '#aa9e79', [
-      0.14,
-      y,
-      0.94,
-    ]);
-    button.rotation.x = Math.PI / 2;
-  }
-  const badge = block([0.57, 0.39, 0.07], '#bcae88', [w * 0.51, 2.85, 0.56]);
-  badge.rotation.y = 0.2;
-  block([0.45, 0.23, 0.081], player.color, [w * 0.51, 2.85, 0.6]).rotation.y = 0.2;
-
-  for (const side of [-1, 1]) {
-    const radioHand = kind === 1 && side === -1;
-    const shoulder: Point = [side * (w * 0.86), 3.06, -0.1];
-    const elbow: Point = radioHand
-      ? [side * (w + 0.27), 1.82, 0.81]
-      : [side * (w + 0.2), 0.59, 1.22];
-    const wrist: Point = radioHand
-      ? [-1.44, 4.65, 0.2]
-      : [side * (kind === 2 ? 0.95 : 1.15), 0.21, 2.56];
+  for (const [side, attachment] of [
+    [-1, cardHand],
+    [1, openHand],
+  ] as const) {
+    const shoulder: Point = [side * style.width * 0.8, 2.38, -0.04];
+    const elbow: Point = [side * (style.width + 0.32), 0.75, 1.32];
+    const wrist = attachment.wrist;
     mesh(
-      bentVolume(
-        [shoulder, [side * (w + 0.08), 2.77, 0.19], elbow, wrist],
-        [0.66, 0.62, 0.48, 0.29],
-        [0.62, 0.55, 0.44, 0.27],
+      curvedVolume(
+        [shoulder, [side * (style.width + 0.05), 1.96, 0.42], elbow, [wrist.x, wrist.y, wrist.z]],
+        [0.67, 0.65, 0.48, 0.27],
+        [0.61, 0.59, 0.43, 0.25],
       ),
-      style.cloth,
+      kind === 2 || kind === 3 ? style.shirt : style.cloth,
     );
+    const cuffStart = new THREE.Vector3(...elbow).lerp(wrist, 0.86);
     mesh(
-      bentVolume(
+      curvedVolume(
         [
-          new THREE.Vector3(...elbow).lerp(new THREE.Vector3(...wrist), 0.85).toArray() as Point,
-          wrist,
+          [cuffStart.x, cuffStart.y, cuffStart.z],
+          [wrist.x, wrist.y, wrist.z],
         ],
-        [0.34, 0.32],
-        [0.31, 0.28],
+        [0.31, 0.29],
+        [0.28, 0.26],
+        6,
       ),
-      kind === 1 ? style.shirt : style.clothShadow,
+      kind === 2 || kind === 3 ? style.cloth : style.trim,
     );
-    if (radioHand) buildPalm(person, [-1.38, 4.6, 0.11], style, side, true);
-    else {
-      const palmPosition: Point = [wrist[0], 0.2, 2.74];
-      buildPalm(person, palmPosition, style, side);
-    }
-    // A folded seam crosses the elbow where the sleeve changes direction.
-    const seam = patch(
-      [
-        [-0.31, -0.06],
-        [0.28, -0.06],
-        [0.32, 0.04],
-        [-0.25, 0.08],
-      ],
-      style.clothShadow,
-      [elbow[0], elbow[1] + 0.1, elbow[2] + 0.37],
-      person,
-      0.025,
-    );
-    seam.rotation.z = side * -0.16;
+    oval([0.31, 0.14, 0.09], style.trim, [elbow[0], elbow[1] + 0.15, elbow[2] + 0.39]).rotation.z =
+      side * -0.15;
   }
-  buildFace(person, style, kind);
-
-  if (player.handCount > 0 && cardBack) {
-    // A shared printed back is visible, never the opponent's material colours.
-    const backMaterial = new THREE.MeshStandardMaterial({ map: cardBack, roughness: 1 });
-    const sides = material('#b3aa8f');
-    const count = Math.min(5, player.handCount),
-      cardGeometry = new THREE.BoxGeometry(0.89, 1.36, 0.045);
-    const centerX = kind === 1 ? 0.46 : 0;
-    for (let i = 0; i < count; i++) {
-      const card = new THREE.Mesh(cardGeometry, [
-        sides,
-        sides,
-        sides,
-        sides,
-        backMaterial,
-        backMaterial,
-      ]);
-      card.position.set(centerX + (i - (count - 1) / 2) * 0.33, 0.5, 2.67);
-      card.rotation.set(-0.39, 0, (i - (count - 1) / 2) * -0.14);
-      card.castShadow = true;
-      person.add(card);
-    }
-  }
+  if (hasCards) buildCards(cardHand.hand, Math.min(5, player.handCount), cardBack, factory);
   consolidateCharacter(person);
   return person;
 }
