@@ -6,6 +6,7 @@ import {
   type NetworkClientApi,
   type NetworkClientState,
   type ResumeCredential,
+  type RoomSettings,
   type RoomSnapshot,
   type ServerPacket,
 } from './protocol';
@@ -23,7 +24,52 @@ export interface NetworkClientOptions {
   makeId?: () => string;
 }
 type Handshake = Extract<ClientPacket, { type: 'create' | 'join' | 'resume' }>;
+type Bootstrap = Extract<Handshake, { type: 'create' | 'join' }>;
+type BootstrapIntent =
+  | { type: 'create'; name: string; settings: RoomSettings }
+  | { type: 'join'; name: string; code: string };
 type RoomRequest = Extract<ClientPacket, { type: 'room' }>;
+const terminalBootstrapErrors = [
+  'BOOTSTRAP_DENIED',
+  'BOOTSTRAP_REUSED',
+  'ROOM_UNAVAILABLE',
+  'ROOM_FULL',
+  'MEMBER_REMOVED',
+  'ROOM_NOT_FOUND',
+] as const;
+
+function bootstrapValid(value: unknown): value is Bootstrap {
+  if (!value || typeof value !== 'object') return false;
+  const packet = value as Bootstrap;
+  if (
+    packet.protocol !== NETWORK_PROTOCOL ||
+    typeof packet.requestId !== 'string' ||
+    !packet.requestId ||
+    typeof packet.name !== 'string' ||
+    !packet.name ||
+    typeof packet.bootstrapSecret !== 'string' ||
+    !/^[0-9a-f]{64}$/.test(packet.bootstrapSecret)
+  )
+    return false;
+  if (packet.type === 'join') return typeof packet.code === 'string' && !!packet.code;
+  if (packet.type !== 'create' || !packet.settings || typeof packet.settings !== 'object')
+    return false;
+  const settings = packet.settings;
+  return (
+    [2, 3, 4, 5].includes(settings.seats) &&
+    ['easy', 'normal'].includes(settings.difficulty) &&
+    Number.isInteger(settings.turnSeconds) &&
+    settings.turnSeconds >= 30 &&
+    settings.turnSeconds <= 600 &&
+    typeof settings.admissionOpen === 'boolean'
+  );
+}
+
+function bootstrapSecret() {
+  return Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
+}
 
 function browserStorage() {
   try {
@@ -102,6 +148,7 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
     error: null,
   };
   let credential: ResumeCredential | null = null;
+  let bootstrap: Bootstrap | null = null;
   let pendingRoom: RoomRequest | null = null;
   let handshake: Handshake | null = null;
   let socket: NetworkSocket | null = null;
@@ -115,8 +162,17 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
   let acknowledgedRoomRequestRevision: number | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let responseTimer: ReturnType<typeof setTimeout> | null = null;
+  let journalReadable = true;
+  let savedText: string | null = null;
   try {
-    const saved: unknown = JSON.parse(storage?.getItem(storageKey) ?? 'null');
+    savedText = storage?.getItem(storageKey) ?? null;
+  } catch {
+    journalReadable = false;
+    state.error =
+      'Не удалось прочитать сохранённый вход. Проверьте хранилище и перезагрузите страницу.';
+  }
+  try {
+    const saved: unknown = JSON.parse(savedText ?? 'null');
     if (saved && typeof saved === 'object') {
       const record = saved as {
         credential?: unknown;
@@ -124,9 +180,12 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
         memberId?: string;
         pendingCommand?: unknown;
         pendingRoom?: RoomRequest;
+        serverUrl?: string;
+        bootstrap?: unknown;
       };
       if (
         credentialValid(record.credential) &&
+        (record.serverUrl === undefined || record.serverUrl === url) &&
         record.roomId === record.credential.roomId &&
         record.memberId === record.credential.memberId
       ) {
@@ -142,10 +201,13 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
             ? record.pendingRoom
             : null;
         state.pendingRequest = pendingRoom?.requestId ?? null;
+      } else if (record.serverUrl === url && bootstrapValid(record.bootstrap)) {
+        bootstrap = record.bootstrap;
+        state.pendingRequest = bootstrap.requestId;
       }
     }
   } catch {
-    // An unavailable tab journal does not expose credentials or block a new room.
+    // Malformed records are not trusted or replayed.
   }
   function persist(): boolean {
     try {
@@ -154,6 +216,7 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
         storage.setItem(
           storageKey,
           JSON.stringify({
+            serverUrl: url,
             credential,
             roomId: credential.roomId,
             memberId: credential.memberId,
@@ -161,6 +224,9 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
             pendingRoom,
           }),
         );
+      } else if (bootstrap) {
+        if (!storage) throw new Error('Storage unavailable');
+        storage.setItem(storageKey, JSON.stringify({ serverUrl: url, bootstrap }));
       } else storage?.removeItem(storageKey);
       return true;
     } catch {
@@ -212,11 +278,11 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
     if (responseTimer) clearTimeout(responseTimer);
     responseTimer = null;
     authenticated = false;
-    if (!credential || attempt >= delays.length) {
+    if ((!credential && !bootstrap) || attempt >= delays.length) {
       handshake = null;
       publish({
         connection: 'disconnected',
-        pendingRequest: pendingRoom?.requestId ?? null,
+        pendingRequest: pendingRoom?.requestId ?? bootstrap?.requestId ?? null,
         error: message,
       });
       return;
@@ -225,15 +291,17 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
     publish({ connection: 'reconnecting', error: message });
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null;
-      connect(
-        {
-          type: 'resume',
-          requestId: makeId(),
-          protocol: NETWORK_PROTOCOL,
-          credential: credential!,
-        },
-        true,
-      );
+      if (credential)
+        connect(
+          {
+            type: 'resume',
+            requestId: makeId(),
+            protocol: NETWORK_PROTOCOL,
+            credential,
+          },
+          true,
+        );
+      else if (bootstrap) connect(bootstrap, true);
     }, delay);
   }
   function fresh(snapshot: RoomSnapshot): boolean {
@@ -299,7 +367,12 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
         !handshake ||
         packet.requestId !== handshake.requestId ||
         packet.protocol !== NETWORK_PROTOCOL ||
-        !credentialValid(packet.credential)
+        !credentialValid(packet.credential) ||
+        !packet.snapshot?.room ||
+        packet.snapshot.room.id !== packet.credential.roomId ||
+        packet.snapshot.memberId !== packet.credential.memberId ||
+        !packet.snapshot.room.members.some((member) => member.id === packet.credential.memberId) ||
+        (handshake.type === 'join' && packet.snapshot.room.code !== handshake.code)
       )
         return;
       if (
@@ -309,6 +382,17 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
       )
         return;
       credential = packet.credential;
+      const previousBootstrap = bootstrap;
+      bootstrap = null;
+      if (!persist()) {
+        bootstrap = previousBootstrap;
+        if (previousBootstrap) credential = null;
+        handshake = null;
+        clearTimers();
+        detach();
+        publish({ connection: 'disconnected', pendingRequest: bootstrap?.requestId ?? null });
+        return;
+      }
       handshake = null;
       authenticated = true;
       attempt = 0;
@@ -401,6 +485,7 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
     }
     if (packet.type === 'kicked') {
       credential = null;
+      bootstrap = null;
       pendingRoom = null;
       acknowledgedRevision = null;
       acknowledgedRoomRevision = null;
@@ -450,6 +535,14 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
           const rejectedResume =
             handshake.type === 'resume' &&
             TERMINAL_RESUME_ERRORS.some((code) => code === packet.code);
+          const bootstrapResponse = handshake.type !== 'resume';
+          const rejectedBootstrap =
+            bootstrapResponse && terminalBootstrapErrors.some((code) => code === packet.code);
+          let journalUpdated = true;
+          if (rejectedBootstrap) {
+            bootstrap = null;
+            journalUpdated = persist();
+          }
           if (rejectedResume) {
             credential = null;
             pendingRoom = null;
@@ -464,9 +557,15 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
           detach();
           publish({
             connection: 'disconnected',
-            pendingRequest: pendingRoom?.requestId ?? null,
+            pendingRequest: pendingRoom?.requestId ?? bootstrap?.requestId ?? null,
             ...(rejectedResume ? { snapshot: null, pendingCommand: null } : {}),
-            error: packet.message,
+            error: !journalUpdated
+              ? 'Не удалось удалить отклонённый вход из хранилища браузера.'
+              : bootstrapResponse
+                ? rejectedBootstrap
+                  ? 'Этот вход в комнату отклонён. Создайте комнату или введите код заново.'
+                  : 'Сервер не подтвердил вход. Повторите соединение с тем же запросом.'
+                : packet.message,
           });
           return;
         }
@@ -486,6 +585,42 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
     };
     armResponseTimer();
   }
+  function beginBootstrap(intent: BootstrapIntent) {
+    if (
+      disposed ||
+      credential ||
+      bootstrap ||
+      state.connection === 'connecting' ||
+      state.connection === 'reconnecting'
+    )
+      return;
+    if (!journalReadable) {
+      publish({
+        error: 'Вход не отправлен: не удалось прочитать сохранённый вход в хранилище браузера.',
+      });
+      return;
+    }
+    try {
+      bootstrap = {
+        ...structuredClone(intent),
+        requestId: makeId(),
+        protocol: NETWORK_PROTOCOL,
+        bootstrapSecret: bootstrapSecret(),
+      };
+    } catch {
+      publish({ error: 'Не удалось безопасно подготовить вход в комнату.' });
+      return;
+    }
+    if (!persist()) {
+      bootstrap = null;
+      publish({
+        pendingRequest: null,
+        error: 'Вход не отправлен: браузер не разрешает сохранить его для восстановления.',
+      });
+      return;
+    }
+    connect(bootstrap);
+  }
   const api: NetworkClientApi = {
     getState: () => state,
     subscribe(listener) {
@@ -497,36 +632,10 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
       return () => voiceListeners.delete(listener);
     },
     create(name, settings) {
-      if (
-        disposed ||
-        credential ||
-        state.connection === 'connecting' ||
-        state.connection === 'reconnecting'
-      )
-        return;
-      connect({
-        type: 'create',
-        requestId: makeId(),
-        protocol: NETWORK_PROTOCOL,
-        name: name.trim(),
-        settings,
-      });
+      beginBootstrap({ type: 'create', name: name.trim(), settings });
     },
     join(name, code) {
-      if (
-        disposed ||
-        credential ||
-        state.connection === 'connecting' ||
-        state.connection === 'reconnecting'
-      )
-        return;
-      connect({
-        type: 'join',
-        requestId: makeId(),
-        protocol: NETWORK_PROTOCOL,
-        name: name.trim(),
-        code: code.trim().toUpperCase(),
-      });
+      beginBootstrap({ type: 'join', name: name.trim(), code: code.trim().toUpperCase() });
     },
     reconnect() {
       if (disposed) return;
@@ -536,6 +645,7 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
           { type: 'resume', requestId: makeId(), protocol: NETWORK_PROTOCOL, credential },
           true,
         );
+      else if (bootstrap) connect(bootstrap, true);
       else publish({ connection: 'idle', error: null, pendingRequest: null });
     },
     roomAction(action, expected) {
@@ -633,6 +743,7 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
           action: { type: 'leave' },
         });
       credential = null;
+      bootstrap = null;
       pendingRoom = null;
       handshake = null;
       acknowledgedRevision = null;
@@ -641,6 +752,7 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
       clearTimers();
       detach();
       const forgotten = persist();
+      if (forgotten) journalReadable = true;
       publish({
         connection: 'idle',
         snapshot: null,
@@ -666,6 +778,6 @@ export function createNetworkClient(options: NetworkClientOptions = {}): Network
       voiceListeners.clear();
     },
   };
-  if (credential) api.reconnect();
+  if (credential || bootstrap) api.reconnect();
   return api;
 }

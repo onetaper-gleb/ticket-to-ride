@@ -112,11 +112,12 @@ afterEach(() => {
   clients.splice(0).forEach((client) => client.dispose());
   vi.useRealTimers();
 });
-function harness(storage = new MemoryStorage(), delays = [10, 20]) {
+function harness(storage = new MemoryStorage(), delays = [10, 20], url?: string) {
   const sockets: Socket[] = [];
   let sequence = 0;
   const client = createNetworkClient({
     storage,
+    url,
     reconnectDelays: delays,
     requestTimeoutMs: 1000,
     makeId: () => `id-${++sequence}`,
@@ -156,8 +157,261 @@ function connected() {
   welcome(result.sockets[0]!);
   return result;
 }
+function beginBootstrap(result: ReturnType<typeof harness>, type: 'create' | 'join') {
+  if (type === 'create')
+    result.client.create('Игрок', {
+      seats: 2,
+      difficulty: 'normal',
+      turnSeconds: 180,
+      admissionOpen: true,
+    });
+  else result.client.join('Игрок', 'abcdef');
+}
 
 describe('authoritative WebSocket client', () => {
+  it.each(['create', 'join'] as const)(
+    'journals %s before transmission and resends an unchanged attempt after a lost welcome',
+    (type) => {
+      vi.useFakeTimers();
+      const result = harness();
+      beginBootstrap(result, type);
+      expect(result.sockets[0]!.sent).toHaveLength(0);
+      const stored = JSON.parse([...result.storage.values.values()][0]!);
+      expect(stored.bootstrap.type).toBe(type);
+      expect(stored.bootstrap.bootstrapSecret).toMatch(/^[0-9a-f]{64}$/);
+      expect(JSON.stringify(result.client.getState())).not.toContain(
+        stored.bootstrap.bootstrapSecret,
+      );
+      result.sockets[0]!.open();
+      const original = result.sockets[0]!.sent[0]!;
+      expect(JSON.parse(original)).toEqual(stored.bootstrap);
+      const oldMessage = result.sockets[0]!.onmessage;
+      result.sockets[0]!.drop();
+      vi.advanceTimersByTime(10);
+      result.sockets[1]!.open();
+      expect(result.sockets[1]!.sent).toEqual([original]);
+      oldMessage?.call(
+        result.sockets[0] as unknown as WebSocket,
+        new MessageEvent('message', {
+          data: JSON.stringify({
+            type: 'welcome',
+            requestId: stored.bootstrap.requestId,
+            protocol: 1,
+            credential,
+            snapshot: snapshot(100),
+          }),
+        }),
+      );
+      expect(result.client.getState().snapshot).toBeNull();
+      welcome(result.sockets[1]!);
+      expect(result.client.getState().connection).toBe('connected');
+      const completed = JSON.parse([...result.storage.values.values()][0]!);
+      expect(completed.bootstrap).toBeUndefined();
+      expect(completed.credential).toEqual(credential);
+    },
+  );
+
+  it.each(['create', 'join'] as const)(
+    'restores the exact %s bootstrap after reload without creating a second attempt',
+    (type) => {
+      const first = harness();
+      beginBootstrap(first, type);
+      first.sockets[0]!.open();
+      const original = first.sockets[0]!.sent[0]!;
+      first.client.dispose();
+      const restored = harness(first.storage);
+      expect(restored.sockets).toHaveLength(1);
+      restored.client.join('Другой игрок', 'DIFFERENT');
+      expect(restored.sockets).toHaveLength(1);
+      restored.sockets[0]!.open();
+      expect(restored.sockets[0]!.sent).toEqual([original]);
+      welcome(restored.sockets[0]!);
+      expect(restored.client.getState().snapshot?.memberId).toBe(credential.memberId);
+    },
+  );
+
+  it('keeps an unknown bootstrap result pending and allows only an exact manual retry', () => {
+    const result = harness();
+    beginBootstrap(result, 'join');
+    result.sockets[0]!.open();
+    const original = result.sockets[0]!.sent[0]!;
+    const packet = JSON.parse(original) as Extract<ClientPacket, { type: 'join' }>;
+    result.sockets[0]!.packet({
+      type: 'error',
+      requestId: packet.requestId,
+      code: 'SERVER_ERROR',
+      message: packet.bootstrapSecret,
+    });
+    expect(result.client.getState().connection).toBe('disconnected');
+    expect(result.client.getState().pendingRequest).toBe(packet.requestId);
+    expect(JSON.stringify(result.client.getState())).not.toContain(packet.bootstrapSecret);
+    result.client.create('Новая комната', snapshot().room.settings);
+    expect(result.sockets).toHaveLength(1);
+    result.client.reconnect();
+    result.sockets[1]!.open();
+    expect(result.sockets[1]!.sent).toEqual([original]);
+    welcome(result.sockets[1]!);
+    expect(result.client.getState().connection).toBe('connected');
+  });
+
+  it('does not accept a foreign welcome and bounds automatic bootstrap timeouts', () => {
+    vi.useFakeTimers();
+    const result = harness();
+    beginBootstrap(result, 'create');
+    result.sockets[0]!.open();
+    const original = result.sockets[0]!.sent[0]!;
+    const packet = JSON.parse(original) as Extract<ClientPacket, { type: 'create' }>;
+    result.sockets[0]!.packet({
+      type: 'welcome',
+      requestId: 'another-request',
+      protocol: 1,
+      credential,
+      snapshot: snapshot(),
+    });
+    const wrongMember = snapshot();
+    wrongMember.memberId = 'another-member';
+    result.sockets[0]!.packet({
+      type: 'welcome',
+      requestId: packet.requestId,
+      protocol: 1,
+      credential,
+      snapshot: wrongMember,
+    });
+    result.sockets[0]!.packet({
+      type: 'error',
+      requestId: 'another-request',
+      code: 'BOOTSTRAP_DENIED',
+      message: 'Посторонний запрос',
+    });
+    expect(result.client.getState().snapshot).toBeNull();
+    vi.advanceTimersByTime(1010);
+    result.sockets[1]!.open();
+    expect(result.sockets[1]!.sent).toEqual([original]);
+    vi.advanceTimersByTime(1020);
+    result.sockets[2]!.open();
+    expect(result.sockets[2]!.sent).toEqual([original]);
+    vi.advanceTimersByTime(2000);
+    expect(result.sockets).toHaveLength(3);
+    expect(result.client.getState().connection).toBe('disconnected');
+    result.client.join('Другой вход', 'OTHER');
+    expect(result.sockets).toHaveLength(3);
+    result.client.reconnect();
+    result.sockets[3]!.open();
+    expect(result.sockets[3]!.sent).toEqual([original]);
+  });
+
+  it.each(['create', 'join'] as const)(
+    'does not transmit %s when the initial journal cannot be written',
+    (type) => {
+      const result = harness();
+      vi.spyOn(result.storage, 'setItem').mockImplementation(() => {
+        throw new Error('Storage blocked');
+      });
+      beginBootstrap(result, type);
+      expect(result.sockets).toHaveLength(0);
+      expect(result.storage.values.size).toBe(0);
+      expect(result.client.getState().pendingRequest).toBeNull();
+      expect(result.client.getState().error).toContain('Вход не отправлен');
+    },
+  );
+
+  it.each([
+    'BOOTSTRAP_DENIED',
+    'BOOTSTRAP_REUSED',
+    'ROOM_UNAVAILABLE',
+    'ROOM_FULL',
+    'MEMBER_REMOVED',
+    'ROOM_NOT_FOUND',
+  ])('clears terminal %s and allows a new explicit entry without publishing its proof', (code) => {
+    const result = harness();
+    beginBootstrap(result, 'join');
+    result.sockets[0]!.open();
+    const original = result.sockets[0]!.packets()[0]!;
+    if (original.type !== 'join') throw new Error('Join missing');
+    result.sockets[0]!.packet({
+      type: 'error',
+      requestId: original.requestId,
+      code,
+      message: original.bootstrapSecret,
+    });
+    expect(result.client.getState().pendingRequest).toBeNull();
+    expect(result.storage.values.size).toBe(0);
+    expect(JSON.stringify(result.client.getState())).not.toContain(original.bootstrapSecret);
+    result.client.join('Новый игрок', 'ABCDEF');
+    result.sockets[1]!.open();
+    const next = result.sockets[1]!.packets()[0]!;
+    expect(next.type).toBe('join');
+    if (next.type !== 'join') throw new Error('Join missing');
+    expect(next.requestId).not.toBe(original.requestId);
+    expect(next.bootstrapSecret).not.toBe(original.bootstrapSecret);
+    welcome(result.sockets[1]!);
+    expect(result.client.getState().connection).toBe('connected');
+  });
+
+  it('retains the bootstrap journal when replacing it with the welcomed credential fails', () => {
+    const first = harness();
+    beginBootstrap(first, 'create');
+    first.sockets[0]!.open();
+    const original = first.sockets[0]!.sent[0]!;
+    const write = vi.spyOn(first.storage, 'setItem').mockImplementation(() => {
+      throw new Error('Storage blocked');
+    });
+    welcome(first.sockets[0]!);
+    expect(first.client.getState().connection).toBe('disconnected');
+    expect(first.client.getState().snapshot).toBeNull();
+    expect(first.client.command({ type: 'draw', source: 'deck' }, expected())).toBe(false);
+    expect(JSON.parse([...first.storage.values.values()][0]!).bootstrap).toEqual(
+      JSON.parse(original),
+    );
+    first.client.dispose();
+    write.mockRestore();
+    const restored = harness(first.storage);
+    restored.sockets[0]!.open();
+    expect(restored.sockets[0]!.sent).toEqual([original]);
+    welcome(restored.sockets[0]!);
+    expect(restored.client.getState().connection).toBe('connected');
+  });
+
+  it('does not overwrite an unreadable prior bootstrap with a fresh room attempt', () => {
+    const first = harness();
+    beginBootstrap(first, 'join');
+    first.client.dispose();
+    const saved = [...first.storage.values.values()][0]!;
+    const read = vi.spyOn(first.storage, 'getItem').mockImplementation(() => {
+      throw new Error('Storage unreadable');
+    });
+    const second = harness(first.storage);
+    beginBootstrap(second, 'create');
+    expect(second.sockets).toHaveLength(0);
+    expect([...first.storage.values.values()]).toEqual([saved]);
+    expect(second.client.getState().error).toContain('Вход не отправлен');
+    second.client.dispose();
+    read.mockRestore();
+    const restored = harness(first.storage);
+    restored.sockets[0]!.open();
+    expect(restored.sockets[0]!.sent).toEqual([JSON.stringify(JSON.parse(saved).bootstrap)]);
+    welcome(restored.sockets[0]!);
+    expect(restored.client.getState().connection).toBe('connected');
+  });
+
+  it('clones bootstrap settings and refuses a journal copied from another server URL', () => {
+    const storage = new MemoryStorage();
+    const result = harness(storage, [10], 'ws://127.0.0.1:8787');
+    const settings = snapshot().room.settings;
+    result.client.create('Игрок', settings);
+    settings.turnSeconds = 600;
+    result.sockets[0]!.open();
+    const packet = result.sockets[0]!.packets()[0]!;
+    if (packet.type !== 'create') throw new Error('Create missing');
+    expect(packet.settings.turnSeconds).toBe(180);
+    result.client.dispose();
+    const saved = [...storage.values.values()][0]!;
+    storage.setItem('europe-network-v1:ws://127.0.0.1:9797', saved);
+    const wrongServer = harness(storage, [10], 'ws://127.0.0.1:9797');
+    expect(wrongServer.sockets).toHaveLength(0);
+    expect(wrongServer.client.getState().pendingRequest).toBeNull();
+  });
+
   it('serializes one pending command and only consumes its own acknowledgement', () => {
     const { client, sockets } = connected();
     expect(client.command({ type: 'draw', source: 'deck' }, expected(0))).toBe(true);
