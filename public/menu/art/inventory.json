@@ -60,8 +60,8 @@
     },
     {
       "file": "europe-mark.svg",
-      "bytes": 1236,
-      "sha256": "e59b912bc221b149071951edffe95283b308b5a65d225ea08d659f3544e6afa8",
+      "bytes": 1097,
+      "sha256": "55cfc472402afdf63c29db5fb74ac30a5ffc8fe41e4683e80f881fbee606f56f",
       "dimensions": [
         600,
         120
@@ -251,7 +251,7 @@
     }
   ],
   "budget": {
-    "runtimeFileBytesIncludingSVG": 133441,
+    "runtimeFileBytesIncludingSVG": 133302,
     "runtimeRasterBytesBothFallbacks": 118828,
     "runtimeRasterGoalBytes": 2000000,
     "fallbackEachGoalBytes": 400000,
