@@ -15,7 +15,7 @@ async function loadTexture(url: string, signal?: AbortSignal) {
   const image = new Image();
   try {
     await new Promise<void>((resolve, reject) => {
-      const abort = () => reject(new DOMException('Menu art loading cancelled', 'AbortError'));
+      const abort = () => finish(new DOMException('Menu art loading cancelled', 'AbortError'));
       const finish = (error?: Error) => {
         signal?.removeEventListener('abort', abort);
         image.onload = image.onerror = null;
@@ -59,6 +59,7 @@ export async function loadMenuCompositionArt(
     throw failure.reason;
   }
   const [clockFace, luggageStickers, wood, ticketPrint] = textures;
+  wood.repeat.set(2, 4);
   // The 2:1 print uses a single quarter turn on the portrait paper; the grip stays fixed.
   ticketPrint.center.set(0.5, 0.5);
   ticketPrint.rotation = Math.PI / 2;

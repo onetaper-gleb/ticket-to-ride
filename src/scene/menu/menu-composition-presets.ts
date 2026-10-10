@@ -8,6 +8,7 @@ export type MenuCompositionPreset = {
   camera: readonly [number, number, number];
   railway: readonly [number, number, number];
   fov: number;
+  buildingYaw: number;
 };
 
 export function menuCompositionPreset(width: number, height: number): MenuCompositionPreset {
@@ -15,13 +16,14 @@ export function menuCompositionPreset(width: number, height: number): MenuCompos
     throw new Error('Menu viewport must have positive finite dimensions');
   const desktop = width >= 1100 && height >= 680;
   const narrow = width >= 760 && width < 1100 && height >= 760 && width / height < 1.25;
-  const t = THREE.MathUtils.clamp((Math.min(width, 1920) - 1280) / 640, 0, 1);
+  const referenceScale = Math.min(width / 1672, height / 941);
+  const centerOffset = Math.max(0, (width - 1672 * referenceScale) / 2);
   const board = desktop
     ? {
-        x: Math.max(0, (width - 1920) / 2) + 48 + 80 * t,
-        y: THREE.MathUtils.clamp(height / 4 - 96, 40, 200),
-        width: 420 + 120 * t,
-        height: 454 + 46 * t,
+        x: centerOffset + 60 * referenceScale,
+        y: 50 * referenceScale,
+        width: Math.max(420, 510 * referenceScale),
+        height: Math.max(454, 596 * referenceScale),
       }
     : narrow
       ? {
@@ -36,12 +38,19 @@ export function menuCompositionPreset(width: number, height: number): MenuCompos
           width: Math.min(360, width - 32),
           height: 438,
         };
-  const settings = {
-    x: board.x + 16,
-    y: board.y + board.height + (desktop || narrow ? 24 : 20),
-    width: board.width - 32,
-    height: desktop ? 64 + 8 * t : narrow ? 64 : 56,
-  };
+  const settings = desktop
+    ? {
+        x: centerOffset + 125 * referenceScale,
+        y: 655 * referenceScale,
+        width: Math.max(340, 390 * referenceScale),
+        height: Math.max(64, 98 * referenceScale),
+      }
+    : {
+        x: board.x + 16,
+        y: board.y + board.height + (desktop || narrow ? 24 : 20),
+        width: board.width - 32,
+        height: narrow ? 64 : 56,
+      };
   return {
     kind: desktop
       ? width > 1920
@@ -54,8 +63,9 @@ export function menuCompositionPreset(width: number, height: number): MenuCompos
           : 'column',
     board,
     settings,
-    camera: narrow ? [-0.45, 0.27, 5.4] : desktop ? [0.04, 0.52, 6.4] : [-0.65, 0.4, 5.5],
-    railway: [narrow ? 2.75 : 3.5, -0.65, -3.1],
+    camera: narrow ? [-0.58, 0.17, 7.1] : desktop ? [0.04, 0.52, 6.4] : [-0.65, 0.4, 5.5],
+    railway: [narrow ? 2.0 : desktop ? 3.5 : 2.45, -0.65, -3.1],
     fov: 34,
+    buildingYaw: THREE.MathUtils.degToRad(27),
   };
 }

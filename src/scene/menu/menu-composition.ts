@@ -5,6 +5,37 @@ import { preloadMenuHandSurfaces } from './menu-character-hands';
 import { loadMenuCompositionArt, type MenuCompositionArt } from './menu-composition-art';
 import { menuCompositionPreset, type MenuRect } from './menu-composition-presets';
 
+export type MenuScreenPoint = { x: number; y: number };
+/** Clockwise, starting at the top left of the physical front face. */
+export type MenuQuad = readonly [
+  MenuScreenPoint,
+  MenuScreenPoint,
+  MenuScreenPoint,
+  MenuScreenPoint,
+];
+
+/** Maps the entire native DOM border box onto the projected physical face. */
+export function menuQuadCssMatrix(quad: MenuQuad, width: number, height: number): string {
+  if (![width, height].every((v) => Number.isFinite(v) && v > 0))
+    throw new Error('Menu DOM dimensions must be positive and finite');
+  const [tl, tr, br, bl] = quad;
+  const dx1 = tr.x - br.x,
+    dx2 = bl.x - br.x;
+  const dy1 = tr.y - br.y,
+    dy2 = bl.y - br.y;
+  const dx3 = tl.x - tr.x + br.x - bl.x,
+    dy3 = tl.y - tr.y + br.y - bl.y;
+  const determinant = dx1 * dy2 - dx2 * dy1;
+  if (Math.abs(determinant) < 1e-8) throw new Error('Menu projected face is degenerate');
+  const g = (dx3 * dy2 - dx2 * dy3) / determinant;
+  const h = (dx1 * dy3 - dx3 * dy1) / determinant;
+  const a = (tr.x - tl.x + g * tr.x) / width;
+  const b = (bl.x - tl.x + h * bl.x) / height;
+  const d = (tr.y - tl.y + g * tr.y) / width;
+  const e = (bl.y - tl.y + h * bl.y) / height;
+  return `matrix3d(${[a, d, 0, g / width, b, e, 0, h / height, 0, 0, 1, 0, tl.x, tl.y, 0, 1].join(',')})`;
+}
+
 export type MenuComposition = {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
@@ -14,6 +45,7 @@ export type MenuComposition = {
   keyLight: THREE.DirectionalLight;
   layout(width: number, height: number, board?: MenuRect, settings?: MenuRect): void;
   projectFrame(width: number, height: number): { board: MenuRect; settings: MenuRect };
+  projectCorners(width: number, height: number): { board: MenuQuad; settings: MenuQuad };
   dispose(): void;
 };
 
@@ -29,6 +61,7 @@ export async function createMenuComposition(
     await preloadMenuHandSurfaces(`${prefix}models/cashier/hand-bind-v1.bin`, options.signal);
     options.signal?.throwIfAborted();
     models = buildMenuModels(art);
+    models.root.rotation.y = menuCompositionPreset(1672, 941).buildingYaw;
     models.root.updateMatrixWorld(true);
     const anchor = models.cashierAnchor;
     cashier = buildMenuCashier({
@@ -49,6 +82,7 @@ export async function createMenuComposition(
     cashier.ticket.material.map = art.ticketPrint;
     cashier.ticket.material.color.set('#ffffff');
     cashier.ticket.material.needsUpdate = true;
+    models.clock.root.position.set(1.7, 1.45, -0.03);
     models.clock.hourHand.rotation.z = (Math.PI * (10 + 10 / 60)) / -6;
     models.clock.minuteHand.rotation.z = -Math.PI / 3;
     return assemble(models, cashier, art);
@@ -90,13 +124,37 @@ function assemble(
     camera.lookAt(camera.position.x, camera.position.y, 0);
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld(true);
-    models.railwayRoot.position.set(...preset.railway);
-    const z = camera.position.z * 0.12;
+    models.root.rotation.y = preset.buildingYaw;
+    models.root.updateMatrixWorld(true);
+    models.railwayRoot.position.copy(
+      models.root.worldToLocal(new THREE.Vector3(...preset.railway)),
+    );
+    models.railwayRoot.quaternion.copy(
+      models.root.getWorldQuaternion(new THREE.Quaternion()).invert(),
+    );
+    models.clock.root.position.set(
+      preset.kind === 'narrow' ? 0.98 : preset.kind === 'compact' ? 1.4 : 1.7,
+      1.45,
+      -0.03,
+    );
+    const z = 0.04;
+    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+      new THREE.Vector3(0, 0, 1).applyQuaternion(
+        models.root.getWorldQuaternion(new THREE.Quaternion()),
+      ),
+      models.root.localToWorld(new THREE.Vector3(0, 0, z)),
+    );
     const point = (x: number, y: number) => {
-      const ray = new THREE.Vector3((2 * x) / width - 1, 1 - (2 * y) / height, 0.5)
+      const direction = new THREE.Vector3((2 * x) / width - 1, 1 - (2 * y) / height, 0.5)
         .unproject(camera)
-        .sub(camera.position);
-      return camera.position.clone().addScaledVector(ray, (z - camera.position.z) / ray.z);
+        .sub(camera.position)
+        .normalize();
+      const hit = new THREE.Ray(camera.position, direction).intersectPlane(
+        plane,
+        new THREE.Vector3(),
+      );
+      if (!hit) throw new Error('Menu frame is outside the camera-facing plane');
+      return models.root.worldToLocal(hit);
     };
     const box = (rect: MenuRect) => {
       if (
@@ -105,38 +163,59 @@ function assemble(
         rect.height <= 24
       )
         throw new Error('Menu frames require finite rects larger than their borders');
-      return new THREE.Box3().setFromPoints([
-        point(rect.x, rect.y),
-        point(rect.x + rect.width, rect.y + rect.height),
-      ]);
+      const tl = point(rect.x, rect.y),
+        bl = point(rect.x, rect.y + rect.height);
+      const right = point(rect.x + rect.width, rect.y);
+      return new THREE.Box3(new THREE.Vector3(tl.x, bl.y, z), new THREE.Vector3(right.x, tl.y, z));
     };
-    const unitsPerPixel =
-      (2 * (camera.position.z - z) * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) / height;
+    const boardRect = board ?? preset.board,
+      settingsRect = settings ?? preset.settings;
+    const boardBounds = box(boardRect),
+      settingsBounds = box(settingsRect);
     models.board.setLayout(
-      box(board ?? preset.board),
-      box(settings ?? preset.settings),
-      12 * unitsPerPixel,
-      6 * unitsPerPixel,
+      boardBounds,
+      settingsBounds,
+      (12 * (boardBounds.max.y - boardBounds.min.y)) / boardRect.height,
+      (6 * (settingsBounds.max.y - settingsBounds.min.y)) / settingsRect.height,
     );
     scene.updateMatrixWorld(true);
   }
+  function projectCorners(width: number, height: number) {
+    alive();
+    const quad = (root: THREE.Group, name: string): MenuQuad => {
+      const face = root.getObjectByName(name) as THREE.Mesh | undefined;
+      if (!face?.isMesh) throw new Error(`Menu environment is missing physical face ${name}`);
+      face.geometry.computeBoundingBox();
+      const b = face.geometry.boundingBox!;
+      return [
+        [b.min.x, b.max.y],
+        [b.max.x, b.max.y],
+        [b.max.x, b.min.y],
+        [b.min.x, b.min.y],
+      ].map(([x, y]) => {
+        const p = new THREE.Vector3(x, y, b.max.z).applyMatrix4(face.matrixWorld).project(camera);
+        return { x: ((p.x + 1) * width) / 2, y: ((1 - p.y) * height) / 2 };
+      }) as unknown as MenuQuad;
+    };
+    return {
+      board: quad(models.board.root, 'board-frame/green'),
+      settings: quad(models.board.settingsRoot, 'settings-frame/wood'),
+    };
+  }
   function projectFrame(width: number, height: number) {
     alive();
-    const rect = (bounds: THREE.Box3) => {
-      const a = new THREE.Vector3(bounds.min.x, bounds.max.y, bounds.max.z)
-        .applyMatrix4(models.root.matrixWorld)
-        .project(camera);
-      const b = new THREE.Vector3(bounds.max.x, bounds.min.y, bounds.max.z)
-        .applyMatrix4(models.root.matrixWorld)
-        .project(camera);
+    const rect = (quad: MenuQuad) => {
+      const xs = quad.map((p) => p.x),
+        ys = quad.map((p) => p.y);
       return {
-        x: ((a.x + 1) * width) / 2,
-        y: ((1 - a.y) * height) / 2,
-        width: ((b.x - a.x) * width) / 2,
-        height: ((a.y - b.y) * height) / 2,
+        x: Math.min(...xs),
+        y: Math.min(...ys),
+        width: Math.max(...xs) - Math.min(...xs),
+        height: Math.max(...ys) - Math.min(...ys),
       };
     };
-    return { board: rect(models.board.bounds), settings: rect(models.board.settingsBounds) };
+    const corners = projectCorners(width, height);
+    return { board: rect(corners.board), settings: rect(corners.settings) };
   }
   return {
     scene,
@@ -147,6 +226,7 @@ function assemble(
     keyLight,
     layout,
     projectFrame,
+    projectCorners,
     dispose() {
       if (disposed) return;
       disposed = true;
