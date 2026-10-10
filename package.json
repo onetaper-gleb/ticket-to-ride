@@ -10,9 +10,14 @@
     "build": "tsc -b && vite build",
     "test": "vitest run",
     "check": "tsc -b",
+    "server:install": "pnpm --dir server install --frozen-lockfile --ignore-workspace --ignore-scripts",
+    "server:start": "pnpm --dir server start",
+    "server:check": "pnpm --dir server check",
+    "network:smoke": "node --import tsx scripts/network-smoke.ts",
+    "network:preview": "node --import tsx scripts/network-preview.ts",
     "simulate": "node --import tsx scripts/simulate.ts",
-    "format": "prettier --write src scripts *.json *.ts",
-    "format:check": "prettier --check src scripts *.json *.ts"
+    "format": "prettier --write src scripts server *.json *.ts",
+    "format:check": "prettier --check src scripts server *.json *.ts"
   },
   "dependencies": {
     "react": "^19.2.0",

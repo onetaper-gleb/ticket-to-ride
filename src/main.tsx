@@ -1,3 +1,3 @@
 import { createRoot } from 'react-dom/client';
-import GameSession from './session/GameSession';
-createRoot(document.getElementById('root')!).render(<GameSession />);
+import ApplicationSession from './session/ApplicationSession';
+createRoot(document.getElementById('root')!).render(<ApplicationSession />);
