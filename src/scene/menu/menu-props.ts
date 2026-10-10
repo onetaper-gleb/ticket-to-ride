@@ -85,13 +85,63 @@ function clockHandGeometry(length: number, halfWidth: number) {
   return new THREE.ExtrudeGeometry(shape, { depth: 0.009, steps: 1, bevelEnabled: false });
 }
 
-/** Origin is the ceiling contact; fixture extends 0.493 units down -Y. No scene light. */
-export function buildMenuLamp(kit: MenuModelKit): THREE.Group {
+export interface MenuLampOptions {
+  /** Shallow ceiling fixture for the cashier window instead of the suspended shade. */
+  compact?: boolean;
+  /** Extra suspended stem length; the ceiling cap stays at Y=0. Incompatible with compact. */
+  stemExtension?: number;
+}
+
+/** Origin is the ceiling contact; fixtures extend down -Y. No scene light. */
+export function buildMenuLamp(kit: MenuModelKit, options: MenuLampOptions = {}): THREE.Group {
+  const extension = options.stemExtension === undefined ? 0 : options.stemExtension;
+  if (!Number.isFinite(extension) || extension < 0)
+    throw new RangeError('Menu lamp stemExtension must be finite and non-negative');
+  if (options.compact && extension !== 0)
+    throw new RangeError('Compact menu lamp cannot have a stem extension');
   const root = new THREE.Group();
   root.name = 'menu-lamp';
   const body = kit.batch(root, 'lamp');
+  if (options.compact) {
+    body.add(new THREE.CylinderGeometry(0.072, 0.072, 0.026, 16), 'iron', [0, -0.013, 0]);
+    const profile = [
+      [0.182, -0.16],
+      [0.185, -0.151],
+      [0.178, -0.125],
+      [0.15, -0.08],
+      [0.104, -0.045],
+      [0.064, -0.027],
+      [0.042, -0.021],
+      [0.034, -0.03],
+      [0.056, -0.037],
+      [0.096, -0.055],
+      [0.141, -0.09],
+      [0.168, -0.135],
+      [0.173, -0.151],
+      [0.173, -0.16],
+      [0.182, -0.16],
+    ].map(([radius, height]) => new THREE.Vector2(radius, height));
+    body.add(new THREE.LatheGeometry(profile, 24), 'iron');
+    body.add(new THREE.CylinderGeometry(0.174, 0.174, 0.02, 24), 'warm', [0, -0.165, 0]);
+    body.flush();
+    const bounds = new THREE.Box3().setFromObject(root);
+    const size = bounds.getSize(new THREE.Vector3());
+    root.userData.contact = {
+      plane: 'Y=0',
+      direction: '-Y',
+      height: size.y,
+      diameter: Math.max(size.x, size.z),
+      compact: true,
+      bounds: { min: bounds.min.toArray(), max: bounds.max.toArray() },
+    };
+    return root;
+  }
   body.add(new THREE.CylinderGeometry(0.057, 0.057, 0.025, 16), 'iron', [0, -0.0125, 0]);
-  body.add(new THREE.CylinderGeometry(0.019, 0.019, 0.23, 12), 'iron', [0, -0.126, 0]);
+  body.add(new THREE.CylinderGeometry(0.019, 0.019, 0.23 + extension, 12), 'iron', [
+    0,
+    -0.126 - extension / 2,
+    0,
+  ]);
   const shadeProfile = [
     [0.021, -0.225],
     [0.052, -0.24],
@@ -108,11 +158,16 @@ export function buildMenuLamp(kit: MenuModelKit): THREE.Group {
     [0.016, -0.24],
   ].map(([radius, height]) => new THREE.Vector2(radius, height));
   // Lathe meridians run bottom-to-top so the outer shade retains outward normals.
-  body.add(new THREE.LatheGeometry(shadeProfile.reverse(), 24), 'iron');
-  body.add(new THREE.CylinderGeometry(0.195, 0.195, 0.008, 24), 'warm', [0, -0.418, 0]);
-  body.add(new THREE.SphereGeometry(0.066, 16, 10), 'warm', [0, -0.427, 0]);
+  body.add(new THREE.LatheGeometry(shadeProfile.reverse(), 24), 'iron', [0, -extension, 0]);
+  body.add(new THREE.CylinderGeometry(0.195, 0.195, 0.008, 24), 'warm', [0, -0.418 - extension, 0]);
+  body.add(new THREE.SphereGeometry(0.066, 16, 10), 'warm', [0, -0.427 - extension, 0]);
   body.flush();
-  root.userData.contact = { plane: 'Y=0', direction: '-Y', height: 0.493, diameter: 0.45 };
+  root.userData.contact = {
+    plane: 'Y=0',
+    direction: '-Y',
+    height: 0.493 + extension,
+    diameter: 0.45,
+  };
   return root;
 }
 
@@ -169,59 +224,158 @@ export function buildMenuTicketHolder(kit: MenuModelKit): THREE.Group {
   return root;
 }
 
-/** Author-made case; Y=0 is the floor. Two material batches, no painted decal proxy. */
+export interface MenuSuitcaseOptions {
+  /** Body dimensions excluding feet/fittings/handle; front must fit a square 30%-width decal. */
+  size?: readonly [width: number, height: number, depth: number];
+}
+
+/** Author-made case; Y=0 is the floor. Resizes geometry while root scale stays identity. */
 export function buildMenuSuitcase(
   kit: MenuModelKit,
   color: 'wood' | 'green',
   stickers?: THREE.Texture,
+  options: MenuSuitcaseOptions = {},
 ): THREE.Group {
+  const [width, height, depth] = options.size ?? [0.7, 0.43, 0.26];
+  if (![width, height, depth].every((dimension) => Number.isFinite(dimension) && dimension > 0))
+    throw new RangeError('Menu suitcase dimensions must be finite and positive');
+  const sx = width / 0.7;
+  const sy = height / 0.43;
+  const sz = depth / 0.26;
+  const bevelScale = Math.min(sx, sy, sz);
+  const radius = Math.min(0.044 * bevelScale, width / 3, height / 3, depth / 3);
+  const footHeight = 0.025 * sy;
+  const decalSize = width * 0.3;
+  const decalMinY = footHeight + radius + 0.004 * bevelScale;
+  const decalMaxY = 0.32 * sy - 0.008 * bevelScale;
+  if (decalMaxY - decalMinY < decalSize)
+    throw new RangeError(
+      'Menu suitcase height must leave room for a square 30%-width luggage decal',
+    );
+  const decalY = THREE.MathUtils.clamp(
+    0.18 * sy,
+    decalMinY + decalSize / 2,
+    decalMaxY - decalSize / 2,
+  );
+  const at = (x: number, y: number, z: number): [number, number, number] => [
+    x * sx,
+    y * sy,
+    z * sz,
+  ];
+  const box = (x: number, y: number, z: number, radius = 0) =>
+    radius > 0
+      ? menuBox(x * sx, y * sy, z * sz, radius * bevelScale)
+      : new THREE.BoxGeometry(x * sx, y * sy, z * sz);
   const root = new THREE.Group();
   root.name = `menu-suitcase-${color}`;
   const body = kit.batch(root, 'suitcase');
-  body.add(menuBox(0.7, 0.43, 0.26, 0.044), color, [0, 0.24, 0]);
-  body.add(menuBox(0.17, 0.024, 0.027, 0.009), color, [0, 0.51, 0]);
+  body.add(box(0.7, 0.43, 0.26, 0.044), color, at(0, 0.24, 0));
+  body.add(box(0.17, 0.024, 0.027, 0.009), color, at(0, 0.51, 0));
   for (const x of [-0.21, 0.21]) {
-    for (const z of [-0.133, 0.133]) {
-      body.add(new THREE.BoxGeometry(0.032, 0.401, 0.008), 'brass', [x, 0.24, z]);
-    }
-    for (const y of [0.039, 0.441]) {
-      body.add(new THREE.BoxGeometry(0.032, 0.008, 0.245), 'brass', [x, y, 0]);
-    }
+    body.add(
+      suitcaseStrapGeometry(0.032 * sx, height, depth, radius, 0.004 * bevelScale),
+      'brass',
+      at(x, 0.24, 0),
+    );
   }
   for (const x of [-0.31, 0.31]) {
     for (const y of [0.065, 0.415]) {
       for (const z of [-0.128, 0.128]) {
-        body.add(new THREE.BoxGeometry(0.07, 0.063, 0.014), 'brass', [x, y, z]);
+        body.add(box(0.07, 0.063, 0.014), 'brass', at(x, y, z));
       }
       for (const z of [-0.1, 0.1]) {
-        body.add(new THREE.BoxGeometry(0.014, 0.063, 0.049), 'brass', [Math.sign(x) * 0.347, y, z]);
+        body.add(box(0.014, 0.063, 0.049), 'brass', at(Math.sign(x) * 0.347, y, z));
       }
     }
-    body.add(new THREE.BoxGeometry(0.065, 0.025, 0.12), 'brass', [x, 0.0125, 0]);
+    body.add(box(0.065, 0.025, 0.12), 'brass', at(x, 0.0125, 0));
   }
   for (const x of [-0.101, 0.101]) {
-    body.add(menuBox(0.037, 0.05, 0.015, 0.004), 'brass', [x, 0.345, 0.14]);
+    body.add(box(0.037, 0.05, 0.015, 0.004), 'brass', at(x, 0.345, 0.137));
   }
   for (const x of [-0.073, 0.073]) {
-    body.add(menuBox(0.021, 0.065, 0.025, 0.006), 'brass', [x, 0.481, 0]);
-    body.add(menuBox(0.044, 0.01, 0.041, 0.003), 'brass', [x, 0.455, 0]);
+    body.add(box(0.021, 0.065, 0.025, 0.006), 'brass', at(x, 0.481, 0));
+    body.add(box(0.044, 0.01, 0.041, 0.003), 'brass', at(x, 0.455, 0));
   }
   body.flush();
-  const frontDecal = menuAnchor(root, 'decal-front', [0, 0.18, 0.131]);
+  const frontDecal = menuAnchor(root, 'decal-front', [0, decalY, 0.131 * sz]);
   if (stickers) {
-    const geometry = new THREE.PlaneGeometry(0.21, 0.21);
+    const geometry = new THREE.PlaneGeometry(decalSize, decalSize);
     const uv = geometry.getAttribute('uv');
     const left = color === 'wood' ? 16 : 272;
     for (let i = 0; i < uv.count; i++)
       uv.setXY(i, (left + uv.getX(i) * 224) / 512, (272 + uv.getY(i) * 224) / 512);
     kit.mappedMesh(frontDecal, geometry, 'paper', stickers, 'luggage-print');
   }
-  const sideDecal = menuAnchor(root, 'decal-side', [0.351, 0.235, 0]);
+  const sideDecal = menuAnchor(root, 'decal-side', at(0.351, 0.235, 0));
   sideDecal.rotation.y = Math.PI / 2;
   root.userData.decalSlots = [
-    { name: 'decal-front', width: 0.21, height: 0.21, normal: '+Z', art: 'A07' },
-    { name: 'decal-side', width: 0.09, height: 0.09, normal: '+X', art: 'A07' },
+    {
+      name: 'decal-front',
+      width: decalSize,
+      height: decalSize,
+      normal: '+Z',
+      art: 'A07',
+      clearance: {
+        strap: 0.194 * sx - decalSize / 2,
+        lock: 0.32 * sy - decalY - decalSize / 2,
+        lowerCurve: decalY - decalSize / 2 - footHeight - radius,
+      },
+    },
+    { name: 'decal-side', width: 0.09 * sz, height: 0.09 * sz, normal: '+X', art: 'A07' },
   ];
-  root.userData.contact = { plane: 'Y=0', width: 0.708, height: 0.522, depth: 0.2845 };
+  root.userData.bodySize = [width, height, depth];
+  root.userData.bodyBounds = {
+    min: [-width / 2, footHeight, -depth / 2],
+    max: [width / 2, footHeight + height, depth / 2],
+  };
+  const bounds = new THREE.Box3().setFromObject(root);
+  const actualSize = bounds.getSize(new THREE.Vector3());
+  root.userData.contact = {
+    plane: 'Y=0',
+    width: actualSize.x,
+    height: actualSize.y,
+    depth: actualSize.z,
+    footHeight,
+    bounds: { min: bounds.min.toArray(), max: bounds.max.toArray() },
+  };
   return root;
+}
+
+/** Closed bands follow the body bevel; their inner rim enters it to cover faceted edges. */
+function suitcaseStrapGeometry(
+  width: number,
+  height: number,
+  depth: number,
+  radius: number,
+  thickness: number,
+) {
+  const shape = new THREE.Shape();
+  suitcaseRoundedPath(shape, depth + thickness * 2, height + thickness * 2, radius + thickness);
+  const hole = new THREE.Path();
+  suitcaseRoundedPath(hole, depth - thickness * 4, height - thickness * 4, radius - thickness * 2);
+  shape.holes.push(hole);
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: width,
+    steps: 1,
+    curveSegments: 4,
+    bevelEnabled: false,
+  });
+  geometry.translate(0, 0, -width / 2);
+  geometry.rotateY(Math.PI / 2);
+  return geometry;
+}
+
+function suitcaseRoundedPath(path: THREE.Path, width: number, height: number, radius: number) {
+  const x = width / 2;
+  const y = height / 2;
+  path.moveTo(-x + radius, -y);
+  path.lineTo(x - radius, -y);
+  path.absarc(x - radius, -y + radius, radius, -Math.PI / 2, 0, false);
+  path.lineTo(x, y - radius);
+  path.absarc(x - radius, y - radius, radius, 0, Math.PI / 2, false);
+  path.lineTo(-x + radius, y);
+  path.absarc(-x + radius, y - radius, radius, Math.PI / 2, Math.PI, false);
+  path.lineTo(-x, -y + radius);
+  path.absarc(-x + radius, -y + radius, radius, Math.PI, Math.PI * 1.5, false);
+  path.closePath();
 }

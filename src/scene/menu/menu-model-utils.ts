@@ -8,6 +8,7 @@ export type MenuMaterial = keyof typeof MENU_PALETTE;
 export const MENU_PALETTE = {
   cream: '#d7c5a5',
   green: '#263d3b',
+  burgundy: '#7b3536',
   iron: '#252d2d',
   wood: '#765039',
   woodDark: '#503723',

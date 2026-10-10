@@ -1,103 +1,142 @@
-# Окружение меню «Билетная касса»
+# Окружение меню «Билетная касса», round 1
 
-Candidate для общей статичной сцены. База — `bea9743c7622a7806a3d9b6824a9d912b0a41b65`, ветка — `design/menu-ticket-office-environment`. Настоящая кассирша, её кисти и билеты находятся в отдельном bundle. Общий кадр и production DOM ещё не приняты. Контроллеры движения не подключены.
+Candidate продолжает `4a281d5690dbc9ded5ca490243530172d99782be` на ветке `design/menu-ticket-office-environment`; исходная база `bea9743c7622a7806a3d9b6824a9d912b0a41b65`. Цель — приблизить массы к выбранному PNG: сократить нижний фасад, показать пол и ближний багаж, округлить котёл, убрать светлый пьедестал под составом и уточнить опоры/интерьер. Камера, свет, итоговый разворот, кассирша и DOM принадлежат другим владельцам. Анимации не подключены.
 
-## Модули и модели
+## Модули
 
-| Файл | Содержимое |
-| --- | --- |
-| `src/scene/menu/menu-models.ts` | `buildMenuModels(art?)`, фасад, прилавок, навес, рамы, перрон, рельсы, дальний фон |
-| `src/scene/menu/menu-train.ts` | Авторский локомотив, один двухцветный вагон, семь осей, дымовая точка |
-| `src/scene/menu/menu-props.ts` | Часы, две лампы, звонок, пустой держатель, два чемодана |
-| `src/scene/menu/menu-model-utils.ts` | Материалы, геометрия, статическое объединение, ресурсное владение |
+| Файл                  | Содержимое                                                                                |
+| --------------------- | ----------------------------------------------------------------------------------------- |
+| `menu-models.ts`      | `buildMenuModels(art?)`, фасад/прилавок, retained parts, рамы и world corners, перрон/фон |
+| `menu-train.ts`       | Локомотив, двухцветный вагон, семь осей, точка трубы                                      |
+| `menu-props.ts`       | Часы, обычная/компактная лампа, звонок, пустой держатель, параметризуемый чемодан         |
+| `menu-model-utils.ts` | Материалы, batching и владение ресурсами                                                  |
 
-M01–M04 и M08–M15 собраны процедурно. M05–M07 не создаются этим модулем. M16 отложен. Модули не импортируют игровой стол, персонажей, `Observation`, `PublicPlayer` или `Engine`. Renderer, камера, свет, DOM и цикл кадров принадлежат внешней сцене.
+Область M01–M04, M08–M15. M05–M07 создаёт bundle кассирши, M16 отложен. Модели не импортируют игровой стол, персонажей, Observation или Engine. Renderer, камера, освещение, DOM и цикл кадров находятся снаружи.
 
-## Координаты и контакты
+## Пространства и retained parts
 
-+Y направлен вверх, +Z — к зрителю. Все production группы имеют положительный единичный scale. Прилавок: ширина 2.03, глубина 0.70, толщина 0.13, верх Y=0. Его фронт Z=0.39. Пол Y=−1.45. Световой проём шириной 1.50; верх центральной части около Y=1.68. При ширине плеч 0.90 отношение проёма к плечам — 1.67.
++Y вверх, +Z к зрителю. Production scale всех групп положительный единичный; размеры меняются геометрией. `root`, `cashierAnchor`, `counter`, `railwayRoot`, `clock`, `train`, `board`, `dispose` сохранены. Новое `parts` содержит реальные meshes; ссылки не обнуляются после consolidate. Материалы объединены внутри частей, ресурсы остаются у bundle.
 
-| Узел | Position в системе environment root |
-| --- | --- |
-| `cashierAnchor` | `(0,0,0.02)` |
-| `counter.handRestLeft` | `(+0.35,0,0.17)` |
-| `counter.handRestRight` | `(−0.35,0,0.17)` |
-| `counter.bellAnchor` | `(0.76,0,0.18)` |
-| `counter.ticketTrayAnchor` | `(−0.70,0,0.12)` |
-| `clock.root` | `(1.36,1.30,−0.03)` |
-| `railwayRoot`, desktop bind | `(2.75,−0.65,−3.10)` |
+| Part                 | Parent           | Neutral position / yaw | Геометрия                                                                                |
+| -------------------- | ---------------- | ---------------------- | ---------------------------------------------------------------------------------------- |
+| `stationRoot`        | environment root | identity               | Фасад, окно, прилавок, рамы, cashierAnchor/контакты, часы, лампы, навес/стойки, интерьер |
+| `lowerFacade`        | stationRoot      | `(0,−.9,0)`            | Кремовая стена, цоколь и короткая зелёная панель                                         |
+| `stationFloor`       | environment root | `(0,−.9,0)`            | Верх камня local Y=0, швы local Y=.001                                                   |
+| `platform`           | railwayRoot      | `(0,0,0)`, yaw=−.65    | Кромка станции, основание пути, шпалы/рельсы                                             |
+| `canopy`             | stationRoot      | `(0,2.63,0)`           | Кровля/фестоны справа, балки и рука подвеса первой лампы                                 |
+| `supports`           | stationRoot      | `(0,−.9,0)`            | Три объединённые стойки и отдельная внешняя правая                                       |
+| `outerCanopySupport` | supports         | `(4.35,0,−.2)`         | Стойка, подошва, кольца, диагональный кронштейн; три meshes                              |
+| `interior`           | stationRoot      | `(0,0,−.94)`           | Полки/пачки, боковой светлый проём и опора компактной лампы                              |
+| `backdropRoot`       | environment root | identity               | Небо, зелень, дальние станционные массы; четыре meshes                                   |
+| `lamps[0]`           | stationRoot      | `(−2.0,2.53,.38)`      | Приподнятая лампа над доской                                                             |
+| `lamps[1]`           | stationRoot      | `(0,1.68,−.55)`        | Компактная лампа внутри окна                                                             |
+| `luggage[0…3]`       | environment root | См. таблицу ниже       | Четыре ближних чемодана, по четыре meshes с A07                                          |
 
-Лево/право рук — анатомические стороны персонажа. После `root.updateMatrixWorld(true)` контакты переводятся одним `cashierAnchor.worldToLocal(contact.getWorldPosition(vector))`. Результат: `(±0.35,0,0.15)`. Значение 0.17 не передаётся кассирше напрямую. Корень кассирши добавляется под `cashierAnchor` с identity transform.
+Фасад разворачивается через `parts.stationRoot.rotation.y`. Вместе с ним поворачиваются cashierAnchor, прилавок и контактные точки. Пол, поезд/путь, багаж и фон остаются под environment root. Поворот всего environment root дополнительно затрагивает их; не дублировать yaw. Подъём пола уже включён в neutral layout, повторное смещение пола/фасада в compositor не требуется.
 
-### Держатель билетов
+### Внешняя стойка и фон
 
-Внешние размеры: 0.18×0.14×0.13. Origin держателя совпадает с `ticketTrayAnchor`; основание касается прилавка Y=0. Основание заканчивается на Y=0.025. Открытая внутренняя полость: X=−0.070…+0.070, Z=−0.043…+0.043. Область до верхнего края задней стенки: Y=0.025…0.140. Передний край Y=0.105, боковые края Y=0.125, задний край Y=0.140.
+`outerCanopySupport` — дочерняя группа supports, origin на полу. Local Y=0 сохраняет подошву на station-local Y=−.9, верх стойки Y=2.58 входит в кровлю на .04. Кровля занимает station-local X=.95…7.15, Z=−2.8….8, низ Y=2.54. При неизменных rotation/scale можно перемещать стойку по X/Z в консервативной области X=1.10…6.60, Z=−2.60….60: верх и связанный кронштейн остаются под кровлей. Если менять canopy, область опоры пересчитать. Перенос кронштейна отдельно от стойки не нужен.
 
-`ticket-slot` — Object3D внутри `menu-ticket-holder`, position `(0,0.026,0)`, rotation `(0,0,0)`. Нейтральная вставка: нижняя точка бумаги на Y=0.026, бумага вверх +Y, нормаль печати +Z. Ширина нижней части стопки не превышает 0.14; её толщина и наклон укладываются в глубину 0.086. Верх бумаги может выступать над полостью. Вместимость рассчитана на 2–3 листа; контакт конкретной геометрии билетов проверяет владелец кассирши.
+При yaw27° проверен пример `outerCanopySupport.position=(1.7,0,−.2)`: стойка находится слева от состава, контакты с полом/крышей сохранены. Этот transform применяется только в диагностическом harness; production neutral остаётся `(4.35,0,−.2)`. Итоговое расстояние между опорами и длину консольной части выбирает общий дизайнер.
 
-Цель `ticket-slot` в cashier-local — `(−0.70,0.026,0.10)`. Для переданного оркестратором прежнего origin стопки `(−0.61,0.016,0.11)` разница равна `(−0.09,+0.010,−0.010)`. Это смещение применяется один раз, если тот origin действительно означает нижнюю опорную точку. Интегратор вычисляет цель через worldToLocal и согласует смысл origin с владельцем билетов; ресурсы бумаги освобождает bundle кассирши.
+Исходные массы backdrop-local: sky box20×12×.1 в `(3,2,−11)`; группы зелени вокруг X=1.4/3.6/6.1, Z≈−9.1; дальняя кремовая масса7×1.4×.3 в `(4,−.75,−10)` и тёмный верх7.3×.2×.6 в `(4,0,−10)`. В diagnostic yaw27° фон сдвинут на X=2, чтобы убрать зелень из кассового проёма и сохранить её за поездом. Новые рисунки и материалы для этого не создавались.
 
-## Статичные и сохранённые узлы
+С stationRoot yaw фон сохраняет своё world размещение автоматически. Для legacy поворота environment root нужный world transform фона переводится через `inverse(backdropRoot.parent.matrixWorld) * desiredWorldMatrix`, затем decomposes в position/quaternion/scale. Это ответственность compositor; одно только отрицательное rotation.y не компенсирует translation и иной parent transform.
 
-Часы смотрят в +Z. Bind-стрелки направлены в +Y, rotation=(0,0,0). Локальные pivots часовой и минутной: `(0,0,0.102)` и `(0,0,0.120)`. Отрицательный rotation.z означает движение по часовой стрелке спереди. Корпус, циферблат и подвес отделены от стрелок. Окружение их не обновляет.
+## Контакты кассы
 
-Поезд находится под `railwayRoot`. Его bind position=(0,0,0), rotation=(0,−0.65,0). Модельный нос — +Z. Семь wheel pivots имеют нулевую bind rotation и вращаются вокруг локального +X. Три локомотивные оси: Y=0.24, Z=−0.55/−0.08/+0.39. Четыре вагонные: Y=0.16, Z=−3.34/−3.03/−2.07/−1.76. `chimneyAnchor=(0,1.66,0.61)` в train-local. Модельные габариты поезда: X≈±0.487, Y≈0…1.659, Z≈−3.865…1.411.
+Прилавок2.03×.13×.70, верх Y=0, фронт Z=.39. Пол Y=−.90; нижняя панель от −.90 до −.13. Световой проём шириной1.50, центр арки около Y=1.68. Само окно и контакты не сдвигались.
 
-Рельсы и поезд имеют общий yaw −0.65. Rail top совпадает с Y=−0.65 в environment. Центры рельсов — X=±0.41 в track-local; ширина 0.04. Локомотивные/вагонные колёса пересекают эту опорную полосу. Trackbed и боковой перрон доходят до пола, нижний край Y=−1.45. `railwayRoot` перемещает всю композицию с опорами; будущий `train.root` перемещает только состав. Направление пути в railway-local: `(sin(−0.65),0,cos(−0.65))`. Боковые тяги статичны; кривошипная анимация не подготовлена.
+| Узел                       | Position в stationRoot-local |
+| -------------------------- | ---------------------------- |
+| `cashierAnchor`            | `(0,0,.02)`                  |
+| `counter.handRestLeft`     | `(+.35,0,.17)`               |
+| `counter.handRestRight`    | `(−.35,0,.17)`               |
+| `counter.bellAnchor`       | `(.76,0,.18)`                |
+| `counter.ticketTrayAnchor` | `(−.70,0,.12)`               |
+| `clock.root`               | `(1.36,1.30,−.03)`           |
 
-Лампы используют emissive, без дополнительных Light. Первая имеет кабель к нижней поверхности навеса. У звонка сохранён `bell-button`; picking и команды отсутствуют. Чемодан имеет размеры около 0.708×0.522×0.2845, контакт с полом Y=0 в prop-local, `decal-front`/`decal-side` и размеры decals в userData.
+Лево/право — анатомические стороны. Перевод после обновления world matrices: `cashierAnchor.worldToLocal(contact.getWorldPosition(vector))`, результат `(±.35,0,.15)` даже при yaw здания/transform предка. Кассирша добавляется с identity под cashierAnchor. Новая поза держащей руки остаётся у владельца кассирши; handRestRight не изменён.
 
-## Рама и layout
+Пустой держатель: внешние .18×.14×.13, основание Y=0….025, полость X=±.070, Z=±.043. Передний/боковой/задний край Y=.105/.125/.140. `ticket-slot` внутри держателя имеет position=(0,.026,0), identity rotation. Нейтральная бумага вверх +Y, нормаль +Z, низ выше основания. Bundle кассирши владеет бумагой после reparent.
 
-Используемый дизайн: `77b399cab784e5f7400e9971a8d73d3ac7d1e44b`, файл `docs/menu-ticket-office-design.md`. Palette: plaster `#D7C5A5`, wood `#765039`, metal `#263D3B`, paper `#F4E8CF`, brass `#AD7E41`. DOM владеет своими board/row tokens. Рамы используют геометрию с отверстиями: внешние углы 8 CSS px, внутренние 3 px, латунный кант 1 px и головки заклёпок 9 px внутри полосы 12 px. Наклейки квадратные 0.21×0.21 (30% ширины чемодана), по одной на передней плоскости; зазор до ремней и фурнитуры не менее 0.035. UV вертикальных деревянных стоек повёрнуты на 90°.
+Frozen compositor добавляет настоящую стопку под slot с local position=(0,.005,0), identity quaternion/scale. Фактический posed paper bounds в tray-local: X≈±.05523, Y=.02651….19434, Z=−.01525….00125; стопка помещается в полость и выступает вверх. У обеих реальных skin-кистей minY≈.002 в station-local, у билета в хвате minY≈.09483. Эти измерения относятся к frozen cashier08bc3c4, не к его следующей позе.
 
-`board.bounds` и `settingsBounds` содержат внешние рамки в координатах environment root. Их front plane — `max.z`; глубина назад — 0.04 для обеих рам. Подвесы таблички находятся в отдельной `settings-hangers` группе и не входят в прямоугольник UI. Надписей и click targets в моделях нет.
+## Поезд, путь и props
 
-Дополнительный `board.setLayout(boardBox,settingsBox,border,settingsBorder)` принимает axis-aligned Box3 с конечными координатами и world-толщины рам. max.z задаёт переднюю плоскость; входной Box3 может иметь нулевую глубину. Метод обновляет bounds, геометрию и подвесы без масштабирования моделей по осям. Старые геометрии освобождаются. Он вызывается при resize/изменении DOM rect, не каждый кадр. `innerPlane`/`settingsPlane` — getters актуальных meshes, старые ссылки после setLayout недействительны. После dispose setLayout бросает ошибку.
+Котёл и передняя круглая часть увеличены локальной геометрией ×1.4: радиус .285→.399. Кабина, кольца, дом/труба согласованы; весь trainRoot не масштабирован. Передняя буферная балка использует плоский burgundy `#7b3536`, map=null; свет фары не усилен.
 
-Технические camera candidates: FOV=34°, без roll; target=(camera.x,camera.y,0).
+Train-local bounds X≈±.501111, Y≈0…1.833, Z≈−3.865…1.411. `chimneyAnchor=(0,1.834,.61)`. Train nose+Z, neutral position=(0,0,0), yaw=−.65 под railwayRoot. Neutral railwayRoot=(2.75,−.65,−3.10); frozen desktop compositor ставит X=3.5.
 
-| Viewport | Camera position | railwayRoot.x | boardRect | settingsRect |
-| --- | --- | --- | --- | --- |
-| 1280×720 | `(−0.10,0.50,5.20)` | 2.75 | `(48,84,420,454)` | `(64,562,388,64)` |
-| 1920×1080 | `(−0.13,0.48,5.50)` | 2.75 | `(128,174,540,500)` | `(144,698,508,72)` |
-| 900×1000 | `(−0.59,0.36,7.80)` | 2.20 | `(32,272,400,470)` | `(48,766,368,64)` |
+Семь осей и сцепка сохранены. Локомотив: Y=.24, Z=−.55/−.08/+.39; вагон: Y=.16, Z=−3.34/−3.03/−2.07/−1.76. Wheel pivots bind rotation=0, ось вращения local+X. Узкие контактные полосы добавлены внутри прежнего envelope колёс. Все14 колёс имеют реальный ray contact на gauge X=±.41, ошибка local rail-top Y=0 менее6×10⁻⁹. Боковые тяги статичны.
 
-Рамы в harness располагаются на Z=0.12×camera.position.z. Border соответствует 12/6 CSS px. Проекция front corners даёт ошибку менее 10⁻⁹ px для этих фиксированных rect. Это проверка метода в отдельном harness: допуск ≤2 px для общей кассы с настоящими моделями и production DOM ещё проверяет интегратор. Safe zones лица нельзя принять по proxy; narrow composition, crop поезда и положение реальной головы остаются предметом общего просмотра. 800×600, ultrawide и 200% zoom этим environment preview не принимались.
+Рельсы и train имеют общий yaw−.65. Rail top railway-local Y=0, environment Y=−.65, ширина .04. Шпалы Y=−.13…−.07; основание пути Y=−.25…−.13. Нижний край боковой кромки и trackbed environment Y=−.90 касается пола. `railwayRoot` перемещает состав и путь вместе; `train.root` — только состав.
 
-## Арт и владение ресурсами
+Часы смотрят в+Z; bind стрелок в+Y, rotation=0, pivots Z=.102/.120. Отрицательный rotation.z — по часовой стрелке спереди. Окружение часы не обновляет. Звонок сохраняет bell-button без picking/команд. Обе лампы — emissive, без дополнительных Light. У первой потолочный origin и соединение с рукой навеса, у второй — внутренняя перемычка. `buildMenuLamp(kit,{stemExtension:.20})` удлиняет обычный стержень и опускает абажур/диск/лампочку, сохраняя крепление на Y=0; итоговая высота .693. Default без options остаётся .493, compact — .175. Negative/nonfinite extension и compact с ненулевым extension отклоняются RangeError. В окружении первая лампа имеет extension=.20; её origin не смещён вниз. При переносе lamps согласовать опору: нейтральная геометрия не перестраивает подвес автоматически.
 
-`buildMenuModels()` работает без изображений. Optional `MenuEnvironmentArt` принимает `clockFace`, `luggageStickers`, `wood` как уже загруженные Texture. Builder создаёт свои texture/material clones и не освобождает входные объекты вызывающего. Все environment геометрии, материалы и texture clones освобождаются одним `dispose()`, повторный вызов безопасен. Кассирша и renderer имеют собственные dispose; внешний обход environment не требуется. Арт в harness извлечён через git show из указанного 2D commit. A05/A07/A08 — собственные SVG и детерминированная периодическая текстура 2D дизайнера; происхождение записано в public/menu/art/provenance.md и inventory.json той же ревизии. Модели окружения авторские процедурные; сторонние модели не используются.
+`buildMenuSuitcase(kit,color,stickers?,{size?})` сохраняет старый вызов. Размер size — тело, без ручки/ножек. Фурнитура/закругления и ремни строятся локально, root scale=1. Наклейка .30×ширина тела, квадратная, circle/diamond UV-crops224² из A07. `userData.bodySize/bodyBounds/contact/decalSlots` описывают фактические размеры и зазоры. Невместимые/неположительные/нечисловые размеры отклоняются RangeError.
 
-| Art | Подключение | Размер | Owner |
-| --- | --- | --- | --- |
-| A05 `clock-face.svg` | `clockFace`; геометрические риски при наличии арта не создаются | 512² | 2D дизайнер; GPU clone — environment |
-| A07 `luggage-stickers.svg` | `luggageStickers`; circle/diamond UV-crops 224² из atlas 512² | 512² | 2D дизайнер; один GPU clone — environment |
-| A08 `wood-tile.webp` | `wood`; RepeatWrapping на деревянных деталях | 256² | 2D дизайнер; один GPU clone — environment |
-| A01–A04 | В DOM интегратора; на 3D доске текста нет | SVG/CSS/DOM | 2D дизайнер + функциональщик |
-| A06 | Бумага кассирши/держателя | SVG | Кассирша + 2D дизайнер |
-| A10 | Здесь заменён простыми массами и emissive sky | Без текстур | Environment |
-| A11 | Не подключён, этап движения закрыт | — | — |
-| A12 | Будущий кадр принятой общей сцены | — | Интегратор + 2D дизайнер |
+| Имя / порядок         | Body size      | Position в environment root | Yaw  |
+| --------------------- | -------------- | --------------------------- | ---- |
+| luggage-left-back /0  | `.90×.50×.34`  | `(−2.15,−.9,1.9)`           | .13  |
+| luggage-left-front /1 | `1.00×.55×.38` | `(−1.85,−.9,2.6)`           | −.06 |
+| luggage-left-low /2   | `.78×.46×.30`  | `(−1.23,−.9,2.06)`          | .08  |
+| luggage-right /3      | `.90×.55×.34`  | `(1.95,−.9,1.2)`            | −.20 |
 
-## Измерения candidate
+Подошва каждого prop-local Y=0. A08 на brown/wood чемоданах сохранён; если требуется кожаная фактура из PNG, это отдельная заявка 2D владельцу, новая текстура здесь не нарисована.
 
-Technical preview: headless Yandex Chromium 150 / YaBrowser 26.8, macOS, DPR=1, один directional shadow 1024², hemisphere, ACES exposure1.1. GPU driver сообщает `WebKit WebGL`; аппаратная модель в этом прогоне не установлена. Измерения не являются FPS или доказательством production responsiveness.
+## Layout рам и перспектива
 
-С A05/A07/A08: 26 430 environment tri, 42 meshes/geometries, 14 используемых материалов, 2 530 020 bytes vertex/index buffers (≈2.41 МиБ). Три RGBA текстуры с mipmaps оцениваются в 3 145 730 bytes (≈3 МиБ). Shadow 1024² дополнительно требует ориентировочно 6–8 МиБ; framebuffer/MSAA, renderer cache и кассирша в эту оценку не входят. Передача трёх art-файлов — 8213 bytes; JS harness отдельно 545.29 KB (gzip143.61 KB).
+`board.bounds/settingsBounds` и аргументы `setLayout` — **stationRoot-local номинальные прямоугольники** для neutral rotation самих рам. При identity stationRoot совпадают с прежним environment-root space. max.z — передняя плоскость, min.z=max.z−.04. `setLayout` принимает конечные Box3 и положительные border в тех же единицах, сохраняет quaternion/rotation рам, обновляет размеры/position и освобождает заменённые geometry. Вызывать при resize/изменении DOM, не каждый кадр. Getters innerPlane/settingsPlane возвращают актуальные meshes.
 
-| Viewport | Первый CPU build | Median / p95, 25 повторов | renderer main calls / tri с proxy |
-| --- | --- | --- | --- |
-| 1280×720 | 40.4 мс | 18.8 / 26.0 мс | 44 / 27 166 |
-| 1920×1080 | 38.6 мс | 18.7 / 23.0 мс | 44 / 27 166 |
-| 900×1000 | 42.0 мс | 18.2 / 22.9 мс | 40 / 23 390 |
+`getCorners()` возвращает новые world Vector3[] с четырьмя углами, порядок TL/TR/BR/BL: board/settings — внешние front corners, aperture/settingsAperture — inset после border. Front соответствует local Z=0 каждой рамы; учтены transforms всех предков. Это bounding quad закруглённого прямоугольника. После yaw bounds не являются world AABB физической рамы. Старый `compositor.projectFrame(bounds)` для yaw не подходит: native DOM нужно преобразовать по четырём спроецированным world corners.
 
-Загрузка/декодирование арта происходит до CPU timer. Первый layout rebuild, компиляция shader и GPU upload в CPU build не включены. Ранний вариант занимал до 55 мс; фаски ≤0.008 заменены простыми box, сокращены второстепенные silhouette-массы. Таблица относится к текущему candidate. p95 — значение с индексом ceil(0.95×25) в отсортированной выборке (нумерация с 1). renderer counts включают только main render, shadow pass измеряется отдельно при интеграции.
+Подвесы settings-hangers теперь дочерние settingsRoot, identity position: поворачиваются вместе с табличкой. Они не входят в прямоугольник UI и bounds. Neutral constructor содержит рамы выше нового пола: board Y=−.27…1.936, settings Y=−.75…−.40, обе front Z=.04. Compositor переопределяет layout по actual DOM rect. После dispose setLayout/getCorners бросают ошибку.
 
-## Проверки и непринятые границы
+## Ресурсы и арт
 
-Prettier, TypeScript, 189 тестов fixed-base проекта и production build прошли. Отдельный contract harness проверил контакты под transformed parent, seven wheel pivots, 20 layout rebuilds с освобождением заменённых геометрий, совпадение физических габаритов рам с bounds, rejection Infinity, запрет setLayout после dispose, однократный dispose 57 ресурсов, независимость двух bundles и сохранность входных texture. Standalone preview build включает новые модели; основной build пока их не подключает к App.
+`buildMenuModels()` работает без картинок. Optional art принимает clockFace/luggageStickers/wood как уже загруженные Texture; builder создаёт собственные clones и не освобождает входы. Геометрии, материалы и texture clones всего environment, включая retained parts, освобождает один idempotent dispose. Кассирша, арт загрузчика и renderer имеют отдельное владение; дополнительный обход environment для dispose не нужен.
 
-Read-only критик нашёл скрытые рельсы, зазор gauge, плавающую опору перрона, исчезающий A05 slot после batching, неполные bounds и allocation после dispose. Эти случаи исправлены и проверены автором. Критик остановился на лимите до повторной проверки последних изменений; финального независимого заключения о готовности общего кадра нет.
+A05 clock-face.svg512², A07 luggage-stickers.svg512² и A08 wood-tile.webp256² извлечены из frozen commit. Три RGBA clones с mipmaps ≈3 145 730 bytes. A05 заменяет геометрические риски часов, A07 shared между четырьмя чемоданами, A08 RepeatWrapping на wood. Происхождение — public/menu/art/provenance.md/inventory.json2D ревизии. Новых сторонних моделей/изображений нет.
 
-Скриншоты отдельного environment harness содержат подписанный proxy кассирши и тестовый DOM. Они показывают candidate геометрию и расчёт рам. Реальные лицо/кисти/бумага/стопка, все safe zones, состояние DOM, lifecycle menu→game, frame time и 20 циклов общей сцены ещё требуют соединения и приёмки. После candidate handoff работа ожидает замечаний к общему статичному кадру; анимации автоматически не начинаются.
+## Общие кадры и измерения
+
+Перед/после используют compositor **dd43dc0a234e90a1801888ba10319f9126cf271c**, cashier **08bc3c42b0a93e9aecd591c1bf549368c6f7b9a1**, art **97ec1b1ed8dc292529b7367cc1cea275f6c9fa9a**. Использованы только зафиксированные файлы, чужие dirty tips не подключены. DOM snapshot index.html SHA256=`306d519be258b93e92a8ca5b4b4fbd4dd2a19d53fd373abd96f8f842c8b74c6c`. Камера1672×941: `(0.04,.52,6.4)`, FOV34, без roll; свет/shadow неизменны.
+
+Before — environment4a281d5; after — round1. В общем after прилавок околоY604px, основание панели околоY816px, пол перед кассой видим. Raycast actual floor показывает Y−1.45→−.90. Perspective diagnostics дополнительно задают station yaw27°, relative board/settings yaw.04rad и native DOM homography по getCorners. Смещение outer support/фон применяется только в варианте moved-parts. Ошибка actual CSS corner markers ≤.027px. Это проверка API и конкретного harness, не приёмка production compositor/его угла.
+
+Runtime: headless Chromium150 / YaBrowser26.8, macOS, DPR1, WebKit WebGL; аппаратная GPU модель не установлена. ACES exposure1.1, hemisphere+directional, одна shadow1024². Environment с A05/A07/A08: **32 194 tri,75 meshes/geometries,15 материалов,3 texture clones,3 083 364 bytes vertex/index buffers**. Before:26 430 tri,42 meshes,14 материалов,2 530 020 bytes buffers. Текстуры не выросли. Shadow/framebuffer/MSAA/cache и ресурсный объём кассирши в environment оценку не входят.
+
+| Общий кадр                 | CPU build median /p95,25 повторов | Main calls /tri |
+| -------------------------- | --------------------------------- | --------------- |
+| Before1672×941             | 18.5 /21.7 мс                     | 66 /86 154      |
+| After1672×941              | 24.3 /27.2 мс                     | 97 /91 702      |
+| Yaw27° moved parts1672×941 | 23.7 /27.3 мс                     | 99 /91 918      |
+| After1280×720              | 23.4 /27.6 мс                     | 97 /91 702      |
+| After1920×1080             | 23.3 /25.7 мс                     | 97 /91 702      |
+| After900×1000              | 22.7 /27.2 мс                     | 75 /80 440      |
+
+CPU timer включает только build моделей с уже загруженным art, без shader/GPU upload/layout. p95 — 24-я отсортированная выборка из25. Main counts включают настоящую кассиршу; shadow pass считается renderer отдельно. Значения не измеряют FPS/GPU frame time. В diagnostic99calls запас до целевого100 мал; новые meshes общей сцены требуют повторного замера.
+
+## Проверки и границы передачи
+
+Проверены Prettier, TypeScript, fixed-base suite и production build; отдельный preview build включает окружение и frozen настоящую кассиршу, основной App пока его не импортирует. Contract harness проверяет15 retained parts с настоящими перемещаемыми meshes, отдельную правую стойку, floor/support alignment,14 wheel/gauge контактов, worldToLocal рук, порядок/fresh world corners, сохранение rotation при layout,20 rebuilds с освобождением заменённых geometry, finite inputs, bounds без подвесов, dispose×2 для91 текущего ресурса, сохранность caller Texture и независимость bundles. Исходная texture в этом contract harness общая для трёх art slots; поэтому количество отличается от bundle с тремя разными input textures.
+
+Независимый read-only reviewer подтвердил retained геометрию, рельсы/колёса/пол и ресурсное владение. Найденные случаи исправлены: settings-hangers не следовали yaw таблички, компактная лампа не имела физической опоры, neutral settings frame пересекал поднятый пол, два левых корпуса чемоданов пересекались. Проверка SAT подтверждает разделённые XZ footprints всех шести пар чемоданов. Итоговый verdict указан в handoff с точным SHA.
+
+Основная приёмка — desktop1672×941. Проверки1280/1920/900 ограничены отсутствием ошибок и доступностью native actions в preview. Новые 2D v3, final transforms, safe zones и shader/GPU frame time остаются задачами общей интеграции. Новый зафиксированный cashier f3c5383 проверен отдельно ниже. Доработанная лампа над доской проверена также в новом зафиксированном перспективном кадре: абажур виден над доской, верх крепления/стержня находится за верхним crop. Общая сцена выбирает final transforms, не подхватывает диагностические варианты автоматически. Lifecycle menu→game/20 циклов и игровой баланс этим статичным harness не проверялись. Следующий этап движения автоматически не начинается.
+
+## Проверка нового зафиксированного общего ракурса
+
+Дополнительный harness использует compositor **0457437310e7ca0ba9212cf4e17d3ec10c4b46d6**, cashier **f3c5383f3ce136f23256772b836001defdc9d899**, прежний art97ec1b1. HTML/preview source извлечены из опубликованного portable archive; HTML SHA256=`0fb7210afcf607fec7d62a6ecc59805bc64d2d3e4df71494f789a4e43d2ea641`. Source compositor/cashier извлечён по точным Git commits. Это дополнительная проверка стыка; исходное before/after на dd43 сохранено. Production foreign файлы не изменены.
+
+Временный harness после frozen layout переносит yaw27° с environment root на stationRoot, восстанавливает world railway=(3.5,−.65,−3.1)/identity, задаёт outer support=(1.7,0,−.2) и backdropRoot.x=2. Физические board/settings остаются на рассчитанной frozen planeZ=.04; frozen projectCorners/native CSS работают с настоящими meshes. Эти адаптации надо выполнить в owned compositor при интеграции, их нет в environment builder.
+
+**Согласованный handRestRight=(.10,0,.15) cashier-local допустим для прилавка**, соответствует station-local=(.10,0,.17). Default environment anchor остаётся (−.35,0,.17). В harness proposal anchor временно получает station-local (.10,0,.17), затем оба options переводятся через настоящий worldToLocal; constructor default не меняется. Проверены оба варианта с новым cashier. В proposal обе skin-кисти minY≈.002, по шесть нижних skin points имеют реальные ray hits прилавка на Y≈0. Билет в station-local X=.10863….28597, Y=.07217….32805, Z=.05607….14252. Holder расположен слева (его внешний правый край X=−.61), левый край bell base X=.653, зазор до билета ≥.367. Кисть/бумага помещаются над поверхностью X=±1.015, Z=−.31….39; holder и bell не мешают предложенной точке. Исходные skin/cuff/paper invariants новой позы проверены владельцем cashier и не изменялись в этом harness.
+
+На1672×941 билет proposal проецируется X861.96–896.74,Y516.46–578.60, вместо default X744.66–786.38,Y511.58–577.14. Стем лампы над доской удлинён на .20; видимая область fixture X272–413,Y0–78 близка к исходному ориентиру. Компактная лампа над окном заканчивается околоY255.91, верх увеличенной головы Y289.86: видимый зазор ≈33.95px, силуэты разделены; compact minY1.505 выше максимума головы1.26633 на .23867. Верхние вершины cashier для этого замера отобраны по station-local Y≥.8; полный bundle головы не пересобирался.
+
+В новом общем harness: environment32194tri/75meshes, desktop99main calls/91918tri, narrow93calls/87716tri. Ошибка native corner probes ≤.047px на1672/1280/1920/900. HTTP failures0,page/console errors0. Реальные clicks по «Правилам», Escape, Tab на настройки, Enter открытия native формы и возврат focus после Escape прошли на всех четырёх размерах. Ни один диалог не запускает игровую сессию. Подробные данные — menu-round-1-current-composition-checks.json в handoff.
+
+Оркестратор согласовал (.10,0,.15) для конфигурации общей сцены, левую точку оставил (.35,0,.15). Builder defaults сохраняются. Текущий cashier tip **5cd16df3901b8101c462b354395db073696e5e45** отличается от проверенного f3c5383 только docs/menu-cashier.md; геометрия и поза побайтно прежние. В compositor сначала задать retained counter.handRestRight.position=(.10,0,.17) в station-local, затем получить оба options через актуальные localToWorld/worldToLocal относительно cashierAnchor. Не передавать hardcoded world координаты. Имена файлов current-proposed сохраняют название этапа проверки; точка уже согласована для общей композиции.
