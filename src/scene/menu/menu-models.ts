@@ -392,10 +392,10 @@ function buildInterior(root: THREE.Group, kit: MenuModelKit) {
   // The portal has long side reveals, a rear wall and separate outdoor/inset planes.
   batch.add(menuBox(0.75, 3.0, 0.075), 'cream', [0.7, 0.6, -1.52]);
   for (const x of [0.38, 1.055])
-    batch.add(verticalWood(menuBox(0.055, 2.3, 1.45)), 'wood', [x, 0.28, -0.7]);
-  batch.add(menuBox(0.62, 0.055, 1.45), 'wood', [0.7, -0.075, -0.7]);
-  batch.add(menuBox(0.55, 0.93, 0.08), 'wood', [0.77, 0.03, -1.43]);
-  batch.add(menuBox(0.28, 0.43, 0.022), 'sky', [0.59, 1.095, -1.47]);
+    batch.add(verticalWood(menuBox(0.055, 2.3, 1.53)), 'wood', [x, 0.28, -0.7325]);
+  batch.add(menuBox(0.62, 0.055, 1.53), 'wood', [0.7, -0.075, -0.7325]);
+  batch.add(menuBox(0.55, 0.93, 0.08), 'wood', [0.77, 0.03, -1.445]);
+  batch.add(menuBox(0.28, 0.43, 0.022), 'sky', [0.59, 1.095, -1.472]);
   batch.add(menuBox(0.033, 0.46, 0.06), 'wood', [0.747, 1.08, -1.43]);
   batch.add(menuBox(0.2, 0.39, 0.2, 0.007), 'wood', [0.83, 0.1475, -0.92]);
   batch.add(menuBox(0.24, 0.2, 0.18, 0.005), 'woodDark', [0.59, 0.0525, -1.19]);
