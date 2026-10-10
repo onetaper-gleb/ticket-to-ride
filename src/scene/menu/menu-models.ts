@@ -429,6 +429,11 @@ function buildBoard(root: THREE.Group, kit: MenuModelKit): MenuModels['board'] {
   let boardBorder = 0;
   let settingsFrameBorder = 0;
 
+  function positiveFloat32(value: number) {
+    const rounded = Math.fround(value);
+    return Number.isFinite(rounded) && rounded > 0;
+  }
+
   function setTitleShapes(
     shapes: readonly THREE.Shape[],
     sourceBounds: THREE.Box2,
@@ -437,6 +442,10 @@ function buildBoard(root: THREE.Group, kit: MenuModelKit): MenuModels['board'] {
     kit.assertAlive();
     const sourceSize = sourceBounds.getSize(new THREE.Vector2());
     const targetSize = titleBounds.getSize(new THREE.Vector2());
+    const normalizedSize = new THREE.Vector2(
+      targetSize.x / sourceSize.x,
+      targetSize.y / sourceSize.y,
+    );
     const targetCentre = new THREE.Vector2(
       titleBounds.min.x / 2 + titleBounds.max.x / 2,
       titleBounds.min.y / 2 + titleBounds.max.y / 2,
@@ -456,8 +465,7 @@ function buildBoard(root: THREE.Group, kit: MenuModelKit): MenuModels['board'] {
       ].every(Number.isFinite) ||
       sourceSize.x <= 0 ||
       sourceSize.y <= 0 ||
-      targetSize.x <= 0 ||
-      targetSize.y <= 0 ||
+      ![targetSize.x, targetSize.y, normalizedSize.x, normalizedSize.y].every(positiveFloat32) ||
       titleBounds.min.x < -boardSize.x / 2 + boardBorder ||
       titleBounds.max.x > boardSize.x / 2 - boardBorder ||
       titleBounds.min.y < -boardSize.y / 2 + boardBorder ||
@@ -498,12 +506,7 @@ function buildBoard(root: THREE.Group, kit: MenuModelKit): MenuModels['board'] {
     const nextScale = reuse
       ? new THREE.Vector2(targetSize.x / titleBaseSize.x, targetSize.y / titleBaseSize.y)
       : new THREE.Vector2(1, 1);
-    if (
-      !Number.isFinite(nextScale.x) ||
-      !Number.isFinite(nextScale.y) ||
-      nextScale.x <= 0 ||
-      nextScale.y <= 0
-    )
+    if (![nextScale.x, nextScale.y].every(positiveFloat32))
       throw new RangeError('Invalid menu title scale');
     if (!reuse) {
       const points = (path: readonly THREE.Vector2[]) =>
