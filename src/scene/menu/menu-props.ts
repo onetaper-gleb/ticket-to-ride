@@ -269,7 +269,7 @@ export function buildMenuBench(kit: MenuModelKit): THREE.Group {
     body.add(
       menuTube(
         [
-          [x, 0.035, 0.25],
+          [x, 0.016, 0.25],
           [x, 0.15, 0.235],
           [x, 0.26, 0.195],
           [x, 0.34, 0.175],
@@ -283,7 +283,7 @@ export function buildMenuBench(kit: MenuModelKit): THREE.Group {
     body.add(
       menuTube(
         [
-          [x, 0.035, -0.22],
+          [x, 0.016, -0.22],
           [x, 0.2, -0.11],
           [x, 0.42, -0.1],
           [x, 0.55, -0.19],
