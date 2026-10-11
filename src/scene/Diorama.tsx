@@ -139,7 +139,7 @@ export function MenuDiorama({
       abort.abort();
       observer?.disconnect();
       if (render) window.removeEventListener('resize', render);
-      window.removeEventListener('pagehide', dispose);
+      window.removeEventListener('pagehide', hide);
       dprQuery?.removeEventListener('change', resizeDpr);
       renderer?.domElement.removeEventListener('webglcontextlost', contextLost);
       renderRef.current = null;
@@ -154,7 +154,13 @@ export function MenuDiorama({
       boardElement.classList.remove('has-volume-title');
       boardElement.style.transform = '';
       settingsElement.style.transform = '';
+      for (const property of ['position', 'left', 'top', 'margin', 'width'])
+        settingsElement.style.removeProperty(property);
       stageElement.style.minHeight = '';
+    };
+    const hide = () => {
+      dispose();
+      stateCallback.current('loading');
     };
     const contextLost = (event: Event) => {
       event.preventDefault();
@@ -162,7 +168,7 @@ export function MenuDiorama({
       stateCallback.current('error');
     };
     stateCallback.current('loading');
-    window.addEventListener('pagehide', dispose, { once: true });
+    window.addEventListener('pagehide', hide, { once: true });
     void (async () => {
       try {
         renderer = new THREE.WebGLRenderer({ antialias: true });

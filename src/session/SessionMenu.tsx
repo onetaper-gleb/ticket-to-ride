@@ -75,6 +75,7 @@ export default function SessionMenu(props: MenuProps) {
   const [name, setName] = useState('Вы');
   const [seed, setSeed] = useState('');
   const [ruleIndex, setRuleIndex] = useState(0);
+  const [partyOpen, setPartyOpen] = useState(false);
   const [welcome, setWelcome] = useState(needsWelcome);
   const page = rulesPages[ruleIndex];
   const version = JSON.stringify([
@@ -111,12 +112,20 @@ export default function SessionMenu(props: MenuProps) {
   useLayoutEffect(updateScroll, [version, scene]);
   useEffect(() => {
     const element = stage.current;
+    const restore = (event: PageTransitionEvent) => {
+      if (event.persisted) setAttempt((value) => value + 1);
+    };
     element?.addEventListener('menu-layout-complete', updateScroll);
-    return () => element?.removeEventListener('menu-layout-complete', updateScroll);
+    window.addEventListener('pageshow', restore);
+    return () => {
+      element?.removeEventListener('menu-layout-complete', updateScroll);
+      window.removeEventListener('pageshow', restore);
+    };
   }, []);
   const openParty = (origin: HTMLElement, fromSettings = false) => {
     partyOrigin.current = origin;
     party.current?.showModal();
+    setPartyOpen(true);
     party.current?.querySelector<HTMLElement>(fromSettings ? 'select' : 'h2')?.focus();
   };
   const openRules = (origin: HTMLElement) => {
@@ -287,7 +296,10 @@ export default function SessionMenu(props: MenuProps) {
       <dialog
         ref={party}
         aria-labelledby="menu-party-title"
-        onClose={() => partyOrigin.current?.focus()}
+        onClose={() => {
+          setPartyOpen(false);
+          partyOrigin.current?.focus();
+        }}
       >
         <h2 id="menu-party-title" tabIndex={-1}>
           Параметры новой партии
@@ -309,6 +321,7 @@ export default function SessionMenu(props: MenuProps) {
           <label className="field">
             Всего мест
             <select
+              aria-label="Всего мест"
               value={playerCount}
               onChange={(event) => setPlayerCount(Number(event.target.value) as 2 | 3 | 4 | 5)}
             >
@@ -323,6 +336,7 @@ export default function SessionMenu(props: MenuProps) {
           <label className="field">
             Сложность ботов
             <select
+              aria-label="Сложность ботов"
               value={difficulty}
               onChange={(event) => setDifficulty(event.target.value as BotDifficulty)}
             >
@@ -333,6 +347,7 @@ export default function SessionMenu(props: MenuProps) {
           <label className="field">
             Ваше имя
             <input
+              aria-label="Ваше имя"
               maxLength={24}
               value={name}
               onChange={(event) => setName(event.target.value)}
@@ -344,6 +359,7 @@ export default function SessionMenu(props: MenuProps) {
             <label className="field">
               Код партии
               <input
+                aria-label="Код партии"
                 maxLength={64}
                 value={seed}
                 onChange={(event) => setSeed(event.target.value)}
@@ -429,7 +445,7 @@ export default function SessionMenu(props: MenuProps) {
         </div>
         <div className="footer">
           <button type="button" className="submit" onClick={() => rules.current?.close()}>
-            Вернуться {party.current?.open ? 'к параметрам' : 'в меню'}
+            Вернуться {partyOpen ? 'к параметрам' : 'в меню'}
           </button>
         </div>
       </dialog>
