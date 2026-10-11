@@ -287,7 +287,7 @@ function addLocomotive(batch: TrainBatch) {
   );
   addCylinder(
     batch,
-    'green',
+    'iron',
     0.363,
     BOILER_RADIUS,
     0.393,
@@ -321,7 +321,7 @@ function addLocomotive(batch: TrainBatch) {
   );
   addAxialProfile(
     batch,
-    'steel',
+    'iron',
     [
       [0.303, -0.012],
       [0.351, -0.012],
@@ -339,41 +339,41 @@ function addLocomotive(batch: TrainBatch) {
   );
   addAxialProfile(
     batch,
-    'steel',
+    'iron',
     [
       [0, -0.023],
       [0.3132, -0.023],
       [0.3186, -0.01],
       [0.3177, 0.006],
-      [0.3096, 0.023],
-      [0.2961, 0.042],
-      [0.2682, 0.055],
-      [0.2115, 0.06],
-      [0, 0.061],
+      [0.3096, 0.018],
+      [0.2961, 0.029],
+      [0.285, 0.032],
+      [0.08, 0.032],
+      [0, 0.032],
     ],
     [0, BOILER_Y, 1.008],
     'z',
     40,
     'train-front-door',
   );
-  batch.add(new THREE.TorusGeometry(0.3141, 0.012, 6, 40), 'steel', [0, BOILER_Y, 1.033]);
+  batch.add(new THREE.TorusGeometry(0.3141, 0.012, 6, 40), 'iron', [0, BOILER_Y, 1.033]);
   for (let i = 0; i < 14; i += 1) {
     const angle = (i / 14) * Math.PI * 2;
-    batch.add(new THREE.SphereGeometry(0.01, 8, 4), 'brass', [
+    batch.add(new THREE.SphereGeometry(0.01, 8, 4), 'iron', [
       Math.cos(angle) * 0.348,
       BOILER_Y + Math.sin(angle) * 0.348,
       0.996,
     ]);
   }
   for (const y of [-0.135, 0.135]) {
-    addBox(batch, 'steel', [0.084, 0.04, 0.02], [-0.2637, BOILER_Y + y, 1.041], 0.006);
-    addCylinder(batch, 'steel', 0.02, 0.02, 0.052, [-0.2898, BOILER_Y + y, 1.054], [0, 0, 0], 12);
+    addBox(batch, 'iron', [0.084, 0.04, 0.02], [-0.2637, BOILER_Y + y, 1.041], 0.006);
+    addCylinder(batch, 'iron', 0.02, 0.02, 0.052, [-0.2898, BOILER_Y + y, 1.054], [0, 0, 0], 12);
   }
-  addCylinder(batch, 'steel', 0.03, 0.03, 0.04, [0, BOILER_Y - 0.13, 1.0645], [HALF_PI, 0, 0], 12);
+  addCylinder(batch, 'steel', 0.03, 0.03, 0.05, [0, BOILER_Y - 0.13, 1.0595], [HALF_PI, 0, 0], 12);
   addBox(batch, 'brass', [0.098, 0.017, 0.018], [0.025, BOILER_Y - 0.13, 1.09], 0.006);
   addCylinder(batch, 'steel', 0.022, 0.022, 0.018, [0, BOILER_Y - 0.13, 1.09], [HALF_PI, 0, 0], 12);
 
-  for (const z of [-0.24, 0.27, 0.73]) {
+  for (const z of [-0.24, 0.27, 0.47]) {
     batch.add(new THREE.TorusGeometry(boilerRadiusAt(z) + 0.0028, 0.018, 6, 32), 'brass', [
       0,
       BOILER_Y,
@@ -391,6 +391,41 @@ function addLocomotive(batch: TrainBatch) {
     'brass',
     [0, BOILER_TOP + 0.09, 0.045],
     [HALF_PI, 0, 0],
+  );
+  addAxialProfile(
+    batch,
+    'green',
+    [
+      [0, -0.025],
+      [0.082, -0.025],
+      [0.086, -0.008],
+      [0.088, 0.015],
+      [0.084, 0.104],
+      [0.075, 0.139],
+      [0.047, 0.158],
+      [0, 0.167],
+    ],
+    [0, BOILER_TOP, -0.21],
+    'y',
+    24,
+    'train-rear-steam-dome',
+  );
+  addCylinder(batch, 'iron', 0.028, 0.028, 0.15, [-0.22, BOILER_TOP - 0.03, 0.43]);
+  addAxialProfile(
+    batch,
+    'iron',
+    [
+      [0, -0.055],
+      [0.053, -0.055],
+      [0.064, -0.045],
+      [0.064, 0.045],
+      [0.054, 0.055],
+      [0, 0.055],
+    ],
+    [-0.22, BOILER_TOP + 0.052, 0.46],
+    'z',
+    20,
+    'train-forward-steam-valve',
   );
   addAxialProfile(
     batch,
@@ -417,30 +452,30 @@ function addLocomotive(batch: TrainBatch) {
   );
   addAxialProfile(
     batch,
-    'paper',
+    'brass',
     [
-      [0.098, 0.119],
-      [0.094, 0.16],
-      [0.09, 0.32],
-      [0.107, 0.39],
-      [0.15, 0.41],
-      [0.164, 0.44],
-      [0.16, 0.465],
-      [0.149, 0.475],
-      [0.12, 0.475],
-      [0.117, 0.444],
-      [0.1, 0.42],
-      [0.083, 0.32],
-      [0.076, 0.16],
-      [0.079, 0.119],
-      [0.098, 0.119],
+      [0.107, 0.119],
+      [0.104, 0.16],
+      [0.101, 0.3],
+      [0.115, 0.385],
+      [0.156, 0.414],
+      [0.174, 0.442],
+      [0.169, 0.465],
+      [0.155, 0.475],
+      [0.128, 0.475],
+      [0.126, 0.449],
+      [0.111, 0.422],
+      [0.089, 0.3],
+      [0.082, 0.16],
+      [0.086, 0.119],
+      [0.107, 0.119],
     ],
     [0, BOILER_TOP, 0.61],
     'y',
     32,
     'train-chimney-shaft',
   );
-  addCylinder(batch, 'iron', 0.104, 0.104, 0.012, [0, BOILER_TOP + 0.412, 0.61], [0, 0, 0], 24);
+  addCylinder(batch, 'iron', 0.117, 0.117, 0.012, [0, BOILER_TOP + 0.412, 0.61], [0, 0, 0], 24);
   addCab(batch);
 
   addBox(batch, 'red', [0.98, 0.19, 0.14], [0, 0.375, 1.05], 0.025);
@@ -491,8 +526,8 @@ function addLocomotive(batch: TrainBatch) {
   addBar(batch, 'iron', [-0.385, 0.09, 1.39], [0.385, 0.09, 1.39], 0.021);
   for (const side of [-1, 1]) {
     const x = side * 0.484;
-    addBox(batch, 'steel', [0.04, 0.046, 0.94], [x, 0.325, -0.08], 0.01);
-    addBar(batch, 'steel', [x, 0.325, 0.39], [x, 0.48, 0.73], 0.023);
+    addConnectingRod(batch, side);
+    addBar(batch, 'steel', [x, 0.325, 0.39], [x, 0.48, 0.73], 0.027);
     addCylinder(
       batch,
       'steel',
@@ -632,10 +667,10 @@ function addFrontLamp(batch: TrainBatch) {
       [0, -0.007],
       [0.075, -0.007],
       [0.075, 0],
-      [0.07, 0.011],
-      [0.055, 0.02],
-      [0.029, 0.025],
-      [0, 0.027],
+      [0.07, 0.017],
+      [0.055, 0.036],
+      [0.029, 0.047],
+      [0, 0.05],
     ],
     [0, BOILER_Y + 0.02, 1.188],
     'z',
@@ -752,20 +787,60 @@ function addCoachBody(batch: TrainBatch) {
   batch.add(geometry, 'green', [0, 0, COACH_Z]);
 }
 
-function addWheelWeb(batch: TrainBatch, radius: number, x: number, angle: number) {
+function addConnectingRod(batch: TrainBatch, side: number) {
+  const rod = new THREE.Shape();
+  rod.moveTo(-0.55, -0.06);
+  rod.absarc(-0.55, 0, 0.06, -HALF_PI, -3 * HALF_PI, true);
+  rod.lineTo(-0.52, 0.031);
+  rod.lineTo(-0.11, 0.031);
+  rod.quadraticCurveTo(-0.11, 0.06, -0.08, 0.06);
+  rod.quadraticCurveTo(-0.05, 0.06, -0.05, 0.031);
+  rod.lineTo(0.36, 0.031);
+  rod.lineTo(0.39, 0.06);
+  rod.absarc(0.39, 0, 0.06, HALF_PI, -HALF_PI, true);
+  rod.lineTo(0.36, -0.031);
+  rod.lineTo(-0.05, -0.031);
+  rod.quadraticCurveTo(-0.05, -0.06, -0.08, -0.06);
+  rod.quadraticCurveTo(-0.11, -0.06, -0.11, -0.031);
+  rod.lineTo(-0.52, -0.031);
+  rod.closePath();
+  for (const z of [-0.55, -0.08, 0.39]) {
+    const eye = new THREE.Path();
+    eye.absarc(z, 0, 0.0355, 0, Math.PI * 2, true);
+    rod.holes.push(eye);
+  }
+  const geometry = new THREE.ExtrudeGeometry(rod, {
+    depth: 0.041,
+    steps: 1,
+    curveSegments: 12,
+    bevelEnabled: false,
+  });
+  geometry.name = 'train-connecting-rod';
+  geometry.translate(0, 0, -0.0205);
+  geometry.rotateY(-HALF_PI);
+  batch.add(geometry, 'steel', [side * 0.51, 0.325, 0]);
+}
+
+function addWheelWeb(
+  batch: TrainBatch,
+  radius: number,
+  x: number,
+  angle: number,
+  driving: boolean,
+) {
   const profile = new THREE.Shape();
-  profile.moveTo(-radius * 0.08, radius * 0.24);
-  profile.lineTo(radius * 0.08, radius * 0.24);
-  profile.lineTo(radius * 0.05, radius * 0.87);
-  profile.lineTo(-radius * 0.05, radius * 0.87);
+  profile.moveTo(-radius * (driving ? 0.13 : 0.08), radius * 0.24);
+  profile.lineTo(radius * (driving ? 0.13 : 0.08), radius * 0.24);
+  profile.lineTo(radius * (driving ? 0.075 : 0.05), radius * 0.87);
+  profile.lineTo(-radius * (driving ? 0.075 : 0.05), radius * 0.87);
   profile.closePath();
   const web = new THREE.ExtrudeGeometry(profile, {
-    depth: 0.05,
+    depth: driving ? 0.06 : 0.05,
     steps: 1,
     bevelEnabled: false,
   });
   web.name = 'train-wheel-web';
-  web.translate(0, 0, -0.025);
+  web.translate(0, 0, driving ? -0.03 : -0.025);
   web.rotateY(HALF_PI);
   batch.add(web, 'steel', [x, 0, 0], [angle, 0, 0]);
 }
@@ -816,7 +891,7 @@ function addWheelAxle(
     );
     for (let spoke = 0; spoke < spokes; spoke += 1) {
       const angle = (spoke / spokes) * Math.PI * 2;
-      addWheelWeb(batch, radius, x, angle);
+      addWheelWeb(batch, radius, x, angle, name.startsWith('locomotive'));
     }
     const weight = new THREE.Shape();
     weight.absarc(0, 0, radius * 0.77, Math.PI * 0.79, Math.PI * 1.23, false);
@@ -837,7 +912,7 @@ function addWheelAxle(
         'steel',
         0.036,
         0.036,
-        0.105,
+        0.16,
         [x + side * 0.025, 0.085, 0],
         [0, 0, HALF_PI],
         16,
