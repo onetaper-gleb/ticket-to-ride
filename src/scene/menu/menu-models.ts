@@ -1335,13 +1335,13 @@ function buildBackdrop(root: THREE.Group, kit: MenuModelKit) {
     for (const px of [x - width * 0.43, x + width * 0.43]) {
       batch.add(menuBox(0.068, height, 0.075), 'green', [px, FLOOR_Y + height / 2, z + 0.4]);
       batch.add(menuBox(0.16, 0.13, 0.17), 'plasterShade', [px, FLOOR_Y + 0.145, z + 0.4]);
-      for (const direction of [-1, 1])
-        batch.add(
-          menuBox(0.31, 0.042, 0.06),
-          'green',
-          [px + direction * 0.1, top - 0.24, z + 0.4],
-          [0, 0, direction * 0.64],
-        );
+      const direction = px < x ? 1 : -1;
+      batch.add(
+        menuBox(0.31, 0.042, 0.06),
+        'green',
+        [px + direction * 0.1, top - 0.24, z + 0.4],
+        [0, 0, direction * 0.64],
+      );
     }
   }
   for (const [x, z] of [
