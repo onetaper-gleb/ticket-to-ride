@@ -81,8 +81,8 @@ function widenRestingKnuckles(hand: THREE.Group) {
   normals.needsUpdate = true;
 }
 
-/** Add volume above the resting finger contact without altering the frozen rig or its cache. */
-function roundRestingKnuckles(hand: THREE.Group, contactY: number) {
+/** Compact and round this instance in its static resting pose; retain the counter-contact Y. */
+function roundRestingKnuckles(hand: THREE.Group, contact: THREE.Vector3) {
   const lift = 0.012;
   const rig = getHandRig(hand)!;
   const mesh = rig.mesh,
@@ -129,12 +129,28 @@ function roundRestingKnuckles(hand: THREE.Group, contactY: number) {
       lift *
       fingerWeight *
       smooth(0.28, 0.5, bind.y) *
-      smooth(contactY + 0.02, contactY + 0.04, point.y);
+      smooth(contact.y + 0.02, contact.y + 0.04, point.y);
     point.y += delta;
-    if (delta > 1e-10) changed.add(key);
+    const compactBeforeLift = fingerWeight * smooth(0.23, 0.52, bind.y);
+    const inverse = delta > 0 || compactBeforeLift > 0 ? matrix.clone().invert() : undefined;
+    const liftedBindY = delta > 0 ? point.clone().applyMatrix4(inverse!).y : bind.y;
+    const compact = fingerWeight * smooth(0.23, 0.52, liftedBindY);
+    let roundedX = 0;
+    for (const offset of [-0.056, -0.008, 0.063, 0.136]) {
+      const x = point.x - contact.x - offset;
+      roundedX += x * Math.exp(-((x / 0.023) ** 2)) * 0.65;
+    }
+    point.x += (roundedX - 0.02 * smooth(contact.x + 0.09, contact.x + 0.13, point.x)) * compact;
+    point.z += (contact.z + 0.072 - point.z) * 0.75 * compact;
+    point.y -=
+      (point.y - contact.y - 0.002) *
+      0.2 *
+      compact *
+      smooth(contact.y + 0.02, contact.y + 0.04, point.y);
+    if (delta > 1e-10 || compact > 1e-10) changed.add(key);
     points.push(point);
-    if (delta > 0) {
-      bind.copy(point).applyMatrix4(matrix.clone().invert());
+    if (delta > 0 || compact > 0) {
+      bind.copy(point).applyMatrix4(inverse!);
       position.setXYZ(i, bind.x, bind.y, bind.z);
     }
   }
@@ -226,7 +242,13 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
     name: string,
     contactY: number,
   ) => {
-    const geometry = buildSleeve(points, widths);
+    const foldCenters =
+      material === materials.cloth
+        ? name === 'right moving forearm sleeve'
+          ? [0.18, 0.32]
+          : [0.72, 0.86]
+        : [];
+    const geometry = buildSleeve(points, widths, widths, foldCenters);
     const positions = geometry.getAttribute('position');
     const floor = contactY + 0.002 - (parent === root ? 0 : parent.position.y);
     for (let i = 0; i < positions.count; i++) {
@@ -271,7 +293,7 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
     root.updateMatrixWorld(true);
     hand.position.y += contact.y + 0.002 - posedBounds(hand).min.y;
     hand.updateMatrix();
-    if (resting) roundRestingKnuckles(hand, contact.y);
+    if (resting) roundRestingKnuckles(hand, contact);
     return hand;
   };
   const left = createHand(1, leftContact, true);
