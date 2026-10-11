@@ -1,6 +1,6 @@
 # Происхождение арта меню
 
-Создано10октября2026; текущая версия5.0 обновлена11октября2026. Пять материалов уточнены встроенным image_gen, SVG — собственным кодом. Производственные файлы перечислены с размерами/SHA256 в inventory.json; общий manifest эта ветка не меняет. Ниже до раздела «Пятый раунд5.0» сохранена история4.x; old generation records относятся к прежним пакетам. Текущие prompts/masters отражены в round5SurfaceGeneration и round5Edits.
+Текущая версия5.1,11октября2026: targeted project-original distant-sky.svg в frozen29, без нового imagegen. Другие38art assets принятого2f7 сохранены; inventory40 включает новыйsource proof. Ранее созданные5generated maps остаются v5.0. Историческиеgeneration/round5records ниже сохранены; актуальный skystatus в разделе «Уточнение неба5.1». Общийproductionmanifest эта ветка не меняет.
 
 ## Авторские SVG и текстуры
 
@@ -91,3 +91,13 @@ Inventory39, XML13; 21 прежний asset побайтово сохранён.
 Минимальный расчёт по decodedpixels и точным CSSсмесьям: normalrow6.45, primaryink5.79, Settingsink6.61. Расчёт исключает edge strips, antialiasing, browser color management и WebGL light. Proposed neutral Settings overlay даёт8.08, darker primaryink6.39; это расчёт source-onlytrial. Контраст физической бумаги/теней таким расчётом не подтверждается.
 
 Открытые отличия: directional light/contact shadows, фактический розовый Settings, профиль/глубина station/train/зелени, пропорции багажа и физические края/кант. Они требуют работы соответствующих владельцев. Этот раунд — готовый арт/источники для root, не утверждение художественного совпадения сцены. Правило никакой Аркадии/внутренней инфраструктуры действует без исключений.
+
+## Уточнение неба5.1 на frozen29, 11 октября2026
+
+Принятый own parent`2f7f03e47c8b56aac8747c32ebbe018bca0420d8`/round5 ZIP сохранён неизменным. Только `distant-sky.svg` и own inventory/provenance/spec/source proof. Общий frozen`29cff5e3edc69d06f620fdc6240766449c53e164` — rootPACKAGEPASS, source review pending, не productionrelease. ImmutableZIP50054237B/SHA2562421c06293c770db6c7376164492b510a75910098fa3089b9985b06aa8700c67 и кадрSHA256ce409e88569f666109e002aa34f211e4262a6e6f3252ec10b0f30533e7fac0c1. Source5/scene12/harness5 exactGit/ZIP. Own harness добавляет только importprefix и DOM/read-only42sky raycast diagnostics. NativeHTML/CSS/callbacks и before/afterJS одинаковы; linear material arrays не восстанавливались из HDRhex.
+
+Новый actual29 замер:15first-hit sky из42grid samples;27occluded rays исключены. Видимая bitmapполоса x506–721/y90–129, skyrepeat1×.7/offset0×.4/flipY/linearcolor[0,0,0]/emissive[1,1,1]/intensity1 прежние. Прежние три1bab rays не использованы как доказательство. Большое правое облако перемещено в видимую область; translateY12sourcepixel выводит crest ниже retained canopyedge и оставляет синий просвет сверху/слева. Градиент стал синее, diffuse cloudbody имеет собственный мягкий цветовой переход. В карту не добавлены деревья, станция, объекты или fixed3Dshadows; nativeSVG1024×512opaque, project-original, imagegen не запускался.
+
+Paired1672 и crop552×245 поscreen(1120,180) показывают отдельное крупное мягкое облако справа и голубое небо. Референс показан тем же crop, но его foregroundgeometry отличается; пиксельное совпадение не утверждается. Browserdecode обоихSVG natural/canvas1024×512/minAlpha255; sourcepixels и real-frame3×3means на15firsthit points сохранены. Browsererrors0. Camera/UV/material/light/DOF/loader/geometry не менялись; source safety толькоlocal#refs/no scripts/images/foreignObjects. Другие382f7assets/maps/labels/Settings/canonical/fonts побайтно прежние. Broadnative/game/adaptive/animation QA не повторялась.
+
+Runtime358629B, delta+48BтолькоSVG; raster342812Bпрежний. Uniqueimage skyRGBA8fullmip8/3MiB и общие14/22.286458MiB прежние; clones/DOM/targets/shadows/PMREM исключены. Actualstatic484calls/792095triangles/129geometries/23textures до/после, неFPS/VRAM/ускорение. Timing browserdecode/filter не измерялся. Currenttrees/station/canopy сохраняют перекрытия, farprocessing смягчает cloudcontour; карта теперь даёт blue/clouddifference без foreignchange. Художественная общая приёмка/rootintegration открыта. Только ordinaryGit/ownproject/verifiedpublicOSS; никакой Аркадии/внутренней инфраструктуры прямо или косвенно. AnimatorSTOP/mainSitesnetwork не затронуты.
