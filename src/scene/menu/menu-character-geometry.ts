@@ -85,13 +85,15 @@ export function buildSleeve(
   points: readonly THREE.Vector3[],
   widths: readonly number[],
   depths: readonly number[] = widths,
+  foldCenters: readonly number[] = [],
 ): THREE.BufferGeometry {
   if (
     points.length < 2 ||
     widths.length < 2 ||
     depths.length !== widths.length ||
     points.some((point) => ![point.x, point.y, point.z].every(Number.isFinite)) ||
-    [...widths, ...depths].some((radius) => !Number.isFinite(radius) || radius <= 0)
+    [...widths, ...depths].some((radius) => !Number.isFinite(radius) || radius <= 0) ||
+    foldCenters.some((center) => !Number.isFinite(center) || center < 0 || center > 1)
   ) {
     throw new RangeError(
       'Sleeves need at least two finite points and matching positive radius arrays.',
@@ -111,12 +113,20 @@ export function buildSleeve(
     const width = THREE.MathUtils.lerp(widths[index], widths[index + 1], amount);
     const depth = THREE.MathUtils.lerp(depths[index], depths[index + 1], amount);
     const center = curve.getPointAt(t);
+    const fold =
+      section === 0 || section === segments
+        ? 0
+        : foldCenters.reduce((sum, center) => sum + Math.exp(-(((t - center) / 0.06) ** 2)), 0);
     for (let side = 0; side < sides; side++) {
       const angle = (side / sides) * Math.PI * 2;
+      const crease = Math.min(
+        0.0045 * fold * (0.35 + 0.65 * (0.5 + 0.5 * Math.cos(angle - 0.6))),
+        Math.min(width, depth) * 0.12,
+      );
       const vertex = center
         .clone()
-        .addScaledVector(frames.normals[section], Math.cos(angle) * width)
-        .addScaledVector(frames.binormals[section], Math.sin(angle) * depth);
+        .addScaledVector(frames.normals[section], Math.cos(angle) * (width - crease))
+        .addScaledVector(frames.binormals[section], Math.sin(angle) * (depth - crease));
       positions.push(vertex.x, vertex.y, vertex.z);
     }
   }
@@ -152,6 +162,37 @@ function softPatch(points: [number, number][], depth = 0.1, bevel = 0.065) {
     bevelEnabled: true,
     bevelSize: bevel,
     bevelThickness: bevel,
+    bevelSegments: 3,
+    steps: 1,
+    curveSegments: 8,
+  });
+}
+
+/** Rounded closed cloth edge; the caller owns the resulting geometry. */
+function roundedCollar(points: [number, number][]) {
+  const shape = new THREE.Shape();
+  const corners = points.map((point, i) => {
+    const center = new THREE.Vector2(...point);
+    const previous = new THREE.Vector2(...points[(i + points.length - 1) % points.length]);
+    const next = new THREE.Vector2(...points[(i + 1) % points.length]);
+    const radius = Math.min(0.07, center.distanceTo(previous) * 0.3, center.distanceTo(next) * 0.3);
+    return {
+      center,
+      entry: previous.sub(center).setLength(radius).add(center),
+      exit: next.sub(center).setLength(radius).add(center),
+    };
+  });
+  shape.moveTo(corners[0].entry.x, corners[0].entry.y);
+  for (const { center, entry, exit } of corners) {
+    shape.lineTo(entry.x, entry.y);
+    shape.quadraticCurveTo(center.x, center.y, exit.x, exit.y);
+  }
+  shape.closePath();
+  return new THREE.ExtrudeGeometry(shape, {
+    depth: 0.06,
+    bevelEnabled: true,
+    bevelSize: 0.04,
+    bevelThickness: 0.04,
     bevelSegments: 3,
     steps: 1,
     curveSegments: 8,
@@ -260,15 +301,15 @@ function sculptedFace() {
   const eyeWidth = 0.205;
   const eyeHeight = 0.205;
   const mouthY = (x: number) => -0.92 + 0.12 * (x / 0.38) ** 2;
-  const noseWidth = style.nose[0] * 0.96;
+  const noseWidth = style.nose[0] * 0.8256;
   const noseY = -0.28;
-  const noseHeight = style.nose[1] * 0.77;
+  const noseHeight = style.nose[1] * 0.6613;
   const displacement = (x: number, y: number) => {
     // Wide cheek and jaw fields overlap the muzzle instead of forming circular cheek objects.
     let result = 0.06 * gaussian(x, y, 0, -0.99, w * 0.56, 0.29);
     result += 0.045 * gaussian(x, y, 0, -0.6, 0.58, 0.31);
     for (const side of [-1, 1]) {
-      result += 0.115 * gaussian(x, y, side * w * 0.56, -0.37, w * 0.42, 0.4);
+      result += 0.125 * gaussian(x, y, side * w * 0.56, -0.37, w * 0.363, 0.35);
       result += 0.055 * gaussian(x, y, side * w * 0.64, -0.05, w * 0.36, 0.4);
       result -= 0.09 * gaussian(x, y, side * eyeX, eyeY, 0.31, 0.235);
       const ex = (x - side * eyeX) / (eyeWidth * 1.12);
@@ -279,7 +320,7 @@ function sculptedFace() {
     }
     // Bridge, broad tip, alae and columella all belong to the same skin mesh.
     result += 0.095 * gaussian(x, y, 0, 0.02, noseWidth * 0.69, 0.44);
-    result += (style.nose[2] + 0.1) * gaussian(x, y, 0, noseY, noseWidth, noseHeight);
+    result += (style.nose[2] + 0.175) * gaussian(x, y, 0, noseY, noseWidth, noseHeight);
     for (const side of [-1, 1])
       result +=
         0.065 * gaussian(x, y, side * noseWidth * 0.7, noseY - 0.075, noseWidth * 0.57, 0.17);
@@ -780,17 +821,16 @@ function buildCashierClothes(person: THREE.Group, factory: Factory) {
     );
     if (side < 0) reflectGeometryX(lapel.geometry);
     lapel.rotation.y = side * 0.09;
-    const collar = patch(
-      [
+    const collar = mesh(
+      roundedCollar([
         [-0.13, 0.22],
         [0.35, 0.33],
         [0.9, -0.05],
         [0.15, -0.35],
-      ],
+      ]),
       style.shirt,
       [side * 0.29, 2.97, 0.87],
       person,
-      0.09,
     );
     if (side < 0) reflectGeometryX(collar.geometry);
   }
