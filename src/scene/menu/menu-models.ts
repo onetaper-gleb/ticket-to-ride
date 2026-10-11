@@ -109,6 +109,9 @@ export function buildMenuModels(art: MenuEnvironmentArt = {}): MenuModels {
       art.surfaces?.canopyPaint !== undefined || art.materialOverrides?.canopyPaint !== undefined
         ? 'canopyPaint'
         : 'green',
+      art.surfaces?.canopyWood !== undefined || art.materialOverrides?.canopyWood !== undefined
+        ? 'canopyWood'
+        : 'wood',
     );
     const backdropRoot = buildBackdrop(root, kit);
     const semaphore = buildMenuSemaphore(kit);
@@ -951,13 +954,18 @@ function buildBoard(
   };
 }
 
-function buildCanopy(root: THREE.Group, kit: MenuModelKit, canopyPaint: 'green' | 'canopyPaint') {
+function buildCanopy(
+  root: THREE.Group,
+  kit: MenuModelKit,
+  canopyPaint: 'green' | 'canopyPaint',
+  canopyWood: 'wood' | 'canopyWood',
+) {
   const canopy = part(root, 'station-canopy', [0, 2.63, 0]);
   const batch = kit.batch(canopy, 'canopy');
   batch.add(menuBox(5.9, 0.12, 1.7), canopyPaint, [-1.885, 0.015, -0.93]);
-  batch.add(menuBox(5.84, 0.05, 1.58), 'wood', [-1.885, -0.1, -0.93]);
+  batch.add(menuBox(5.84, 0.05, 1.58), canopyWood, [-1.885, -0.1, -0.93]);
   batch.add(menuBox(6.2, 0.12, 3.6), canopyPaint, [4.05, 0.03, -1.0]);
-  batch.add(menuBox(6.14, 0.045, 3.43), 'wood', [4.05, -0.1125, -1.0]);
+  batch.add(menuBox(6.14, 0.045, 3.43), canopyWood, [4.05, -0.1125, -1.0]);
   for (const z of [0.73, -0.13, -1.45, -2.68])
     batch.add(flangedBeam(0.13, 0.15, 6.2, true), canopyPaint, [4.05, -0.155, z]);
   for (const x of [1.01, 2.5, 4.1, 6.0, 7.08])
