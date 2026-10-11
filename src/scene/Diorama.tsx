@@ -150,6 +150,8 @@ export function MenuDiorama({
       composer?.dispose();
       composition?.dispose();
       renderer?.dispose();
+      // This context is never reused. Release the driver's remaining renderer caches too.
+      renderer?.forceContextLoss();
       renderer?.domElement.remove();
       boardElement.classList.remove('has-volume-title');
       boardElement.style.transform = '';
