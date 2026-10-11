@@ -127,3 +127,15 @@ Optional canopyWood активирован отдельным собственн
 Узкая диагностика frozen29 resize1672/1920→1280 закрыта без sourcefix: old persistent world-corner wait счётчик не сбрасывался, поэтому мог принять previous layout до resize event. Current settled native DOM/physicalframes совпадают сcold1280, backgap127.3623px; source/ZIP29 неизменны. Отдельный read-only report сохранён вне frozen package.
 
 Новый свет/material/post grade подбирается по actual1672frame/crops рядом с original, с отдельно сохранённым ground-only кадром. Тёплый пол/потолок, мягкие тени и foliage/brass grade принадлежат compositor; crown/title/sky/rightgrip owner tips пока не приняты и не подключаются. Художественная приёмка OPEN, animatorSTOPPED/adaptivedeferred. Ничего internalYandex/Arcadia прямо или косвенно; ownproject/ordinaryGit/GitHub/verified public licensedOSS.
+
+### Раунд 6: песочный пол и мягкий свет
+
+На принятых моделях912 и прежних art2f7/cashierdd667 выбран вариант `gentle-fill`. Камера, FOV34, station yaw27, native frames, карты, UV, опоры и цепочки рук сохранены. Ground consumer использует−.78 во всех presets. Постобработка прежняя.
+
+Свет: key3.2, PCF radius24/intensity.65, hemisphere.8, front area4.5, canopy area1.8, rail spot110. Положения, targets, восемь источников, две shadow maps2048/1024 и размеры area lights прежние. Это снижает контраст диагональной тени; PCF фильтрует её край, но не воспроизводит физический источник большой площади.
+
+Linear grades: stone(.85,.74,.6), plasterShade(.24,.21,.175), canopyWood(1.12,1.15,1.12), foliage(.65,.72,.3), foliageLight(.9,.94,.45), foliageDark(.37,.47,.2). Ceiling roughness.92; foliage roughness.95. Brass#a18e70/roughness.55/metalness.4 уменьшает жёлтый блеск поезда и багажа; общий title использует ту же роль.
+
+Изолированные actual crops на одном AO kernel показывают причину ярких линий пола: реальные3mm зазоры открывают unmapped backing/plasterShade, тогда как mapped stone был холодным(.38,.44,.6). Линии сохранялись при отключённых AO и key shadow; согласованный grade подложки устранял яркий контраст. Зазоры остаются геометрическими швами. Изменены только supported material overrides, а не чужие поверхности.
+
+CanopyWood назначен двум существующим liner plates216tri. Новый mapped role добавляет один материал и один принадлежащий kit Texture wrapper, разделяющий image/Source с wood. Caller Texture fields/version/dispose не меняются; общий Source.version может увеличиться при стандартном Three.clone/needsUpdate. Финальные actual resource/lifecycle/контактные и native checks приложены к отдельному checkpoint раунда6. Результат является текущим кандидатом: общая художественная приёмка открыта, формы крон, хват и небо остаются в работе их владельцев; адаптив отложен.
