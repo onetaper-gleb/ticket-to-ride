@@ -691,10 +691,10 @@ function buildBoard(
       let geometry: THREE.BufferGeometry | undefined;
       try {
         geometry = new THREE.ExtrudeGeometry(ownedShapes, {
-          depth: 0.008,
+          depth: 0.012,
           bevelEnabled: true,
-          bevelThickness: 0.001,
-          bevelSize: 0.001,
+          bevelThickness: 0.0015,
+          bevelSize: 0.0025,
           bevelSegments: 1,
           steps: 1,
           curveSegments: 1,
@@ -1203,7 +1203,7 @@ function buildBackdrop(root: THREE.Group, kit: MenuModelKit) {
     seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
     return seed / 4294967296;
   };
-  // Branches carry mixed-scale leaf clumps; off-centre gaps break each crown silhouette.
+  // Overlapping rear/front masses join the crown; smaller lobes soften only its edge.
   for (const [tree, [x, y, z, spread, height]] of [
     [0.65, 1.8, -11.6, 0.66, 0.85],
     [2.65, 2.5, -11.25, 1.05, 1.22],
@@ -1219,6 +1219,18 @@ function buildBackdrop(root: THREE.Group, kit: MenuModelKit) {
       new THREE.Vector3(x + 0.04 * spread, y + 0.15 * height, z - 0.06),
     ]);
     batch.add(new THREE.TubeGeometry(trunk, 12, 0.04 * spread, 7, false), 'woodDark');
+    for (const [layer, [dy, dz]] of [
+      [0.03, -0.2],
+      [-0.1, 0.16],
+    ].entries()) {
+      const core = foliageClump(spread * 0.58, tree * 2.11 + layer * 1.37, true);
+      core.scale(1.22 + layer * 0.03, (height / spread) * (0.87 + layer * 0.08), 0.8);
+      batch.add(core, layer === 0 ? 'foliageDark' : 'foliage', [
+        x,
+        y + dy * height,
+        z + dz * spread,
+      ]);
+    }
     for (const [limb, [dx, dy, dz]] of [
       [-0.55, -0.15, 0.21],
       [-0.24, 0.35, -0.2],
@@ -1232,22 +1244,20 @@ function buildBackdrop(root: THREE.Group, kit: MenuModelKit) {
         end,
       ]);
       batch.add(new THREE.TubeGeometry(branch, 8, 0.02 * spread, 6, false), 'woodDark');
-      for (let i = 0; i < 8; i++) {
-        const a = random() * Math.PI * 2;
-        const offset = i < 3 ? 0.19 : 0.4;
-        const size = spread * (i < 3 ? 0.22 + random() * 0.12 : 0.09 + random() * 0.08);
-        const geometry = foliageClump(size, tree * 2.11 + limb + i * 1.73, i < 3);
-        geometry.scale(0.8 + random() * 0.65, 0.7 + random() * 0.5, 0.7 + random() * 0.5);
-        const leafY = end.y + Math.sin(a * 1.37) * height * offset;
+      const lobe = foliageClump(spread * (0.47 + random() * 0.03), tree * 2.11 + limb, true);
+      lobe.scale(1.25, (height / spread) * 0.9, 1.1);
+      batch.add(lobe, dy > 0 ? 'foliageLight' : 'foliage', [end.x, end.y, end.z]);
+      for (let i = 0; i < 4; i++) {
+        const a = ((i + random() * 0.35) / 4) * Math.PI * 2;
+        const size = spread * (0.2 + random() * 0.055);
+        const geometry = foliageClump(size, tree * 2.11 + limb + i * 1.73);
+        geometry.scale(1.05 + random() * 0.2, (height / spread) * 0.85, 0.9);
+        const leafY = end.y + Math.sin(a) * height * 0.28;
         batch.add(
           geometry,
-          leafY > y + height * 0.09 ? 'foliageLight' : i % 5 === 0 ? 'foliageDark' : 'foliage',
-          [
-            end.x + Math.cos(a) * spread * offset,
-            leafY,
-            end.z + Math.sin(a) * spread * offset * 0.7,
-          ],
-          [random() * 0.8, random() * Math.PI, random() * 0.6],
+          leafY > y + height * 0.16 ? 'foliageLight' : 'foliage',
+          [end.x + Math.cos(a) * spread * 0.36, leafY, end.z + Math.sin(a * 1.37) * spread * 0.19],
+          [random() * 0.5, random() * Math.PI, random() * 0.4],
         );
       }
     }
