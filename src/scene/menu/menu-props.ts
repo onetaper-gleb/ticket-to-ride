@@ -133,7 +133,14 @@ export function buildMenuLamp(kit: MenuModelKit, options: MenuLampOptions = {}):
       [0.173, -0.16],
       [0.182, -0.16],
     ].map(([radius, height]) => new THREE.Vector2(radius, height));
-    body.add(new THREE.LatheGeometry(profile, 40), 'iron');
+    // Keep meridian creases hard while each circumferential ring remains smooth.
+    for (let index = 0; index < profile.length - 1; index += 1) {
+      const strip = new THREE.LatheGeometry([profile[index], profile[index + 1]], 40);
+      const uv = strip.getAttribute('uv');
+      for (let vertex = 0; vertex < uv.count; vertex += 1)
+        uv.setY(vertex, (index + uv.getY(vertex)) / (profile.length - 1));
+      body.add(strip, 'iron');
+    }
     body.add(new THREE.CylinderGeometry(0.174, 0.174, 0.02, 32), 'warm', [0, -0.165, 0]);
     body.flush();
     if (compactHeight !== 0.175)
@@ -160,22 +167,30 @@ export function buildMenuLamp(kit: MenuModelKit, options: MenuLampOptions = {}):
   ]);
   const shadeProfile = [
     [0.021, -0.225],
-    [0.052, -0.24],
-    [0.112, -0.272],
-    [0.174, -0.318],
-    [0.209, -0.371],
-    [0.225, -0.406],
-    [0.225, -0.421],
-    [0.214, -0.421],
-    [0.202, -0.376],
-    [0.165, -0.325],
-    [0.105, -0.28],
-    [0.046, -0.25],
+    [0.071, -0.239],
+    [0.136, -0.26],
+    [0.19, -0.294],
+    [0.215, -0.34],
+    [0.225, -0.383],
+    [0.225, -0.41],
+    [0.223, -0.421],
+    [0.213, -0.415],
+    [0.213, -0.384],
+    [0.203, -0.34],
+    [0.178, -0.3],
+    [0.127, -0.266],
+    [0.061, -0.248],
     [0.016, -0.24],
   ].map(([radius, height]) => new THREE.Vector2(radius, height));
   // Lathe meridians run bottom-to-top so the outer shade retains outward normals.
-  body.add(new THREE.LatheGeometry(shadeProfile.reverse(), 40), 'iron', [0, -extension, 0]);
-  body.add(new THREE.CylinderGeometry(0.195, 0.195, 0.008, 32), 'warm', [0, -0.418 - extension, 0]);
+  body.add(new THREE.LatheGeometry(shadeProfile.reverse(), 32), 'iron', [0, -extension, 0]);
+  body.add(
+    new THREE.TorusGeometry(0.219, 0.006, 4, 32),
+    'iron',
+    [0, -0.415 - extension, 0],
+    [Math.PI / 2, 0, 0],
+  );
+  body.add(new THREE.CylinderGeometry(0.218, 0.218, 0.008, 32), 'warm', [0, -0.418 - extension, 0]);
   body.add(new THREE.SphereGeometry(0.066, 20, 12), 'warm', [0, -0.427 - extension, 0]);
   body.flush();
   root.userData.contact = {
@@ -312,6 +327,17 @@ export function buildMenuBench(kit: MenuModelKit): THREE.Group {
       ),
       'iron',
     );
+    // Small cast bosses expose the existing arm/post and leg/seat joins.
+    for (const [y, z] of [
+      [0.62, -0.215],
+      [0.415, 0.2],
+    ])
+      body.add(
+        new THREE.CylinderGeometry(0.023, 0.023, 0.018, 12),
+        'iron',
+        [x, y, z],
+        [0, 0, Math.PI / 2],
+      );
     body.add(menuBox(0.055, 0.03, 0.45, 0.008), 'iron', [x, 0.408, 0.095]);
     for (const z of [-0.22, 0.25])
       body.add(menuBox(0.09, 0.018, 0.1, 0.006), 'iron', [x, 0.009, z]);
@@ -447,24 +473,24 @@ export function buildMenuSemaphore(
   const root = new THREE.Group();
   root.name = 'menu-semaphore';
   const body = kit.batch(root, 'semaphore');
-  body.add(menuBox(0.16 * f, 0.05 * f, 0.16 * f, 0.012 * f), 'iron', at(0, 0.025, 0));
-  body.add(new THREE.CylinderGeometry(0.023 * f, 0.027 * f, 1.36 * f, 20), 'iron', at(0, 0.71, 0));
-  body.add(new THREE.SphereGeometry(0.057 * f, 20, 12), 'red', at(0, 1.43, 0));
-  body.add(menuBox(0.065 * f, 0.18 * f, 0.095 * f, 0.01 * f), 'iron', at(0, 1.1, 0.026));
+  body.add(menuBox(0.12 * f, 0.05 * f, 0.12 * f, 0.012 * f), 'iron', at(0, 0.025, 0));
+  body.add(new THREE.CylinderGeometry(0.017 * f, 0.02 * f, 1.386 * f, 20), 'iron', at(0, 0.723, 0));
+  body.add(new THREE.SphereGeometry(0.043 * f, 20, 12), 'red', at(0, 1.444, 0));
+  body.add(menuBox(0.05 * f, 0.16 * f, 0.075 * f, 0.01 * f), 'iron', at(0, 1.1, 0.026));
   body.add(
-    new THREE.CylinderGeometry(0.083 * f, 0.083 * f, 0.04 * f, 24),
+    new THREE.CylinderGeometry(0.063 * f, 0.063 * f, 0.04 * f, 24),
     'iron',
     at(0, 1.08, 0.07),
     [Math.PI / 2, 0, 0],
   );
   body.add(
-    new THREE.CylinderGeometry(0.037 * f, 0.037 * f, 0.014 * f, 24),
+    new THREE.CylinderGeometry(0.028 * f, 0.028 * f, 0.014 * f, 24),
     'glassWarm',
     at(0, 1.08, 0.096),
     [Math.PI / 2, 0, 0],
   );
   body.add(
-    new THREE.CylinderGeometry(0.025 * f, 0.025 * f, 0.085 * f, 20),
+    new THREE.CylinderGeometry(0.02 * f, 0.02 * f, 0.085 * f, 20),
     'iron',
     at(0, 1.26, 0.0275),
     [Math.PI / 2, 0, 0],
@@ -473,13 +499,13 @@ export function buildMenuSemaphore(
   const pivotPosition = at(0, 1.26, 0.047);
   const armPivot = menuAnchor(root, 'semaphore-arm-pivot', pivotPosition);
   const arm = kit.batch(armPivot, 'semaphore-arm');
-  arm.add(menuBox(armLength, 0.095 * f, 0.027 * f, 0.009 * Math.min(f, armLength / 0.55)), 'red', [
+  arm.add(menuBox(armLength, 0.07 * f, 0.022 * f, 0.009 * Math.min(f, armLength / 0.55)), 'red', [
     (0.245 / 0.55) * armLength,
     0,
     0,
   ]);
-  for (const z of [-0.015, 0.015])
-    arm.add(new THREE.BoxGeometry((0.074 / 0.55) * armLength, 0.097 * f, 0.004 * f), 'paper', [
+  for (const z of [-0.012, 0.012])
+    arm.add(new THREE.BoxGeometry((0.074 / 0.55) * armLength, 0.072 * f, 0.003 * f), 'paper', [
       (0.424 / 0.55) * armLength,
       0,
       z * f,
@@ -574,26 +600,59 @@ export function buildMenuSuitcase(
     centreY,
     0,
   ]);
+  const handle = menuTube(
+    [
+      [-0.084 * sx, topY + 0.005 * sy, 0],
+      [-0.074 * sx, topY + 0.043 * sy + 0.0025 * bevelScale, 0],
+      [-0.051 * sx, topY + 0.054 * sy + 0.0025 * bevelScale, 0],
+      [0.051 * sx, topY + 0.054 * sy + 0.0025 * bevelScale, 0],
+      [0.074 * sx, topY + 0.043 * sy + 0.0025 * bevelScale, 0],
+      [0.084 * sx, topY + 0.005 * sy, 0],
+    ],
+    0.0095 * bevelScale,
+    24,
+  );
+  handle.computeBoundingBox();
+  const gripY = handle.boundingBox!.max.y - 0.008 * bevelScale;
+  body.add(handle, trim);
   body.add(
-    menuTube(
-      [
-        [-0.084 * sx, topY + 0.005 * sy, 0],
-        [-0.074 * sx, topY + 0.043 * sy + 0.0025 * bevelScale, 0],
-        [-0.051 * sx, topY + 0.054 * sy + 0.0025 * bevelScale, 0],
-        [0.051 * sx, topY + 0.054 * sy + 0.0025 * bevelScale, 0],
-        [0.074 * sx, topY + 0.043 * sy + 0.0025 * bevelScale, 0],
-        [0.084 * sx, topY + 0.005 * sy, 0],
-      ],
-      0.0095 * bevelScale,
-      24,
+    new RoundedBoxGeometry(
+      0.096 * sx,
+      0.014 * bevelScale,
+      0.026 * bevelScale,
+      1,
+      0.004 * bevelScale,
     ),
     trim,
+    [0, gripY, 0],
   );
   for (const x of [-0.21, 0.21]) {
     body.add(
       suitcaseStrapGeometry(0.019 * sx, height, depth, radius, 0.002 * bevelScale),
       'brass',
       [x * sx, centreY, 0],
+    );
+  }
+  const strapFront = depth / 2 + 0.002 * bevelScale;
+  for (const x of [-0.21, 0.21]) {
+    body.add(
+      suitcaseFrameGeometry(
+        0.033 * sx,
+        0.03 * sy,
+        0.022 * sx,
+        0.018 * sy,
+        0.003 * bevelScale,
+        0.003 * bevelScale,
+        0.002 * bevelScale,
+      ),
+      'brass',
+      [x * sx, 0.348 * sy, strapFront + 0.001 * bevelScale],
+    );
+    body.add(
+      new THREE.CylinderGeometry(0.0018 * bevelScale, 0.0018 * bevelScale, 0.031 * sx, 6),
+      'brass',
+      [x * sx, 0.348 * sy, strapFront + 0.0015 * bevelScale],
+      [0, 0, Math.PI / 2],
     );
   }
   const corners = suitcaseCornerGeometries(
@@ -631,17 +690,33 @@ export function buildMenuSuitcase(
         z * sz,
       ]);
   for (const x of [-0.101, 0.101]) {
-    body.add(box(0.032, 0.044, 0.0018), 'brass', at(x, 0.342, 0.1304));
     body.add(
-      new THREE.CylinderGeometry(0.0028 * bevelScale, 0.0028 * bevelScale, 0.0059 * sz, 8),
+      suitcasePlateGeometry(0.036 * sx, 0.048 * sy, 0.0018 * sz, 0.00045 * bevelScale),
       'brass',
-      at(x, 0.347, 0.13415),
+      at(x, 0.344, 0.1304),
+    );
+    body.add(
+      new THREE.CylinderGeometry(0.0045 * bevelScale, 0.0045 * bevelScale, 0.0059 * sz, 6),
+      'brass',
+      at(x, 0.357, 0.13415),
       [Math.PI / 2, 0, 0],
     );
-    body.add(box(0.018, 0.02, 0.0018), 'brass', at(x, 0.347, 0.1371));
+    body.add(
+      suitcaseFrameGeometry(
+        0.025 * sx,
+        0.026 * sy,
+        0.015 * sx,
+        0.015 * sy,
+        0.0018 * sz,
+        0.003 * bevelScale,
+        0.002 * bevelScale,
+      ),
+      'brass',
+      at(x, 0.347, 0.1371),
+    );
     for (const y of [0.327, 0.357])
       body.add(
-        new THREE.CylinderGeometry(0.0024 * bevelScale, 0.0024 * bevelScale, 0.001 * sz, 10),
+        new THREE.CylinderGeometry(0.0024 * bevelScale, 0.0024 * bevelScale, 0.001 * sz, 6),
         'brass',
         at(x, y, 0.13125),
         [Math.PI / 2, 0, 0],
@@ -737,12 +812,16 @@ function suitcaseCornerGeometries(
   plate.lineTo(-width, -c);
   plate.lineTo(-width, -height + c);
   plate.closePath();
+  const bevel = shell * 0.16;
   const face = new THREE.ExtrudeGeometry(plate, {
-    depth: shell * 2.2,
+    depth: shell * 2.2 - bevel * 2,
     steps: 1,
-    bevelEnabled: false,
+    bevelEnabled: true,
+    bevelSize: shell * 0.2,
+    bevelThickness: bevel,
+    bevelSegments: 1,
   });
-  face.translate(0, 0, radius - shell * 1.38);
+  face.translate(0, 0, radius - shell * 1.38 + bevel);
   const top = suitcaseCornerReturnGeometry(radius, shell, flap, width, false);
   top.rotateY(-Math.PI / 2);
   const side = suitcaseCornerReturnGeometry(radius, shell, flap, height, true);
@@ -751,7 +830,7 @@ function suitcaseCornerGeometries(
     [-width * 0.28, -height * 0.2],
     [-width * 0.72, -height * 0.77],
   ].map(([x, y]) => {
-    const rivet = new THREE.CylinderGeometry(rivetRadius, rivetRadius, shell * 0.28, 10);
+    const rivet = new THREE.CylinderGeometry(rivetRadius, rivetRadius, shell * 0.28, 6);
     rivet.rotateX(Math.PI / 2);
     rivet.translate(x, y, radius + shell * 0.86);
     return rivet;
@@ -784,7 +863,7 @@ function suitcaseCornerReturnGeometry(
   return new THREE.ExtrudeGeometry(shape, {
     depth: width,
     steps: 1,
-    curveSegments: 3,
+    curveSegments: 2,
     bevelEnabled: false,
   });
 }
@@ -818,20 +897,81 @@ function suitcaseStrapGeometry(
   radius: number,
   thickness: number,
 ) {
+  const bevel = thickness * 0.225;
   const shape = new THREE.Shape();
-  suitcaseRoundedPath(shape, depth + thickness * 2, height + thickness * 2, radius + thickness);
+  suitcaseRoundedPath(
+    shape,
+    depth + (thickness - bevel) * 2,
+    height + (thickness - bevel) * 2,
+    radius + thickness - bevel,
+  );
   const hole = new THREE.Path();
-  suitcaseRoundedPath(hole, depth - thickness * 4, height - thickness * 4, radius - thickness * 2);
+  suitcaseRoundedPath(
+    hole,
+    depth - thickness * 4 + bevel * 2,
+    height - thickness * 4 + bevel * 2,
+    radius - thickness * 2 + bevel,
+  );
   shape.holes.push(hole);
   const geometry = new THREE.ExtrudeGeometry(shape, {
-    depth: width,
+    depth: width - bevel * 2,
     steps: 1,
-    curveSegments: 4,
-    bevelEnabled: false,
+    curveSegments: 2,
+    bevelEnabled: true,
+    bevelSize: bevel,
+    bevelThickness: bevel,
+    bevelSegments: 1,
   });
-  geometry.translate(0, 0, -width / 2);
+  geometry.translate(0, 0, -width / 2 + bevel);
   geometry.rotateY(Math.PI / 2);
   return geometry;
+}
+
+/** Chamfered lock base with a flat face and a small physical plate depth. */
+function suitcasePlateGeometry(width: number, height: number, depth: number, corner: number) {
+  const x = width / 2,
+    y = height / 2;
+  const shape = new THREE.Shape();
+  shape.moveTo(-x + corner, -y);
+  for (const [px, py] of [
+    [x - corner, -y],
+    [x, -y + corner],
+    [x, y - corner],
+    [x - corner, y],
+    [-x + corner, y],
+    [-x, y - corner],
+    [-x, -y + corner],
+  ])
+    shape.lineTo(px, py);
+  shape.closePath();
+  const geometry = new THREE.ExtrudeGeometry(shape, { depth, steps: 1, bevelEnabled: false });
+  geometry.translate(0, 0, -depth / 2);
+  return geometry;
+}
+
+/** Closed hardware aperture; two segments per quarter-round suffice for these small fittings. */
+function suitcaseFrameGeometry(
+  width: number,
+  height: number,
+  innerWidth: number,
+  innerHeight: number,
+  depth: number,
+  radius: number,
+  innerRadius: number,
+) {
+  const shape = new THREE.Shape();
+  suitcaseRoundedPath(shape, width, height, radius);
+  const hole = new THREE.Path();
+  suitcaseRoundedPath(hole, innerWidth, innerHeight, innerRadius);
+  shape.holes.push(hole);
+  const result = new THREE.ExtrudeGeometry(shape, {
+    depth,
+    steps: 1,
+    curveSegments: 1,
+    bevelEnabled: false,
+  });
+  result.translate(0, 0, -depth / 2);
+  return result;
 }
 
 function suitcaseRoundedPath(path: THREE.Path, width: number, height: number, radius: number) {

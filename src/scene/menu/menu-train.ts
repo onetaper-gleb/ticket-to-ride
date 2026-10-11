@@ -22,6 +22,10 @@ const BOILER_RADIUS = 0.285 * BOILER_SECTION;
 const BOILER_Y = 0.95;
 const BOILER_TOP = BOILER_Y + BOILER_RADIUS;
 
+function boilerRadiusAt(z: number) {
+  return BOILER_RADIUS - 0.036 * THREE.MathUtils.clamp((z - 0.442) / 0.393, 0, 1);
+}
+
 /** Front is +Z. Wheel pivots rotate about +X; their bind rotation is zero. The kit owns all resources. */
 export function buildMenuTrain(kit: MenuModelKit): MenuTrain {
   const root = new THREE.Group();
@@ -276,8 +280,18 @@ function addLocomotive(batch: TrainBatch) {
     'green',
     BOILER_RADIUS,
     BOILER_RADIUS,
-    1.17,
-    [0, BOILER_Y, 0.25],
+    0.785,
+    [0, BOILER_Y, 0.0575],
+    [HALF_PI, 0, 0],
+    48,
+  );
+  addCylinder(
+    batch,
+    'green',
+    0.363,
+    BOILER_RADIUS,
+    0.393,
+    [0, BOILER_Y, 0.6385],
     [HALF_PI, 0, 0],
     48,
   );
@@ -286,17 +300,17 @@ function addLocomotive(batch: TrainBatch) {
     'iron',
     [
       [0, -0.09],
-      [0.385, -0.09],
-      [0.405, -0.08],
-      [0.416, -0.04],
-      [0.416, 0.045],
-      [0.416, 0.055],
-      [0.407, 0.06],
-      [0.407, 0.078],
-      [0.386, 0.084],
-      [0.382, 0.064],
-      [0.393, 0.05],
-      [0.393, -0.065],
+      [0.361, -0.09],
+      [0.37, -0.08],
+      [0.373, -0.04],
+      [0.373, 0.045],
+      [0.373, 0.055],
+      [0.366, 0.06],
+      [0.366, 0.078],
+      [0.348, 0.084],
+      [0.343, 0.064],
+      [0.353, 0.05],
+      [0.353, -0.065],
       [0, -0.065],
       [0, -0.09],
     ],
@@ -309,40 +323,58 @@ function addLocomotive(batch: TrainBatch) {
     batch,
     'steel',
     [
+      [0.303, -0.012],
+      [0.351, -0.012],
+      [0.355, -0.006],
+      [0.354, 0.003],
+      [0.344, 0.01],
+      [0.314, 0.01],
+      [0.303, 0.004],
+      [0.303, -0.012],
+    ],
+    [0, BOILER_Y, 0.994],
+    'z',
+    24,
+    'train-door-mount',
+  );
+  addAxialProfile(
+    batch,
+    'steel',
+    [
       [0, -0.023],
-      [0.348, -0.023],
-      [0.354, -0.01],
-      [0.353, 0.006],
-      [0.344, 0.017],
-      [0.329, 0.028],
-      [0.298, 0.037],
-      [0.235, 0.042],
-      [0, 0.042],
+      [0.3132, -0.023],
+      [0.3186, -0.01],
+      [0.3177, 0.006],
+      [0.3096, 0.023],
+      [0.2961, 0.042],
+      [0.2682, 0.055],
+      [0.2115, 0.06],
+      [0, 0.061],
     ],
     [0, BOILER_Y, 1.008],
     'z',
     40,
     'train-front-door',
   );
-  batch.add(new THREE.TorusGeometry(0.349, 0.012, 6, 40), 'steel', [0, BOILER_Y, 1.033]);
+  batch.add(new THREE.TorusGeometry(0.3141, 0.012, 6, 40), 'steel', [0, BOILER_Y, 1.033]);
   for (let i = 0; i < 14; i += 1) {
     const angle = (i / 14) * Math.PI * 2;
     batch.add(new THREE.SphereGeometry(0.01, 8, 4), 'brass', [
-      Math.cos(angle) * 0.384,
-      BOILER_Y + Math.sin(angle) * 0.384,
+      Math.cos(angle) * 0.348,
+      BOILER_Y + Math.sin(angle) * 0.348,
       0.996,
     ]);
   }
   for (const y of [-0.135, 0.135]) {
-    addBox(batch, 'steel', [0.084, 0.04, 0.02], [-0.293, BOILER_Y + y, 1.026], 0.006);
-    addCylinder(batch, 'steel', 0.02, 0.02, 0.052, [-0.322, BOILER_Y + y, 1.037], [0, 0, 0], 12);
+    addBox(batch, 'steel', [0.084, 0.04, 0.02], [-0.2637, BOILER_Y + y, 1.041], 0.006);
+    addCylinder(batch, 'steel', 0.02, 0.02, 0.052, [-0.2898, BOILER_Y + y, 1.054], [0, 0, 0], 12);
   }
   addCylinder(batch, 'steel', 0.03, 0.03, 0.04, [0, BOILER_Y - 0.13, 1.0645], [HALF_PI, 0, 0], 12);
   addBox(batch, 'brass', [0.098, 0.017, 0.018], [0.025, BOILER_Y - 0.13, 1.09], 0.006);
   addCylinder(batch, 'steel', 0.022, 0.022, 0.018, [0, BOILER_Y - 0.13, 1.09], [HALF_PI, 0, 0], 12);
 
   for (const z of [-0.24, 0.27, 0.73]) {
-    batch.add(new THREE.TorusGeometry(0.287 * BOILER_SECTION, 0.018, 6, 32), 'brass', [
+    batch.add(new THREE.TorusGeometry(boilerRadiusAt(z) + 0.0028, 0.018, 6, 32), 'brass', [
       0,
       BOILER_Y,
       z,
@@ -360,31 +392,55 @@ function addLocomotive(batch: TrainBatch) {
     [0, BOILER_TOP + 0.09, 0.045],
     [HALF_PI, 0, 0],
   );
-  addCylinder(batch, 'iron', 0.105, 0.135, 0.08, [0, BOILER_TOP + 0.005, 0.61], [0, 0, 0], 24);
+  addAxialProfile(
+    batch,
+    'iron',
+    [
+      [0, -0.032],
+      [0.13, -0.032],
+      [0.134, -0.018],
+      [0.118, 0.038],
+      [0.111, 0.06],
+      [0.103, 0.13],
+      [0.097, 0.136],
+      [0.078, 0.136],
+      [0.075, 0.11],
+      [0.081, 0.048],
+      [0.104, -0.026],
+      [0, -0.026],
+      [0, -0.032],
+    ],
+    [0, BOILER_TOP, 0.61],
+    'y',
+    24,
+    'train-chimney-boot',
+  );
   addAxialProfile(
     batch,
     'paper',
     [
-      [0.11, 0.045],
-      [0.1, 0.09],
-      [0.098, 0.32],
-      [0.115, 0.4],
-      [0.151, 0.42],
-      [0.158, 0.455],
+      [0.098, 0.119],
+      [0.094, 0.16],
+      [0.09, 0.32],
+      [0.107, 0.39],
+      [0.15, 0.41],
+      [0.164, 0.44],
+      [0.16, 0.465],
       [0.149, 0.475],
       [0.12, 0.475],
-      [0.117, 0.439],
-      [0.103, 0.42],
-      [0.088, 0.32],
-      [0.08, 0.09],
-      [0.078, 0.045],
-      [0.11, 0.045],
+      [0.117, 0.444],
+      [0.1, 0.42],
+      [0.083, 0.32],
+      [0.076, 0.16],
+      [0.079, 0.119],
+      [0.098, 0.119],
     ],
     [0, BOILER_TOP, 0.61],
     'y',
     32,
+    'train-chimney-shaft',
   );
-  addCylinder(batch, 'iron', 0.096, 0.096, 0.012, [0, BOILER_TOP + 0.412, 0.61], [0, 0, 0], 24);
+  addCylinder(batch, 'iron', 0.104, 0.104, 0.012, [0, BOILER_TOP + 0.412, 0.61], [0, 0, 0], 24);
   addCab(batch);
 
   addBox(batch, 'red', [0.98, 0.19, 0.14], [0, 0.375, 1.05], 0.025);
@@ -425,18 +481,7 @@ function addLocomotive(batch: TrainBatch) {
     ],
     0.027,
   );
-  addCylinder(batch, 'iron', 0.095, 0.095, 0.075, [0, BOILER_Y + 0.02, 1.092], [HALF_PI, 0, 0], 20);
-  addCylinder(
-    batch,
-    'brass',
-    0.077,
-    0.077,
-    0.013,
-    [0, BOILER_Y + 0.02, 1.136],
-    [HALF_PI, 0, 0],
-    20,
-  );
-  addCylinder(batch, 'warm', 0.06, 0.06, 0.015, [0, BOILER_Y + 0.02, 1.148], [HALF_PI, 0, 0], 20);
+  addFrontLamp(batch);
   addBox(batch, 'steel', [0.11, 0.038, 0.11], [0, BOILER_Y - 0.091, 1.085]);
 
   for (let i = 0; i < 9; i += 1) {
@@ -503,12 +548,30 @@ function addLocomotive(batch: TrainBatch) {
       0.018,
       0.024,
     );
+    addPipe(
+      batch,
+      'steel',
+      [
+        [side * 0.299, 0.746, 0.875],
+        [side * 0.378, 0.685, 0.856],
+        [side * 0.452, 0.605, 0.816],
+        [side * 0.442, 0.54, 0.69],
+      ],
+      0.012,
+      0.019,
+    );
   }
   for (const side of [-1, 1]) {
     const railY = BOILER_Y + 0.15;
     addBar(batch, 'brass', [side * 0.43, railY, -0.28], [side * 0.43, railY, 0.78], 0.013);
     for (const z of [-0.2, 0.64]) {
-      addBar(batch, 'brass', [side * 0.365, railY, z], [side * 0.43, railY, z], 0.011);
+      addBar(
+        batch,
+        'brass',
+        [side * (z > 0.45 ? 0.345 : 0.365), railY, z],
+        [side * 0.43, railY, z],
+        0.011,
+      );
       addCylinder(
         batch,
         'brass',
@@ -522,6 +585,63 @@ function addLocomotive(batch: TrainBatch) {
     }
   }
   addBox(batch, 'iron', [0.07, 0.06, 0.36], [0, 0.285, -1.2]);
+}
+
+function addFrontLamp(batch: TrainBatch) {
+  addAxialProfile(
+    batch,
+    'iron',
+    [
+      [0, -0.074],
+      [0.088, -0.074],
+      [0.105, -0.055],
+      [0.111, -0.034],
+      [0.111, 0.027],
+      [0.101, 0.052],
+      [0.083, 0.056],
+      [0.079, 0.045],
+      [0.08, -0.038],
+      [0, -0.038],
+      [0, -0.074],
+    ],
+    [0, BOILER_Y + 0.02, 1.129],
+    'z',
+    24,
+    'train-headlamp-body',
+  );
+  addAxialProfile(
+    batch,
+    'brass',
+    [
+      [0.073, -0.01],
+      [0.096, -0.01],
+      [0.098, 0],
+      [0.094, 0.012],
+      [0.073, 0.012],
+      [0.073, -0.01],
+    ],
+    [0, BOILER_Y + 0.02, 1.185],
+    'z',
+    24,
+    'train-headlamp-bezel',
+  );
+  addAxialProfile(
+    batch,
+    'warm',
+    [
+      [0, -0.007],
+      [0.075, -0.007],
+      [0.075, 0],
+      [0.07, 0.011],
+      [0.055, 0.02],
+      [0.029, 0.025],
+      [0, 0.027],
+    ],
+    [0, BOILER_Y + 0.02, 1.188],
+    'z',
+    24,
+    'train-headlamp-lens',
+  );
 }
 
 function addCab(batch: TrainBatch) {
@@ -722,6 +842,36 @@ function addWheelAxle(
         [0, 0, HALF_PI],
         16,
       );
+      addAxialProfile(
+        batch,
+        'steel',
+        [
+          [0.03, -0.007],
+          [0.042, -0.007],
+          [0.044, -0.003],
+          [0.044, 0.003],
+          [0.042, 0.007],
+          [0.03, 0.007],
+          [0.03, -0.007],
+        ],
+        [side * 0.482, 0.085, 0],
+        'x',
+        8,
+        'train-crank-collar',
+      );
+      for (let nut = 0; nut < 4; nut += 1) {
+        const angle = nut * HALF_PI + Math.PI / 4;
+        addCylinder(
+          batch,
+          'steel',
+          0.008,
+          0.008,
+          0.012,
+          [side * 0.463, Math.cos(angle) * radius * 0.17, Math.sin(angle) * radius * 0.17],
+          [0, 0, HALF_PI],
+          6,
+        );
+      }
     }
   }
   batch.flush();
