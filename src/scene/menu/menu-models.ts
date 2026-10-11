@@ -83,7 +83,7 @@ export type MenuEnvironmentParts = {
 };
 
 const FLOOR_Y = -0.9;
-const RAIL_Y = -0.65;
+const RAIL_Y = -0.78;
 
 export type MenuEnvironmentArt = {
   clockFace?: THREE.Texture;
@@ -109,6 +109,9 @@ export function buildMenuModels(art: MenuEnvironmentArt = {}): MenuModels {
       art.surfaces?.canopyPaint !== undefined || art.materialOverrides?.canopyPaint !== undefined
         ? 'canopyPaint'
         : 'green',
+      art.surfaces?.canopyWood !== undefined || art.materialOverrides?.canopyWood !== undefined
+        ? 'canopyWood'
+        : 'wood',
     );
     const backdropRoot = buildBackdrop(root, kit);
     const semaphore = buildMenuSemaphore(kit);
@@ -951,13 +954,18 @@ function buildBoard(
   };
 }
 
-function buildCanopy(root: THREE.Group, kit: MenuModelKit, canopyPaint: 'green' | 'canopyPaint') {
+function buildCanopy(
+  root: THREE.Group,
+  kit: MenuModelKit,
+  canopyPaint: 'green' | 'canopyPaint',
+  canopyWood: 'wood' | 'canopyWood',
+) {
   const canopy = part(root, 'station-canopy', [0, 2.63, 0]);
   const batch = kit.batch(canopy, 'canopy');
   batch.add(menuBox(5.9, 0.12, 1.7), canopyPaint, [-1.885, 0.015, -0.93]);
-  batch.add(menuBox(5.84, 0.05, 1.58), 'wood', [-1.885, -0.1, -0.93]);
+  batch.add(menuBox(5.84, 0.05, 1.58), canopyWood, [-1.885, -0.1, -0.93]);
   batch.add(menuBox(6.2, 0.12, 3.6), canopyPaint, [4.05, 0.03, -1.0]);
-  batch.add(menuBox(6.14, 0.045, 3.43), 'wood', [4.05, -0.1125, -1.0]);
+  batch.add(menuBox(6.14, 0.045, 3.43), canopyWood, [4.05, -0.1125, -1.0]);
   for (const z of [0.73, -0.13, -1.45, -2.68])
     batch.add(flangedBeam(0.13, 0.15, 6.2, true), canopyPaint, [4.05, -0.155, z]);
   for (const x of [1.01, 2.5, 4.1, 6.0, 7.08])
@@ -1095,12 +1103,15 @@ function buildPlatform(root: THREE.Group, kit: MenuModelKit) {
   trackRoot.rotation.y = -0.65;
   railwayRoot.add(trackRoot);
   const batch = kit.batch(trackRoot, 'platform-and-track');
-  batch.add(slopedBed(0.66, 0.76, -0.05, -0.25, 9), 'stone', [-0.98, 0, -3]);
+  // The broad floor backing is 2 mm below the tile faces and their narrow joints.
+  const baseBottom = -0.122;
+  const ballastTop = -0.095;
+  batch.add(slopedBed(0.66, 0.76, -0.05, baseBottom, 9), 'stone', [-0.98, 0, -3]);
   for (let z = -7.125; z < 1.1; z += 0.75)
     batch.add(menuBox(0.68, 0.035, 0.745, 0.006), 'cream', [-0.98, -0.0675, z]);
-  batch.add(slopedBed(1.12, 1.6, -0.13, -0.25, 9), 'stone', [0, 0, -3]);
+  batch.add(slopedBed(1.3, 1.6, ballastTop, baseBottom, 9), 'stone', [0, 0, -3]);
   for (let z = -7.3; z < 1.1; z += 0.42) {
-    batch.add(menuBox(1.3, 0.06, 0.13, 0.005), 'woodDark', [0, -0.1, z]);
+    batch.add(menuBox(1.3, 0.025, 0.13, 0.005), 'woodDark', [0, -0.0825, z]);
     for (const x of [-0.41, 0.41])
       batch.add(new THREE.BoxGeometry(0.09, 0.008, 0.11), 'iron', [x, -0.066, z]);
   }
@@ -1112,7 +1123,7 @@ function buildPlatform(root: THREE.Group, kit: MenuModelKit) {
     const x = Math.sin(i * 17.31) * 0.59,
       z = -7.4 + ((i * 0.173) % 8.8);
     const r = 0.018 + (i % 4) * 0.004;
-    batch.add(new THREE.IcosahedronGeometry(r, 0), 'stone', [x, -0.133, z]);
+    batch.add(new THREE.IcosahedronGeometry(r, 0), 'stone', [x, ballastTop + r * 0.42, z]);
   }
   batch.flush();
   return { railwayRoot, platform: trackRoot };
