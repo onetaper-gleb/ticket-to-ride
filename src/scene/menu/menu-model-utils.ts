@@ -21,6 +21,7 @@ export const MENU_PALETTE = {
   canopyWood: '#865d3c',
   woodDark: '#3d281b',
   brass: '#ae844d',
+  titleBrass: '#ae844d',
   paper: '#f4e8cf',
   settingsPaper: '#f4e8cf',
   glass: '#adc5b5',
@@ -87,14 +88,21 @@ export function createMenuModelKit(
           ? 'green'
           : kind === 'canopyWood'
             ? 'wood'
-            : undefined;
+            : kind === 'titleBrass'
+              ? 'brass'
+              : undefined;
     if (inheritedKind && surfaceMaps[kind] === undefined && overrides[kind] === undefined)
       return material(inheritedKind);
     let result = materials.get(kind);
     if (!result) {
       const inherited = inheritedKind ? material(inheritedKind) : undefined;
       const override = Object.fromEntries(
-        Object.entries(overrides[kind] ?? {}).filter(([, value]) => value !== undefined),
+        Object.entries(overrides[kind] ?? {}).filter(
+          ([key, value]) =>
+            value !== undefined &&
+            (kind !== 'titleBrass' ||
+              ['color', 'roughness', 'metalness', 'emissive', 'emissiveIntensity'].includes(key)),
+        ),
       ) as MenuSurfaceOptions;
       result = new THREE.MeshStandardMaterial({
         color: MENU_PALETTE[kind],
@@ -142,25 +150,40 @@ export function createMenuModelKit(
       });
       result.name = `menu-surface/${kind}`;
       result.userData.menuSurface = kind;
-      materials.set(kind, result);
+      // The optional title role must remain retryable after a failed map clone/setup.
+      if (kind !== 'titleBrass') materials.set(kind, result);
       const source =
         surfaceMaps[kind] ??
-        (kind === 'canopyWood'
+        (kind === 'canopyWood' || kind === 'titleBrass'
           ? inherited?.map
           : inheritedKind
             ? surfaceMaps[inheritedKind]
             : kind === 'wood'
               ? wood
               : undefined);
-      if (source) {
-        const map = source.clone();
-        map.colorSpace = THREE.SRGBColorSpace;
-        map.wrapS = map.wrapT = THREE.RepeatWrapping;
-        textures.add(map);
-        result.map = map;
-        // New tiles carry base color; A08 legacy wood also gets a muted varnish tint.
-        if (override.color === undefined && !inherited)
-          result.color.set(kind === 'wood' && !surfaceMaps.wood ? '#ae9479' : '#ffffff');
+      let pendingMap: THREE.Texture | undefined;
+      try {
+        if (source) {
+          const map = source.clone();
+          pendingMap = map;
+          map.colorSpace = THREE.SRGBColorSpace;
+          map.wrapS = map.wrapT = THREE.RepeatWrapping;
+          textures.add(map);
+          result.map = map;
+          // New tiles carry base color; A08 legacy wood also gets a muted varnish tint.
+          if (override.color === undefined && !inherited)
+            result.color.set(kind === 'wood' && !surfaceMaps.wood ? '#ae9479' : '#ffffff');
+        }
+        if (kind === 'titleBrass') materials.set(kind, result);
+      } catch (error) {
+        if (kind === 'titleBrass') {
+          if (pendingMap) {
+            textures.delete(pendingMap);
+            pendingMap.dispose();
+          }
+          result.dispose();
+        }
+        throw error;
       }
     }
     return result;

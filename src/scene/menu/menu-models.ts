@@ -699,7 +699,7 @@ function buildBoard(
           steps: 1,
           curveSegments: 1,
         });
-        kit.mesh(pending, geometry, 'brass', 'board-title-letters');
+        kit.mesh(pending, geometry, 'titleBrass', 'board-title-letters');
       } catch (error) {
         if (geometry) kit.releaseGeometry(geometry);
         throw error;
