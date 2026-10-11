@@ -203,3 +203,11 @@ Actual projected outer bbox текущего title=(202.445,131.653)–(465.398,
 ## Раунд6: выбранный Medium title
 
 По assignment владельца общего кадра Medium реализован отдельным commit поверх принятого912. Canonical EUROPE теперь depth.012/bevelSize.0025/bevelThickness.0015/bevelSegments1. Actual front/rear Z=.0135/−.0015, толщина.015; прежние3308tri. Это выбор для дальнейшей доводки, общая художественная приёмка открыта. SourceviewBox600×120/6canonicalpaths/3holes, transform-once/owned outlines, positive scale, retained geometry reuse, atomic replacement/numeric guards/caller immutability остаются прежними. Новых материалов/карт/Light нет. Проверки implemented source и projected header выполняются на frozen common29cff5e/art2f7/cashierdd667/composerc8 при одинаковом свете/камере; old1bab comparison не выдаётся за текущий29.
+
+## Раунд6: цельные многослойные кроны
+
+Следующий отдельный commit меняет только leaf masses в buildBackdrop. Для каждого из шести деревьев две крупные массы позади и впереди перекрывают центр кроны, четыре крупные массы закрывают окончания прежних ветвей, шестнадцать меньших пучков разбивают край. Силуэт становится полнее, просветы между голыми ветвями закрываются. Координаты деревьев, стволы и все24 ветви сохраняются; геометрия дальней станции, часов, семафора и состава не меняется.
+
+На дерево приходится6 broad spheres и16 edge icosahedra, всего132 leaf masses вместо192. Foliage содержит13728tri вместо21696; вместе с прежними3312tri стволов/ветвей —17040tri вместо25008 (−7968). Используются прежние foliage/foliageLight/foliageDark без новой карты, материала, цвета или света. Палитру и DOF настраивает владелец общей сцены отдельно.
+
+Before/after сравниваются при implemented Medium и ground−.78 на одном frozen common29: кадр1672×941 сохраняет484 multipass calls, triangles уменьшаются с792095 до760223 (−31872). Это стоимость статичного кадра, не измерение FPS. Новый harness не правит production preset; отдельная интеграция railwayRoot−.78 остаётся у compositor. Геометрия, реальные screen rays и lifecycle проверяются независимым review на exact committed tip; финальная художественная приёмка остаётся открыта.
