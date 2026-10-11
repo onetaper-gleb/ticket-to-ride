@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import App from '../ui/App';
+import SessionMenu, { type MenuSaveSlot, type MenuSaveStatus } from './SessionMenu';
 import { applyCommand, createGame, getGameResult, getLegalCommands, getObservation } from '../core';
 import { chooseBotCommand } from '../bots';
 import type {
@@ -8,6 +9,7 @@ import type {
   GameOptions,
   GameState,
   TurnAcknowledgement,
+  AppProps,
 } from '../shared/types';
 import { loadMatch, saveMatch, type Save } from './storage';
 import { getTurnAcknowledgement, restoreTurnAcknowledgement } from './turn-handoff';
@@ -36,31 +38,59 @@ export default function GameSession({ onOpenNetwork }: GameSessionProps = {}) {
   const current = useRef<GameState | null>(null);
   const sessionEpoch = useRef(0);
   const botFailures = useRef(0);
+  const saveReadGeneration = useRef({ current: 0, tutorial: 0 });
+  const mounted = useRef(false);
+  const [menuSaves, setMenuSaves] = useState<Record<MenuSaveSlot, MenuSaveStatus>>({
+    current: { loading: true, error: null },
+    tutorial: { loading: true, error: null },
+  });
   current.current = state;
-  useEffect(() => {
-    let mounted = true;
+  const readSave = useCallback((slot: MenuSaveSlot) => {
     const epoch = sessionEpoch.current;
+    const generation = ++saveReadGeneration.current[slot];
     const version = createGame({ seed: 'version-check' }).rulesVersion;
-    loadMatch(version)
+    setMenuSaves((value) => ({ ...value, [slot]: { loading: true, error: null } }));
+    loadMatch(version, slot)
       .then((value) => {
         if (
-          mounted &&
+          mounted.current &&
+          generation === saveReadGeneration.current[slot] &&
           ((epoch === sessionEpoch.current && !current.current) || tutorialMode.current)
-        )
-          setSaved((existing) => existing ?? value);
+        ) {
+          if (slot === 'current') setSaved((existing) => existing ?? value);
+          else if (epoch === sessionEpoch.current) setTutorialSave((existing) => existing ?? value);
+        }
+        if (mounted.current && generation === saveReadGeneration.current[slot])
+          setMenuSaves((status) => ({ ...status, [slot]: { loading: false, error: null } }));
       })
       .catch((reason) => {
-        if (mounted && epoch === sessionEpoch.current) setError(String(reason.message ?? reason));
-      });
-    loadMatch(version, 'tutorial')
-      .then((value) => {
-        if (mounted && epoch === sessionEpoch.current) setTutorialSave(value);
+        if (
+          mounted.current &&
+          generation === saveReadGeneration.current[slot] &&
+          epoch === sessionEpoch.current
+        )
+          setMenuSaves((status) => ({
+            ...status,
+            [slot]: { loading: false, error: String(reason?.message ?? reason) },
+          }));
       })
-      .catch(() => {});
-    return () => {
-      mounted = false;
-    };
+      .finally(() => {
+        if (
+          mounted.current &&
+          generation === saveReadGeneration.current[slot] &&
+          epoch !== sessionEpoch.current
+        )
+          setMenuSaves((status) => ({ ...status, [slot]: { loading: false, error: null } }));
+      });
   }, []);
+  useEffect(() => {
+    mounted.current = true;
+    readSave('current');
+    readSave('tutorial');
+    return () => {
+      mounted.current = false;
+    };
+  }, [readSave]);
   const persist = useCallback(
     (
       next: GameState,
@@ -219,56 +249,59 @@ export default function GameSession({ onOpenNetwork }: GameSessionProps = {}) {
     setState(next);
     setDifficulty('easy');
   }
-  return (
-    <App
-      sessionId={sessionEpoch.current}
-      observation={state ? getObservation(state, 0) : null}
-      result={state ? getGameResult(state) : null}
-      busy={!!state && !pendingTurn && state.phase !== 'finished' && state.activePlayer !== 0}
-      pendingTurn={pendingTurn}
-      error={error}
-      canContinue={!!saved}
-      difficulty={difficulty}
-      tutorial={tutorial}
-      canContinueTutorial={!!tutorialSave && tutorialSave.state.phase !== 'finished'}
-      onStartTutorial={() => startTutorial()}
-      onContinueTutorial={() => startTutorial(true)}
-      onStart={start}
-      onContinue={continueMatch}
-      onOpenNetwork={onOpenNetwork}
-      onCommand={(command, expected) => {
-        if (current.current?.activePlayer !== 0 || expected.sessionId !== sessionEpoch.current)
-          return false;
-        return commit(command, { epoch: expected.sessionId, revision: expected.revision });
-      }}
-      onEndTurn={(expected) => {
+  const appProps: AppProps = {
+    sessionId: sessionEpoch.current,
+    observation: state ? getObservation(state, 0) : null,
+    result: state ? getGameResult(state) : null,
+    busy: !!state && !pendingTurn && state.phase !== 'finished' && state.activePlayer !== 0,
+    pendingTurn: pendingTurn,
+    error: error,
+    canContinue: !!saved,
+    difficulty: difficulty,
+    tutorial: tutorial,
+    canContinueTutorial: !!tutorialSave && tutorialSave.state.phase !== 'finished',
+    onStartTutorial: () => startTutorial(),
+    onContinueTutorial: () => startTutorial(true),
+    onStart: start,
+    onContinue: continueMatch,
+    onOpenNetwork: onOpenNetwork,
+    onCommand: (command, expected) => {
+      if (current.current?.activePlayer !== 0 || expected.sessionId !== sessionEpoch.current)
+        return false;
+      return commit(command, { epoch: expected.sessionId, revision: expected.revision });
+    },
+    onEndTurn: (expected) => {
+      if (
+        expected.sessionId === sessionEpoch.current &&
+        pendingTurnRef.current?.revision === expected.revision &&
+        current.current?.revision === expected.revision
+      ) {
         if (
-          expected.sessionId === sessionEpoch.current &&
-          pendingTurnRef.current?.revision === expected.revision &&
-          current.current?.revision === expected.revision
-        ) {
-          if (
-            !persist(
-              current.current,
-              null,
-              difficultyRef.current,
-              tutorialMode.current ? 'tutorial' : 'current',
-            )
+          !persist(
+            current.current,
+            null,
+            difficultyRef.current,
+            tutorialMode.current ? 'tutorial' : 'current',
           )
-            return;
-          updatePendingTurn(null);
-        }
-      }}
-      onMenu={() => {
-        sessionEpoch.current++;
+        )
+          return;
         updatePendingTurn(null);
-        tutorialMode.current = false;
-        setTutorial(false);
-        current.current = null;
-        setState(null);
-        setError(null);
-      }}
-      onClearError={() => setError(null)}
-    />
+      }
+    },
+    onMenu: () => {
+      sessionEpoch.current++;
+      updatePendingTurn(null);
+      tutorialMode.current = false;
+      setTutorial(false);
+      current.current = null;
+      setState(null);
+      setError(null);
+    },
+    onClearError: () => setError(null),
+  };
+  return state ? (
+    <App {...appProps} />
+  ) : (
+    <SessionMenu {...appProps} saves={menuSaves} onRetrySave={readSave} />
   );
 }

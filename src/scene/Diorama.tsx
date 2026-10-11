@@ -1,7 +1,20 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { SSAOPass } from 'three/addons/postprocessing/SSAOPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
+import {
+  createMenuComposition,
+  createMenuDepthPasses,
+  menuCompositionRenderSettings,
+  menuQuadCssMatrix,
+} from './menu/menu-composition';
+import { menuCompositionPreset, type MenuRect } from './menu/menu-composition-presets';
 import { TABLE_CAMERA, tableOverviewFit } from './table-layout';
 import {
   addMouseLook,
@@ -52,6 +65,250 @@ import {
 } from './zone-input';
 
 export type { MapSelection } from './tabletop';
+
+export type MenuSceneState = 'loading' | 'ready' | 'error';
+interface MenuDioramaProps {
+  stage: RefObject<HTMLElement | null>;
+  board: RefObject<HTMLDivElement | null>;
+  settings: RefObject<HTMLButtonElement | null>;
+  attempt: number;
+  layoutVersion: string;
+  onState: (state: MenuSceneState) => void;
+}
+
+// The accepted menu uses full-resolution depth and half-resolution AO.
+class MenuAO extends SSAOPass {
+  override setSize(width: number, height: number) {
+    const halfWidth = Math.ceil(width / 2);
+    const halfHeight = Math.ceil(height / 2);
+    this.width = halfWidth;
+    this.height = halfHeight;
+    this.ssaoRenderTarget.setSize(halfWidth, halfHeight);
+    this.blurRenderTarget.setSize(halfWidth, halfHeight);
+    this.normalRenderTarget.setSize(width, height);
+    this.ssaoMaterial.uniforms.resolution.value.set(halfWidth, halfHeight);
+    this.blurMaterial.uniforms.resolution.value.set(halfWidth, halfHeight);
+    this.ssaoMaterial.uniforms.cameraProjectionMatrix.value.copy(this.camera.projectionMatrix);
+    this.ssaoMaterial.uniforms.cameraInverseProjectionMatrix.value.copy(
+      this.camera.projectionMatrixInverse,
+    );
+  }
+}
+
+/** Menu owns a separate context; gameplay retains its original PCF renderer and input. */
+export function MenuDiorama({
+  stage,
+  board,
+  settings,
+  attempt,
+  layoutVersion,
+  onState,
+}: MenuDioramaProps) {
+  const container = useRef<HTMLDivElement>(null);
+  const renderRef = useRef<(() => void) | null>(null);
+  const stateCallback = useRef(onState);
+  stateCallback.current = onState;
+  useEffect(() => {
+    const host = container.current;
+    const stageElement = stage.current;
+    const boardElement = board.current;
+    const settingsElement = settings.current;
+    if (!host || !stageElement || !boardElement || !settingsElement) return;
+    const abort = new AbortController();
+    let closed = false;
+    let renderer: THREE.WebGLRenderer | undefined;
+    let composition: Awaited<ReturnType<typeof createMenuComposition>> | undefined;
+    let composer: EffectComposer | undefined;
+    let ao: MenuAO | undefined;
+    let observer: ResizeObserver | undefined;
+    let render: (() => void) | undefined;
+    let dprQuery: MediaQueryList | undefined;
+    const watchDpr = () => {
+      dprQuery?.removeEventListener('change', resizeDpr);
+      dprQuery = matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+      dprQuery.addEventListener('change', resizeDpr, { once: true });
+    };
+    const resizeDpr = () => {
+      if (closed) return;
+      watchDpr();
+      render?.();
+    };
+    const dispose = () => {
+      if (closed) return;
+      closed = true;
+      abort.abort();
+      observer?.disconnect();
+      if (render) window.removeEventListener('resize', render);
+      window.removeEventListener('pagehide', dispose);
+      dprQuery?.removeEventListener('change', resizeDpr);
+      renderer?.domElement.removeEventListener('webglcontextlost', contextLost);
+      renderRef.current = null;
+      composer?.passes.forEach((pass) => pass.dispose());
+      // Three r180 SSAOPass.dispose omits these two resources that it owns.
+      ao?.ssaoMaterial.dispose();
+      ao?.noiseTexture?.dispose();
+      composer?.dispose();
+      composition?.dispose();
+      renderer?.dispose();
+      renderer?.domElement.remove();
+      boardElement.classList.remove('has-volume-title');
+      boardElement.style.transform = '';
+      settingsElement.style.transform = '';
+      stageElement.style.minHeight = '';
+    };
+    const contextLost = (event: Event) => {
+      event.preventDefault();
+      dispose();
+      stateCallback.current('error');
+    };
+    stateCallback.current('loading');
+    window.addEventListener('pagehide', dispose, { once: true });
+    void (async () => {
+      try {
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.domElement.setAttribute('aria-hidden', 'true');
+        renderer.domElement.addEventListener('webglcontextlost', contextLost);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1;
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = menuCompositionRenderSettings.shadowMapType;
+        renderer.shadowMap.autoUpdate = false;
+        host.append(renderer.domElement);
+        const loaded = await createMenuComposition({
+          assetBase: `${import.meta.env.BASE_URL}menu/`,
+          signal: abort.signal,
+        });
+        if (closed) {
+          loaded.dispose();
+          return;
+        }
+        composition = loaded;
+        await document.fonts.ready;
+        if (closed) return;
+        const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType });
+        composer = new EffectComposer(renderer, target);
+        composer.addPass(new RenderPass(loaded.scene, loaded.camera));
+        ao = new MenuAO(loaded.scene, loaded.camera, 1, 1, 24);
+        ao.ssaoRenderTarget.depthBuffer = false;
+        ao.blurRenderTarget.depthBuffer = false;
+        ao.kernelRadius = 0.2;
+        ao.minDistance = 0.0003;
+        ao.maxDistance = 0.015;
+        composer.addPass(ao);
+        const depthPasses = createMenuDepthPasses(
+          ao.normalRenderTarget.depthTexture!,
+          loaded.camera,
+        );
+        depthPasses.forEach((pass) => composer!.addPass(pass));
+        composer.addPass(new OutputPass());
+        const fxaa = new ShaderPass(FXAAShader);
+        composer.addPass(fxaa);
+        let viewport = { width: 0, height: 0, dpr: 0 };
+        render = () => {
+          if (closed) return;
+          const width = stageElement.clientWidth;
+          const height = window.innerHeight;
+          if (width < 320 || height < 240) return;
+          const preset = menuCompositionPreset(width, height);
+          stageElement.dataset.layout = preset.kind;
+          stageElement.style.setProperty('--bw', `${preset.board.width}px`);
+          stageElement.style.setProperty('--board-h', `${preset.board.height}px`);
+          for (const [key, value] of Object.entries({ ...preset.dom, sh: preset.settings.height }))
+            stageElement.style.setProperty(`--${key}`, `${value}px`);
+          for (const [key, value] of Object.entries(preset.desktopPrint ?? {}))
+            stageElement.style.setProperty(`--print-${key}`, `${value}px`);
+          stageElement.style.setProperty(
+            '--action-h',
+            `${preset.desktopPrint?.actionsHeight ?? 3 * preset.dom.rh + preset.dom.th + 3 * preset.dom.gap}px`,
+          );
+          Object.assign(boardElement.style, { transform: 'none', transformOrigin: '0 0' });
+          Object.assign(settingsElement.style, {
+            position: 'absolute',
+            left: '0',
+            top: '0',
+            margin: '0',
+            width: `${preset.settings.width}px`,
+            transform: 'none',
+            transformOrigin: '0 0',
+          });
+          const nativeBoard = boardElement.getBoundingClientRect();
+          const nativeSettings = settingsElement.getBoundingClientRect();
+          const nativeTitle = boardElement.querySelector('.wordmark svg')?.getBoundingClientRect();
+          const title: MenuRect | undefined = nativeTitle
+            ? {
+                x: nativeTitle.x - nativeBoard.x,
+                y: nativeTitle.y - nativeBoard.y,
+                width: nativeTitle.width,
+                height: nativeTitle.height,
+              }
+            : undefined;
+          loaded.layout(
+            width,
+            height,
+            { ...preset.board, width: nativeBoard.width, height: nativeBoard.height },
+            {
+              ...preset.settings,
+              y: preset.settings.y + nativeBoard.height - preset.board.height,
+              width: nativeSettings.width,
+              height: nativeSettings.height,
+            },
+            title,
+          );
+          boardElement.classList.toggle('has-volume-title', loaded.titleVisible);
+          const projected = loaded.projectCorners(width, height);
+          boardElement.style.transform = menuQuadCssMatrix(
+            projected.board,
+            nativeBoard.width,
+            nativeBoard.height,
+          );
+          settingsElement.style.transform = menuQuadCssMatrix(
+            projected.settings,
+            nativeSettings.width,
+            nativeSettings.height,
+          );
+          stageElement.style.minHeight = `${Math.max(height, ...projected.board.map((v) => v.y + 32), ...projected.settings.map((v) => v.y + 32))}px`;
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+          if (viewport.width !== width || viewport.height !== height || viewport.dpr !== dpr) {
+            renderer!.setPixelRatio(dpr);
+            renderer!.setSize(width, height);
+            if (viewport.dpr !== dpr) composer!.setPixelRatio(dpr);
+            if (viewport.width !== width || viewport.height !== height)
+              composer!.setSize(width, height);
+            viewport = { width, height, dpr };
+          }
+          ao!.ssaoMaterial.uniforms.cameraProjectionMatrix.value.copy(
+            loaded.camera.projectionMatrix,
+          );
+          ao!.ssaoMaterial.uniforms.cameraInverseProjectionMatrix.value.copy(
+            loaded.camera.projectionMatrixInverse,
+          );
+          fxaa.uniforms.resolution.value.set(1 / (width * dpr), 1 / (height * dpr));
+          renderer!.shadowMap.needsUpdate = true;
+          composer!.render(0);
+          stageElement.dispatchEvent(new Event('menu-layout-complete'));
+        };
+        renderRef.current = render;
+        window.addEventListener('resize', render);
+        observer = new ResizeObserver(() => render?.());
+        observer.observe(boardElement);
+        observer.observe(settingsElement);
+        watchDpr();
+        render();
+        stateCallback.current('ready');
+      } catch {
+        if (closed) return;
+        dispose();
+        stateCallback.current('error');
+      }
+    })();
+    return dispose;
+  }, [attempt, board, settings, stage]);
+  useLayoutEffect(() => {
+    renderRef.current?.();
+  }, [layoutVersion]);
+  return <div className="menu-canvas" ref={container} aria-hidden="true" />;
+}
+
 interface Props {
   observation: Observation;
   selection: MapSelection;

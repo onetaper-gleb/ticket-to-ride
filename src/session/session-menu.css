@@ -1,0 +1,896 @@
+@font-face {
+  font-family: MenuPlex;
+  font-display: swap;
+  src: url('/fonts/IBMPlexSans-Regular.woff2');
+}
+@font-face {
+  font-family: MenuPlex;
+  font-display: swap;
+  src: url('/fonts/IBMPlexSans-Medium.woff2');
+  font-weight: 500;
+}
+.session-menu {
+  --board: #223a33;
+  --row: #29443b;
+  --paper: #f4e8cf;
+  --ink: #172b25;
+  --accent: #edba64;
+  --hover: #385a4c;
+  --pressed: #cfa052;
+  --focus: #fff2ad;
+  --disabled: #adc0ae;
+  --brass: #ad7e41;
+}
+.session-menu * {
+  box-sizing: border-box;
+}
+.session-menu,
+.session-menu {
+  margin: 0;
+  min-height: 100%;
+  font:
+    20px/1.2 MenuPlex,
+    Arial,
+    sans-serif;
+  color: var(--paper);
+  background: #cbbb9f;
+}
+.session-menu button,
+.session-menu input,
+.session-menu select {
+  font: inherit;
+}
+.session-menu button {
+  cursor: pointer;
+}
+.session-menu button:disabled {
+  cursor: default;
+}
+.session-menu button:focus-visible,
+.session-menu input:focus-visible,
+.session-menu select:focus-visible,
+.session-menu summary:focus-visible,
+.session-menu .demo-focus {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px var(--ink) !important;
+}
+.session-menu button {
+  transition: none;
+}
+.session-menu button:active {
+  transform: none;
+}
+.session-menu button:disabled {
+  transform: none;
+}
+.session-menu svg {
+  display: block;
+  flex: none;
+}
+.session-menu button svg {
+  width: 32px;
+  height: 32px;
+}
+.session-menu button span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.session-menu .menu-stage {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background: transparent;
+}
+.session-menu .menu-stack {
+  position: absolute;
+  width: var(--bw);
+  left: var(--bx);
+  top: var(--by);
+}
+.session-menu .board {
+  position: relative;
+  border: 12px solid var(--board);
+  border-radius: 8px;
+  padding: var(--pad);
+  background: var(--board);
+  box-shadow:
+    inset 0 0 0 1px var(--brass),
+    0 3px 0 #152820,
+    3px 10px 18px #172b2540;
+}
+.session-menu .board::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border: 1px solid var(--brass);
+  border-radius: 3px;
+  pointer-events: none;
+}
+.session-menu .rivet {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  background: var(--brass);
+  border-radius: 50%;
+  box-shadow: inset 1px 1px 2px #f4e8cf99;
+  pointer-events: none;
+}
+.session-menu .r1 {
+  top: -7px;
+  left: -7px;
+}
+.session-menu .r2 {
+  top: -7px;
+  right: -7px;
+}
+.session-menu .r3 {
+  bottom: -7px;
+  left: -7px;
+}
+.session-menu .r4 {
+  bottom: -7px;
+  right: -7px;
+}
+.session-menu .board-header {
+  height: var(--hh);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 12px;
+  gap: 8px;
+  color: var(--paper);
+}
+.session-menu .wordmark {
+  width: min(100%, var(--mark));
+  height: auto;
+}
+.session-menu .wordmark svg {
+  width: 100%;
+  height: auto;
+}
+.session-menu .board-header p {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 0.04em;
+}
+.session-menu .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.session-menu .actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  margin-top: var(--headgap);
+}
+.session-menu .row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--rh);
+  width: 100%;
+  padding: 6px 12px;
+  border: 1px solid #adc0ae;
+  color: var(--paper);
+  background: var(--row);
+  border-radius: 3px;
+  text-align: left;
+  box-shadow: 0 2px 0 #172b25;
+}
+.session-menu .row svg {
+  width: var(--is);
+  height: var(--is);
+  margin: 0 var(--im);
+  flex: 0 0 var(--is);
+}
+.session-menu .row .copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+.session-menu .label {
+  font-size: var(--fs);
+  line-height: 1.2;
+  font-weight: 500;
+}
+.session-menu .hint {
+  font-size: var(--hint);
+  line-height: 1.2;
+  font-weight: 400;
+}
+.session-menu .row.tutorial {
+  min-height: var(--th);
+}
+.session-menu .row.primary {
+  color: var(--ink);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.session-menu .row:enabled:hover,
+.session-menu .row.demo-hover {
+  background: var(--hover);
+  color: var(--paper);
+}
+.session-menu .row.primary:enabled:hover,
+.session-menu .row.primary.demo-hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+.session-menu .row:enabled:active,
+.session-menu .row.demo-pressed {
+  background: var(--board);
+}
+.session-menu .row.primary:enabled:active,
+.session-menu .row.primary.demo-pressed {
+  background: var(--pressed);
+}
+.session-menu .row:disabled {
+  background: var(--board);
+  color: var(--disabled);
+  border-color: var(--disabled);
+}
+.session-menu .settings {
+  position: relative;
+  margin: var(--sg) 0 0 var(--sm);
+  min-height: var(--sh);
+  width: var(--sw);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 6px solid #d1bb91;
+  border-radius: 3px;
+  box-shadow:
+    0 3px 0 #765039,
+    2px 8px 10px #172b2530;
+}
+.session-menu .settings:enabled:hover {
+  background: var(--accent);
+}
+.session-menu .settings:disabled {
+  color: #385a4c;
+}
+.session-menu .return-menu {
+  width: calc(100% - 32px);
+  margin: 16px 16px 0;
+}
+.session-menu .settings .label {
+  font-size: var(--sf);
+}
+.session-menu .save-error {
+  background: var(--paper);
+  color: var(--ink);
+  border-left: 4px solid #974a52;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.session-menu .save-error p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.session-menu .retry,
+.session-menu .plain,
+.session-menu .submit {
+  border: 1px solid var(--row);
+  border-radius: 4px;
+  padding: 12px 16px;
+  min-height: 52px;
+  background: var(--paper);
+  color: var(--ink);
+}
+.session-menu .retry:hover,
+.session-menu .plain:hover {
+  background: #e2d2af;
+}
+.session-menu .submit {
+  background: var(--accent);
+  font-weight: 500;
+}
+.session-menu .submit:hover {
+  background: #f4e8cf;
+}
+.session-menu .caption {
+  position: absolute;
+  right: 24px;
+  bottom: 16px;
+  padding: 8px 12px;
+  background: #172b25e8;
+  color: var(--paper);
+  max-width: 480px;
+  pointer-events: none;
+}
+.session-menu [data-layout='compact'] .settings,
+.session-menu [data-layout='column'] .settings {
+  margin-top: 20px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+.session-menu [data-layout='compact'] .tutorial[data-continued='true'] .label span,
+.session-menu [data-layout='narrow'] .tutorial[data-continued='true'] .label span,
+.session-menu [data-layout='column'] .tutorial[data-continued='true'] .label span {
+  display: block;
+}
+.session-menu .gallery-controls {
+  position: relative;
+  background: #172b25;
+  padding: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  color: var(--paper);
+  align-items: center;
+  font-size: 20px;
+}
+.session-menu .gallery-controls label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.session-menu .gallery-controls select {
+  max-width: 100%;
+  min-height: 52px;
+  color: var(--ink);
+  background: var(--paper);
+}
+.session-menu .gallery-controls p {
+  flex-basis: 100%;
+  margin: 0;
+}
+.session-menu .clean .gallery-controls {
+  display: none;
+}
+.session-menu .clean .caption {
+  display: none;
+}
+.session-menu dialog {
+  padding: 24px;
+  border: 2px solid var(--row);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  width: min(640px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  box-shadow: 0 24px 80px #172b2544;
+}
+.session-menu dialog::backdrop {
+  background: #172b25a8;
+}
+.session-menu dialog h2 {
+  font-size: 28px;
+  line-height: 1.2;
+  margin: 0 0 20px;
+}
+.session-menu dialog h3 {
+  font-size: 24px;
+  margin: 20px 0 10px;
+}
+.session-menu dialog p {
+  margin: 0 0 20px;
+}
+.session-menu dialog .field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 18px 0;
+}
+.session-menu dialog select,
+.session-menu dialog input {
+  min-height: 52px;
+  padding: 10px 12px;
+  max-width: 100%;
+  min-width: 0;
+  width: 100%;
+  border: 2px solid var(--row);
+  border-radius: 4px;
+  color: var(--ink);
+  background: #fffdf8;
+}
+.session-menu dialog summary {
+  cursor: pointer;
+  min-height: 52px;
+  padding: 14px 0;
+}
+.session-menu dialog .footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+.session-menu dialog .footer button {
+  flex: 1;
+  min-width: 140px;
+  white-space: normal;
+}
+.session-menu dialog .warning {
+  padding: 12px;
+  border-left: 4px solid #974a52;
+  background: #fffdf8;
+}
+.session-menu #rules {
+  width: min(680px, calc(100vw - 32px));
+}
+.session-menu .rules-image {
+  width: 100%;
+  height: auto;
+  margin: 12px 0;
+  background: #fffdf8;
+}
+.session-menu #rules-lines {
+  padding-left: 24px;
+  margin: 0;
+}
+.session-menu #rules-lines li {
+  margin: 0 0 16px;
+}
+.session-menu .gallery-note {
+  font-size: 20px;
+  margin-top: 24px;
+  opacity: 1;
+}
+.session-menu .demo-note {
+  padding: 12px;
+  background: var(--board);
+  color: var(--paper);
+}
+@media (max-width: 759px) {
+  .session-menu dialog {
+    padding: 16px;
+  }
+  .session-menu dialog h2 {
+    font-size: 24px;
+  }
+  .session-menu .caption {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .session-menu button {
+    transition: none;
+  }
+  .session-menu button:active {
+    transform: none;
+  }
+}
+.session-menu .menu-stack {
+  transform-origin: 0 0;
+}
+.session-menu [data-layout='desktop'] .label,
+.session-menu [data-layout='ultrawide'] .label {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 400;
+}
+.session-menu [data-layout='desktop'] .settings svg,
+.session-menu [data-layout='ultrawide'] .settings svg {
+  width: var(--is);
+  height: var(--is);
+}
+.session-menu .save-error,
+.session-menu .retry,
+.session-menu .return-menu {
+  font-size: var(--hint);
+}
+.session-menu .retry,
+.session-menu .return-menu {
+  min-height: var(--touch);
+}
+.session-menu .row,
+.session-menu .settings,
+.session-menu .retry,
+.session-menu .return-menu {
+  scroll-margin-block: 16px;
+}
+.session-menu .frame-point {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.session-menu .board .tl {
+  left: -12px;
+  top: -12px;
+}
+.session-menu .board .tr {
+  right: -12px;
+  top: -12px;
+}
+.session-menu .board .br {
+  right: -12px;
+  bottom: -12px;
+}
+.session-menu .board .bl {
+  left: -12px;
+  bottom: -12px;
+}
+.session-menu .settings .tl {
+  left: -6px;
+  top: -6px;
+}
+.session-menu .settings .tr {
+  right: -6px;
+  top: -6px;
+}
+.session-menu .settings .br {
+  right: -6px;
+  bottom: -6px;
+}
+.session-menu .settings .bl {
+  left: -6px;
+  bottom: -6px;
+}
+.session-menu,
+.session-menu .menu-stage {
+  background: transparent;
+}
+.session-menu canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.session-menu .menu-stack {
+  z-index: 1;
+}
+.session-menu .board,
+.session-menu .settings {
+  transform-origin: 0 0;
+}
+.session-menu .board {
+  border-color: transparent;
+  box-shadow: none;
+  background-clip: padding-box;
+}
+.session-menu .board::before,
+.session-menu .rivet {
+  display: none;
+}
+.session-menu .settings {
+  border-color: transparent;
+  box-shadow: none;
+  background-clip: padding-box;
+}
+.session-menu .scene-status {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  padding: 12px;
+  background: #172b25;
+  color: #f4e8cf;
+  z-index: 2;
+}
+.session-menu .no-ui .menu-stack {
+  visibility: hidden;
+}
+.session-menu [data-layout='desktop'] .board,
+.session-menu [data-layout='ultrawide'] .board {
+  height: var(--board-h);
+}
+.session-menu [data-layout='desktop'] .actions-frame,
+.session-menu [data-layout='ultrawide'] .actions-frame {
+  height: calc(var(--action-h) + 16px);
+  margin: calc(var(--headgap) - 8px) -8px -8px;
+}
+.session-menu [data-layout='desktop'] .actions,
+.session-menu [data-layout='ultrawide'] .actions {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--paper) var(--row);
+  overflow-x: hidden;
+  padding: 8px;
+  margin: 0;
+  scroll-padding-block: 8px;
+}
+.session-menu [data-layout='desktop'] .actions-frame[data-overflow='true'] .actions,
+.session-menu [data-layout='ultrawide'] .actions-frame[data-overflow='true'] .actions {
+  height: calc(100% - 24px);
+}
+.session-menu .actions > .row,
+.session-menu .actions > .save-error {
+  flex-shrink: 0;
+}
+.session-menu [data-layout='desktop'] .actions::-webkit-scrollbar,
+.session-menu [data-layout='ultrawide'] .actions::-webkit-scrollbar {
+  width: 8px;
+}
+.session-menu [data-layout='desktop'] .actions::-webkit-scrollbar-track,
+.session-menu [data-layout='ultrawide'] .actions::-webkit-scrollbar-track {
+  background: var(--row);
+}
+.session-menu [data-layout='desktop'] .actions::-webkit-scrollbar-thumb,
+.session-menu [data-layout='ultrawide'] .actions::-webkit-scrollbar-thumb {
+  background: var(--paper);
+  border: 2px solid var(--board);
+}
+.session-menu {
+  --disabled: #bccdbd;
+}
+.session-menu .board,
+.session-menu .row {
+  background-image: linear-gradient(#223a33a6, #223a33a6), url('/menu/art/board-paint.webp');
+  background-size: 256px 256px;
+}
+.session-menu .row {
+  gap: 0;
+  padding: 0;
+  border-color: #14271e;
+  box-shadow:
+    inset 1px 1px 0 #82978480,
+    inset 0 -1px 0 #101e1770;
+}
+.session-menu .row > .icon {
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  flex: 0 0 var(--ic);
+  border-right: 1px solid #14271e;
+  box-shadow: 1px 0 0 #82978450;
+}
+.session-menu .row > .icon svg {
+  margin: 0;
+}
+.session-menu .row > .copy {
+  padding: 6px 16px;
+  min-width: 0;
+}
+.session-menu .row.primary {
+  background-image: linear-gradient(#e8b868b3, #e8b868b3), url('/menu/art/paper-tile.webp');
+  background-color: #ffcf7b;
+  background-blend-mode: normal, multiply;
+  border-color: #93642d;
+  box-shadow:
+    inset 1px 1px 0 #ffe1a49e,
+    inset 0 -1px 0 #a36a2f80;
+}
+.session-menu .row.primary > .icon {
+  border-right-color: #99652d;
+  box-shadow: 1px 0 0 #ffe1a49e;
+}
+.session-menu .row:disabled {
+  border-color: #657663;
+}
+.session-menu .row:disabled > .icon {
+  border-right-color: #657663;
+}
+.session-menu .settings {
+  background-image: linear-gradient(#e3cfaa96, #e3cfaa96), url('/menu/art/paper-tile.webp');
+  background-size: 256px 256px;
+  color: #342c20;
+}
+.session-menu .settings::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px solid #84664355;
+  pointer-events: none;
+}
+.session-menu [data-layout='desktop'] .board,
+.session-menu [data-layout='ultrawide'] .board {
+  padding-left: calc(var(--pad) + 24px);
+  padding-right: calc(var(--pad) + 8px);
+}
+.session-menu [data-layout='desktop'] .label,
+.session-menu [data-layout='ultrawide'] .label {
+  font-family: 'Times New Roman', Georgia, serif;
+  font-weight: 400;
+}
+.session-menu [data-layout='desktop'] .tutorial[data-continued='true'] .label,
+.session-menu [data-layout='ultrawide'] .tutorial[data-continued='true'] .label {
+  font-size: var(--tf);
+}
+.session-menu [data-layout='desktop'] .board-header,
+.session-menu [data-layout='ultrawide'] .board-header {
+  padding-bottom: 28px;
+  color: #f2d5a2;
+}
+.session-menu .scroll-affordance {
+  height: 24px;
+  margin: 0 8px;
+  color: #f4e8cf;
+  font:
+    18px/24px MenuPlex,
+    Arial,
+    sans-serif;
+  text-align: right;
+  pointer-events: none;
+}
+.session-menu .scroll-affordance[hidden] {
+  display: none;
+}
+.session-menu .board.has-volume-title {
+  background: transparent;
+}
+.session-menu .board.has-volume-title .wordmark {
+  visibility: hidden;
+}
+.session-menu [data-layout='desktop'] .board,
+.session-menu [data-layout='ultrawide'] .board {
+  padding-left: calc(var(--pad) + var(--print-boardPaddingLeftExtra));
+}
+.session-menu [data-layout='desktop'] .board-header,
+.session-menu [data-layout='ultrawide'] .board-header {
+  padding-bottom: var(--print-headerPaddingBottom);
+}
+.session-menu [data-layout='desktop'] .row .label,
+.session-menu [data-layout='ultrawide'] .row .label {
+  line-height: 1.05;
+  width: calc(100% / 0.89);
+  transform: scaleX(0.89);
+  transform-origin: left center;
+}
+.session-menu [data-layout='desktop'] .row > .copy,
+.session-menu [data-layout='ultrawide'] .row > .copy {
+  overflow: clip;
+  padding-left: var(--print-copyPaddingLeft);
+  padding-right: 16px;
+}
+.session-menu [data-layout='desktop'] .actions,
+.session-menu [data-layout='ultrawide'] .actions {
+  position: relative;
+}
+.session-menu [data-layout='desktop'] .wordmark svg,
+.session-menu [data-layout='ultrawide'] .wordmark svg {
+  transform: scale(0.9, 1.1);
+  transform-origin: center;
+}
+.session-menu .row {
+  background-image: linear-gradient(#242922a6, #242922a6), url('/menu/art/board-paint.webp');
+  color: #ecd5b2;
+  border-color: #171e18;
+  border-radius: 4px;
+  box-shadow:
+    inset 0 1px 0 #92978545,
+    inset 1px 0 0 #92978525,
+    inset 0 -1px 0 #0f171590;
+}
+.session-menu .row > .icon {
+  border-right-color: #1c241c;
+  box-shadow: 1px 0 0 #92978540;
+}
+.session-menu .row.primary {
+  background-image: linear-gradient(#e49845b3, #e49845b3), url('/menu/art/paper-tile.webp');
+  color: #342b1e;
+  border-color: #855729;
+  box-shadow:
+    inset 0 1px 0 #ffe2a58a,
+    inset 1px 0 0 #ffe2a540,
+    inset 0 -1px 0 #8e5d3280;
+}
+.session-menu .row.primary > .icon {
+  border-right-color: #9c713c;
+  box-shadow: 1px 0 0 #ffe2a560;
+}
+.session-menu .row:disabled {
+  color: #bccdbd;
+}
+.session-menu .row > .icon svg {
+  filter: drop-shadow(0 -0.5px 0 #17201880) drop-shadow(0.6px 0.7px 0 #eed4a63d);
+}
+.session-menu .settings {
+  background-image: linear-gradient(#e4dcc6b3, #e4dcc6b3), url('/menu/art/paper-tile.webp');
+  justify-content: flex-start;
+  padding-left: 24px;
+  gap: 14px;
+}
+.session-menu .settings::after {
+  inset: 0;
+  border: 0;
+  background: url('/menu/art/sources/settings-edge-print.svg') center/100% 100% no-repeat;
+  z-index: 0;
+}
+.session-menu .settings > .icon,
+.session-menu .settings > .label {
+  position: relative;
+  z-index: 1;
+}
+.session-menu [data-layout='desktop'] .settings svg,
+.session-menu [data-layout='ultrawide'] .settings svg {
+  width: var(--print-settingsIconSize);
+  height: var(--print-settingsIconSize);
+}
+.session-menu [data-layout='desktop'] .settings .label,
+.session-menu [data-layout='ultrawide'] .settings .label {
+  font-size: var(--sf);
+  line-height: 1.1;
+  transform: scaleX(0.92);
+  transform-origin: left center;
+}
+
+.session-menu {
+  position: relative;
+  min-height: 100vh;
+  font:
+    20px/1.2 MenuPlex,
+    Arial,
+    sans-serif;
+  color: var(--paper);
+  background: #cbbb9f;
+  --bw: 440px;
+  --pad: 20px;
+  --hh: 140px;
+  --rh: 64px;
+  --th: 72px;
+  --gap: 12px;
+  --headgap: 16px;
+  --fs: 26px;
+  --hint: 18px;
+  --sf: 24px;
+  --is: 32px;
+  --ic: 60px;
+  --im: 8px;
+  --mark: 320px;
+  --sh: 76px;
+  --touch: 52px;
+  --sw: 300px;
+  --sm: 0px;
+  --sg: 20px;
+}
+.session-menu .menu-stack {
+  left: 0;
+  top: 0;
+}
+.session-menu .menu-canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.session-menu .scene-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 32px);
+}
+.session-menu:not([data-scene='ready']) .menu-stack {
+  position: relative;
+  width: min(var(--bw), calc(100vw - 32px));
+  margin: 24px auto;
+}
+.session-menu:not([data-scene='ready']) .board {
+  transform: none !important;
+  background-color: var(--board);
+  height: auto;
+}
+.session-menu:not([data-scene='ready']) .board-header {
+  height: 140px;
+}
+.session-menu:not([data-scene='ready']) .settings {
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  transform: none !important;
+  margin: 20px auto !important;
+  max-width: 100%;
+}
+.session-menu:not([data-scene='ready']) .actions-frame {
+  height: auto;
+  margin-top: 16px;
+}
+.session-menu:not([data-scene='ready']) .actions {
+  height: auto;
+  overflow: visible;
+}
+.session-menu .menu-rules {
+  width: min(680px, calc(100vw - 32px));
+}
+.session-menu .menu-rules li {
+  margin-bottom: 16px;
+}
+.session-menu .menu-rules figure {
+  margin: 12px 0;
+}
+.session-menu .tutorial-welcome-backdrop {
+  z-index: 10;
+}
