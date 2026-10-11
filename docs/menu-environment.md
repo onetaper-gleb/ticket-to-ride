@@ -16,6 +16,8 @@
 
 Поезд получил более узкий фронт, выпуклую дверцу, объёмный корпус/линзу фонаря, уточнённую трубу, две соединённые паровые трубки и колесные втулки. Труба сохраняет anchor/верхнюю границу; lens не добавляет light и использует прежний warm/emissive. Exact bbox, семь pivots/zero binds,28 tread/torus primitives и14actual wheel/rail contacts прежние; max world gap5.22×10⁻⁹. Итог28912tri/16meshes/9roles против25744tri базы. `menu-environment-round5-train-checks.json` содержит7784affectedtri,36profile/fitting joins,4pipe groups и30wheel joins, окна и disposal.
 
+Багаж сохраняет корпуса, feet, края/концы ручек и A07, но ремни и уголки получили тонкие фаски, застёжки — сквозные рамки, штыри и петли; ручка — центральную накладку. У скамьи добавлены четыре литые втулки в соединениях. Подвесные лампы имеют чашу и завальцованный край при прежних наружных размерах/cap contacts; compact lamp сохраняется. Семафор стал тоньше в поперечнике при прежних floor/top/root/armPivot и placement. Actual props proof подтверждает657strict triangle joins, finite/unit normals/winding и lifecycle; per-case4346tri, bench4452, suspended1832, compact1312, semaphore1140. Суммарный рост четырёх чемоданов/скамьи/двух подвесных ламп1680tri/161280attribute bytes/0meshes. Новых maps/roles/lights/dependencies нет; размещение целых предметов остаётся у общего дизайнера.
+
 Общий вертикальный уровень пути пока прежний: rail head worldY−.65, floor−.9. Связанное предложение railwayRootY−.78 вместе с поездом/путём и новым основанием у пола передано root отдельно; до согласования не применяется. Профиль пути и anchors побайтово прежние. Это остающееся отличие от низкого пути референса, а не объявленное исправление.
 
 ## Текущий раунд 4
