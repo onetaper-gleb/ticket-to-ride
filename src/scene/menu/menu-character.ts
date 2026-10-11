@@ -608,6 +608,15 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
   ticket.castShadow = true;
   ticket.receiveShadow = true;
   ticketGrip.add(ticket);
+  if (calm) {
+    const secondary = new THREE.Mesh(ticketGeometry, materials.paper);
+    secondary.name = 'cashier secondary fan ticket';
+    secondary.position.set(0.508889259424083, 0.08288595629697071, -0.025);
+    secondary.rotation.z = 0.4;
+    secondary.castShadow = true;
+    secondary.receiveShadow = true;
+    ticketGrip.add(secondary);
+  }
 
   const ticketsForHolder = new THREE.Group();
   ticketsForHolder.name = 'ticketsForHolder';
