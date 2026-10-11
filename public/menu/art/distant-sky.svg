@@ -1,17 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="512" viewBox="0 0 1024 512">
   <defs>
-    <linearGradient id="sky-blue" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#74A1D2"/><stop offset=".48" stop-color="#AACBE8"/><stop offset="1" stop-color="#DBDDCF"/></linearGradient>
-    <linearGradient id="sky-distance" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#C6D5DD" stop-opacity="0"/><stop offset="1" stop-color="#D8D8C9" stop-opacity=".16"/></linearGradient>
-    <filter id="cloud-soft" x="-20%" y="-60%" width="140%" height="220%"><feGaussianBlur stdDeviation="3"/></filter>
-    <filter id="cloud-haze" x="-30%" y="-70%" width="160%" height="240%"><feGaussianBlur stdDeviation="8"/></filter>
-    <path id="cloud-middle" d="M548 112C555 101 565 99 576 102C578 85 593 79 606 84C618 68 637 71 645 85C662 80 678 90 678 101C692 104 701 113 707 123C675 132 627 134 587 126C568 123 555 119 548 112Z"/>
-    <path id="cloud-right" d="M756 153c15-12 34-15 49-11 7-26 27-41 49-33 13-14 37-17 52-3 20-9 46-2 54 18 27-1 50 11 64 25-40 21-111 27-167 23-44-2-77-8-101-19Z"/>
+    <linearGradient id="sky-blue" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#4F8FCD"/><stop offset=".3" stop-color="#77B3E5"/><stop offset=".62" stop-color="#B4D2EB"/><stop offset="1" stop-color="#D4DFDA"/></linearGradient>
+    <linearGradient id="cloud-body" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#FFFCF3"/><stop offset=".7" stop-color="#F8F8EE"/><stop offset="1" stop-color="#DCE7EF"/></linearGradient>
+    <filter id="cloud-soft" x="-20%" y="-45%" width="140%" height="190%"><feGaussianBlur stdDeviation="2.5"/></filter>
+    <filter id="cloud-haze" x="-20%" y="-60%" width="140%" height="220%"><feGaussianBlur stdDeviation="6"/></filter>
+    <path id="cloud-window" transform="translate(0 12)" d="M654 113C659 102 669 98 681 100C680 87 689 80 700 82C707 66 727 68 737 82C749 79 760 86 763 99C781 91 799 102 801 112C818 109 830 116 837 124C799 134 751 135 710 129C683 126 663 121 654 113Z"/>
+    <path id="cloud-distant" d="M463 153C473 143 483 143 494 144C497 133 510 130 519 137C531 124 547 129 552 139C565 136 579 143 584 152C554 162 508 166 463 153Z"/>
   </defs>
   <path fill="url(#sky-blue)" d="M0 0h1024v512H0Z"/>
-  <g fill="#F7F2E3" opacity=".18" filter="url(#cloud-haze)"><use href="#cloud-middle"/><use href="#cloud-right"/></g>
-  <g fill="#F9FAF4" opacity=".78" filter="url(#cloud-soft)">
+  <g fill="#F5F8EF" opacity=".13" filter="url(#cloud-haze)"><use href="#cloud-window"/><use href="#cloud-distant"/></g>
+  <g fill="url(#cloud-body)" opacity=".96" filter="url(#cloud-soft)">
     <path d="M85 139c18-13 37-17 55-11 9-25 29-35 52-24 15-16 37-19 56-6 24-7 43 3 51 18 34-2 64 5 83 23-56 18-208 24-297 0Z"/>
-    <use href="#cloud-middle"/><use href="#cloud-right"/>
+    <use href="#cloud-window"/><use href="#cloud-distant"/>
   </g>
-  <path fill="url(#sky-distance)" d="M0 246h1024v266H0Z"/>
 </svg>

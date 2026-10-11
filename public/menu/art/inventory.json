@@ -1,7 +1,7 @@
 {
   "version": 5,
   "baseCommit": "bea9743c7622a7806a3d9b6824a9d912b0a41b65",
-  "previousArtCommit": "9e6a6b250135fef2f59cc3a5ba95bfb6a7419ce2",
+  "previousArtCommit": "2f7f03e47c8b56aac8747c32ebbe018bca0420d8",
   "assets": [
     {
       "file": "board-paint.png",
@@ -47,8 +47,8 @@
     },
     {
       "file": "distant-sky.svg",
-      "bytes": 1577,
-      "sha256": "c9c4768c539e7f499086b1ce8ae252eb1ee581b796c96e116bc926065cbe4fbe",
+      "bytes": 1625,
+      "sha256": "6cf1bd3b9fd27d6368cc4bb85938db84efb60fbe7b67493a42f74b7e3cf5be7e",
       "role": "runtime",
       "stage": "P1",
       "dimensions": [
@@ -56,7 +56,7 @@
         512
       ],
       "alpha": false,
-      "source": "project-original blue gradient and diffuse cloud paths positioned for actual frozen1bab sky UV; no station/trees",
+      "source": "project-original targeted blue/cloud SVG in actual frozen29 UV; unchanged1024x512/existing sky slot",
       "rights": "project-original artwork; no new project license asserted"
     },
     {
@@ -402,6 +402,15 @@
       "rights": "project-owned source; no new distributed font, dependency or artwork"
     },
     {
+      "file": "sources/sky-29cff5e-proof.json",
+      "bytes": 18387,
+      "sha256": "83a96534bda100d6ecfb3f9b270ef77d924685d2505101184776405daf3cbb2c",
+      "role": "source",
+      "stage": "P1 proof",
+      "source": "project-original actual frozen29 UV/runtime decode/cost proof; no additional runtime slot",
+      "rights": "project-owned source; no new dependency/font/third-party artwork"
+    },
+    {
       "file": "sources/stone-tile.png",
       "bytes": 436319,
       "sha256": "5917862b8f6be287d626e6318db740cea3824cbcc86c6022f54abe44dfdd8ca9",
@@ -496,14 +505,14 @@
     }
   ],
   "budget": {
-    "runtimeFileBytesIncludingSVG": 358581,
+    "runtimeFileBytesIncludingSVG": 358629,
     "runtimeRasterBytesBothFallbacks": 342812,
     "runtimeRasterGoalBytes": 2000000,
     "fallbackEachGoalBytes": 400000,
     "allUniqueP1MapsMiBWithoutFallbackWithoutSteam": 14.0,
     "allUniqueMapsBothFallbacksAndSteamMiB": 22.286458333333332,
     "baseline316FourLoadedMapsMiB": 4.666666666666666,
-    "note": "Unique RGBA8 full-mip estimates14MiB scene maps/22.286458MiB including both fallback rasters and disabled steam remain unchanged because all runtime image dimensions/slots remain. Excludes clones, DOM/CSS images, render targets, shadows and PMREM; not measured VRAM. Source-only EUROPE and settings-edge SVG excluded. Actual frozen1bab static counters before/after446calls/750627triangles/122geometries/23textures; not FPS. Source-only print proposal has no current Three cost."
+    "note": "Unique RGBA8 full-mip estimates14MiB scene maps/22.286458MiB including both fallback rasters and disabled steam remain unchanged because all runtime image dimensions/slots remain. Excludes clones, DOM/CSS images, render targets, shadows and PMREM; not measured VRAM. Source-only EUROPE and settings-edge SVG excluded. Actual frozen1bab static counters before/after446calls/750627triangles/122geometries/23textures; not FPS. Source-only print proposal has no current Three cost. Sky5.1 keeps dimensions/slots; actual frozen29 fullstatic before/after484calls/792095triangles/129geometries/23textures. Other image maps remain accepted2f7 bytes; SVG byte delta only. Historical2f7 counters above refer to1bab."
   },
   "generation": {
     "tool": "built-in image_gen",
@@ -581,9 +590,9 @@
     ],
     "status": "Historical version4 generation; mastersInOutputPackage refers to that version4 package, not round5. Current selected masters are in round5SurfaceGeneration."
   },
-  "revision": "material-and-print-round5",
-  "artVersion": "5.0-proposal",
-  "commonFixture": "1bab208aa1871f93a7af15265ad2053dff6db312",
+  "revision": "targeted-sky-frozen29",
+  "artVersion": "5.1-sky-followup",
+  "commonFixture": "29cff5e3edc69d06f620fdc6240766449c53e164",
   "round5SurfaceGeneration": {
     "tool": "built-in image_gen",
     "mode": "five edits of accepted9e6 material targets; board-paint retained",
