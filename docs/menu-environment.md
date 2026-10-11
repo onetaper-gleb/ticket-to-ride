@@ -186,3 +186,16 @@ UV не являются world tri-planar mapping: Box/RoundedBox использ
 Новых материалов, карт, треугольников, loader/dependencies/light/camera изменений нет. Геометрический профиль и placement требуют actual contact и screen proofs на exact committed tip; художественная приёмка нового ground остаётся у владельца общего кадра. Принятый Round5 package неизменяем.
 
 Optional `canopyWood` отделяет ровно две существующие liner plates в `buildCanopy`: size(5.84,.05,1.58)/position(−1.885,−.10,−.93) и size(6.14,.045,3.43)/position(4.05,−.1125,−1). Geometry, UV и transforms сохранены. Без собственной карты/override, включая explicit undefined, они используют прежний resolved `wood` без новых ресурсов. При собственной карте или override (включая `{}`) отдельный материал наследует пять разрешённых полей wood, затем defined canopyWood options; карта — explicit surfaces.canopyWood, иначе фактическая resolved wood.map, включая legacy art.wood. Один дополнительный owned clone сохраняет image/source/transform; caller input не мутируется и не освобождается. Арка, прилавок, интерьер, скамья и остальные wood детали остаются на прежних ролях. Numeric guards/partial-failure cleanup/idempotent dispose сохраняются. Новый loader/asset/light не нужен; финальный оттенок потолка выбирает compositor.
+
+## Проба объёма canonical EUROPE
+
+После ground/API подготовлены четыре отдельных scratch варианта на frozen1bab при неизменном brass и свете. Production geometry сохраняет depth.008/bevelSize.001/bevelThickness.001/segments1: запрос сначала требует сравнение, окончательный объём выбирает владелец общего кадра. Canonical6paths/3holes, target/native frames, положительный transform, geometry reuse и lifecycle сохраняются.
+
+| Вариант         | Depth / bevelSize / thickness / segments | Title tri | Multipass tri / calls1672 | Header min margin в native px |
+| --------------- | ---------------------------------------- | --------- | ------------------------- | ----------------------------- |
+| Текущий         | .008 / .001 / .001 / 1                   | 3308      | 780571 / 474              | 16.311                        |
+| Средний         | .012 / .0025 / .0015 / 1                 | 3308      | 780571 / 474              | 15.856                        |
+| Глубокий        | .016 / .003 / .002 / 1                   | 3308      | 780571 / 474              | 15.704                        |
+| Глубокий smooth | .016 / .003 / .002 / 2                   | 4968      | 785551 / 474              | 15.704                        |
+
+Actual projected outer bbox текущего title=(202.445,131.653)–(465.398,198.771)px; medium=(201.973,130.941)–(466.065,199.210); deep/smooth=(201.815,130.550)–(466.462,199.357). Front/back bbox displacement maxX.649/.974/1.299px, maxY.572/.859/1.146px соответственно. Текущая надпись имеет реальную толщину; medium/deep увеличивают её без новых tri/calls, выигрыш в общем кадре небольшой. Второй bevel segment добавляет1660tri (+4980 multipass) при том же outer silhouette. Для дальнейшей художественной пробы предпочтителен medium или deep с segments1; автоматического изменения света, материала или всех параметров нет. Отдельный compiled harness показывает варианты и header/cost proof; production title остаётся прежним до выбора владельца.
