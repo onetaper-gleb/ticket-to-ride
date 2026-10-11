@@ -109,7 +109,7 @@ export function menuCompositionPreset(width: number, height: number): MenuCompos
     board,
     settings,
     camera: narrow ? [-0.58, 0.17, 7.1] : desktop ? [0.04, 0.52, 6.4] : [-0.65, 0.4, 5.5],
-    railway: [narrow ? 2.0 : desktop ? 3.5 : 2.45, -0.65, -3.1],
+    railway: [narrow ? 2.0 : desktop ? 3.5 : 2.45, -0.78, -3.1],
     fov: 34,
     buildingYaw: THREE.MathUtils.degToRad(27),
     luggageAdvance: desktop ? mix([0.8, 0, 0]) : 0,

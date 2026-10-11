@@ -93,6 +93,7 @@ export async function createMenuComposition(
       ...art,
       materialOverrides: {
         wood: { color: new THREE.Color(0.85, 1.1, 1.45) },
+        canopyWood: {},
         woodDark: { color: '#887660' },
         leather: { roughness: 0.9 },
         cream: { color: '#c8c8c5', roughness: 0.95 },
