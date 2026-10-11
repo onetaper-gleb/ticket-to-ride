@@ -181,12 +181,12 @@ export async function createMenuComposition(
         },
         leather: { roughness: 0.9 },
         cream: { color: '#c8c8c5', roughness: 0.95 },
-        stone: { color: new THREE.Color(0.85, 0.74, 0.6), roughness: 0.92 },
+        stone: { color: new THREE.Color(0.82, 0.8, 0.73), roughness: 0.92 },
         // The tile gaps expose the untextured backing; keep its grade near the mapped tiles.
-        plasterShade: { color: new THREE.Color(0.24, 0.21, 0.175) },
-        foliage: { color: new THREE.Color(0.65, 0.72, 0.3), roughness: 0.95 },
-        foliageLight: { color: new THREE.Color(0.9, 0.94, 0.45), roughness: 0.95 },
-        foliageDark: { color: new THREE.Color(0.37, 0.47, 0.2), roughness: 0.95 },
+        plasterShade: { color: new THREE.Color(0.24, 0.23, 0.21) },
+        foliage: { color: new THREE.Color(0.48, 0.68, 0.29), roughness: 0.95 },
+        foliageLight: { color: new THREE.Color(0.81, 1.03, 0.41), roughness: 0.95 },
+        foliageDark: { color: new THREE.Color(0.27, 0.43, 0.17), roughness: 0.95 },
         // The mapped green already contains its base color; grade its channels in linear space.
         green: { color: new THREE.Color(2.1, 2.35, 3) },
         canopyPaint: { color: new THREE.Color(1.85, 2.05, 4.5), roughness: 0.7, metalness: 0.08 },
