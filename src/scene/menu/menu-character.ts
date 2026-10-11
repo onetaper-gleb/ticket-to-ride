@@ -134,7 +134,10 @@ function roundRestingKnuckles(hand: THREE.Group, contact: THREE.Vector3) {
     const compactBeforeLift = fingerWeight * smooth(0.23, 0.52, bind.y);
     const inverse = delta > 0 || compactBeforeLift > 0 ? matrix.clone().invert() : undefined;
     const liftedBindY = delta > 0 ? point.clone().applyMatrix4(inverse!).y : bind.y;
-    const compact = fingerWeight * smooth(0.23, 0.52, liftedBindY);
+    const compact =
+      fingerWeight *
+      smooth(0.23, 0.52, liftedBindY) *
+      smooth(contact.y + 0.004, contact.y + 0.025, point.y);
     let roundedX = 0;
     for (const offset of [-0.056, -0.008, 0.063, 0.136]) {
       const x = point.x - contact.x - offset;
