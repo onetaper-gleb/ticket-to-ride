@@ -7,6 +7,8 @@ export type MenuCashierOptions = {
   /** Contact positions in cashierAnchor coordinates, with +Y up and +Z towards the viewer. */
   handRestLeft?: THREE.Vector3;
   handRestRight?: THREE.Vector3;
+  /** Static, opt-in grip proposals; each requires its documented explicit right contact. */
+  ticketGripPose?: 'current-support' | 'left-support';
 };
 
 export type MenuCashier = {
@@ -27,6 +29,22 @@ const RESTING_HAND_SCALE = 0.218;
 const TICKET_WIDTH = 1.1;
 const TICKET_HEIGHT = 2.1;
 const TICKET_THICKNESS = 0.006;
+const CENTER_GRIPS = {
+  'current-support': {
+    contact: [0.1, 0, 0.15],
+    yaw: 2,
+    roll: 0,
+    position: [0.7882690879245537, 0.6251109000875527, 0.2517109814037603],
+    quaternion: [0.639303971283832, -0.32700352075643085, 0.16986765900343323, 0.6749104445319488],
+  },
+  'left-support': {
+    contact: [-0.155883, 0, 0.161828],
+    yaw: 0.9,
+    roll: null,
+    position: [0.8153463259933655, 0.6156881741490163, 0.3510383835169697],
+    quaternion: [0.6072587906817399, -0.38324651614264305, 0.22995511959228174, 0.6568710010173818],
+  },
+} as const;
 
 /** Flex toward the palm in the frozen rig's local X axis without changing its bind surface. */
 function setPalmFlex(
@@ -186,12 +204,18 @@ function roundRestingKnuckles(hand: THREE.Group, contact: THREE.Vector3) {
   normal.needsUpdate = true;
 }
 
-function setTicketPinch(hand: THREE.Group) {
+function setTicketPinch(hand: THREE.Group, centered = false) {
   setHandPose(hand, {
-    curl: [0.725, 0.85, 0.1, 0.15, 0.2],
-    thumbOpposition: 0.725,
+    curl: centered ? [0.9, 1.0175, 0.9, 0.9, 0.9] : [0.725, 0.85, 0.1, 0.15, 0.2],
+    thumbOpposition: centered ? 0.9 : 0.725,
+    wrist: centered ? [0.9, 0, -1.2] : undefined,
   });
-  setPalmFlex(hand, { index: 0.85, middle: 0.1, ring: 0.15, little: 0.2 });
+  setPalmFlex(
+    hand,
+    centered
+      ? { index: 1.0175, middle: 0.9, ring: 0.9, little: 0.9 }
+      : { index: 0.85, middle: 0.1, ring: 0.15, little: 0.2 },
+  );
 }
 
 function contactAnchor(name: string, position: THREE.Vector3, parent: THREE.Object3D) {
@@ -217,6 +241,33 @@ function posedBounds(hand: THREE.Group) {
   return bounds;
 }
 
+/** Seat the posed surface's lowest support on the supplied X/Y/Z contact. */
+function seatHoldingSupport(hand: THREE.Group, contact: THREE.Vector3) {
+  const root = hand.parent!;
+  root.updateMatrixWorld(true);
+  const mesh = getHandRig(hand)!.mesh;
+  mesh.skeleton.update();
+  const fromMesh = root.matrixWorld.clone().invert().multiply(mesh.matrixWorld);
+  const points: THREE.Vector3[] = [];
+  let minY = Infinity;
+  for (let i = 0; i < mesh.geometry.attributes.position.count; i++) {
+    const point = mesh.getVertexPosition(i, new THREE.Vector3()).applyMatrix4(fromMesh);
+    points.push(point);
+    minY = Math.min(minY, point.y);
+  }
+  const support = points
+    .filter((point) => point.y <= minY + 1e-6)
+    .reduce((a, b) =>
+      Math.hypot(a.x - contact.x, a.z - contact.z) < Math.hypot(b.x - contact.x, b.z - contact.z)
+        ? a
+        : b,
+    );
+  hand.position.add(
+    new THREE.Vector3(contact.x - support.x, contact.y + 0.002 - support.y, contact.z - support.z),
+  );
+  hand.updateMatrix();
+}
+
 /**
  * Builds an identity root at the counter contact plane. Contacts use cashier-local units.
  * Await preloadMenuHandSurfaces before the first call to avoid procedural extraction.
@@ -227,6 +278,15 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
   root.name = 'Menu ticket office cashier';
   const leftContact = options.handRestLeft?.clone() ?? new THREE.Vector3(0.35, 0, 0.15);
   const rightContact = options.handRestRight?.clone() ?? new THREE.Vector3(-0.35, 0, 0.15);
+  const gripPose = options.ticketGripPose ? CENTER_GRIPS[options.ticketGripPose] : undefined;
+  if (
+    options.ticketGripPose &&
+    (!gripPose ||
+      !options.handRestRight ||
+      rightContact.distanceTo(new THREE.Vector3(...gripPose.contact)) > 1e-6 ||
+      leftContact.distanceTo(new THREE.Vector3(0.35, 0, 0.15)) > 1e-6)
+  )
+    throw new Error('Centered ticket grip requires its documented explicit contacts');
   for (const point of [leftContact, rightContact]) {
     if (![point.x, point.y, point.z].every(Number.isFinite)) {
       throw new Error('Cashier contacts require finite coordinates');
@@ -271,7 +331,7 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
     hand.name = resting
       ? 'cashier anatomical left resting hand'
       : 'cashier anatomical right ticket hand';
-    hand.scale.setScalar(resting ? RESTING_HAND_SCALE : HAND_SCALE);
+    hand.scale.setScalar(resting || gripPose ? RESTING_HAND_SCALE : HAND_SCALE);
     hand.position.copy(contact);
     if (resting) {
       hand.rotation.set(Math.PI / 2, 0, -0.08);
@@ -283,9 +343,16 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
     } else {
       hand.rotation.set(-Math.PI / 2, -0.18, -0.18);
       hand.quaternion.premultiply(
-        new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -0.44 * ticketReach),
+        new THREE.Quaternion().setFromAxisAngle(
+          new THREE.Vector3(0, 0, 1),
+          gripPose?.roll ?? -0.44 * ticketReach,
+        ),
       );
-      setTicketPinch(hand);
+      if (gripPose)
+        hand.quaternion.premultiply(
+          new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), gripPose.yaw),
+        );
+      setTicketPinch(hand, Boolean(gripPose));
     }
     const handMaterial = getHandRig(hand)!.mesh.material;
     for (const material of Array.isArray(handMaterial) ? handMaterial : [handMaterial]) {
@@ -297,6 +364,7 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
     hand.position.y += contact.y + 0.002 - posedBounds(hand).min.y;
     hand.updateMatrix();
     if (resting) roundRestingKnuckles(hand, contact);
+    else if (gripPose) seatHoldingSupport(hand, contact);
     return hand;
   };
   const left = createHand(1, leftContact, true);
@@ -365,7 +433,7 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
   addSleeve(
     forearmPivot,
     [localWrist.clone().multiplyScalar(THREE.MathUtils.lerp(0.68, 0.86, ticketReach)), localWrist],
-    [0.06, 0.049],
+    [0.06, gripPose ? 0.026 : 0.049],
     materials.cuff,
     'right moving cream cuff',
     rightContact.y,
@@ -386,6 +454,11 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
       .multiplyScalar(ticketReach)
       .applyQuaternion(ticketGrip.quaternion),
   );
+  if (gripPose) {
+    ticketGrip.position.fromArray(gripPose.position);
+    ticketGrip.quaternion.fromArray(gripPose.quaternion).normalize();
+    ticketGrip.scale.setScalar(HAND_SCALE / RESTING_HAND_SCALE);
+  }
   const ticketGeometry = new THREE.BoxGeometry(TICKET_WIDTH, TICKET_HEIGHT, TICKET_THICKNESS);
   ticketGeometry.translate(0, TICKET_HEIGHT / 2, 0);
   const ticket = new THREE.Mesh(ticketGeometry, materials.paper);
