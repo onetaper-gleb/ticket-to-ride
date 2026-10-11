@@ -1,5 +1,23 @@
 # Кассирша меню «Билетная касса»
 
+Revision 10 уточняет только `calm-support` поверх принятой `4da0deacdc58b3829d462726294329a8f302c68a` на неизменённой сравнительной композиции `a87c96107baebbc8de180c0add107b08356b4d61`. Старые четыре режима, вся левая кисть, обе опоры, root, holder, native module/API/cache/binary/source JSON сохраняются. Правая skin geometry, все кости, wrist→ticketGrip и движущиеся forearm/cuff также прежние. Аниматор остановлен; художественная и production приёмка открыты.
+
+## Revision 10: форма и конечная пара билетов
+
+Новая форма щёк слегка шире в нижней части головы, с широким мягким и немного асимметричным рельефом. Размер головы, её placement и rotation не меняются. Радиусы белой поверхности глаз уменьшаются до `.181×.172` author units; pupil — `.132×.14`. Улыбка получает более широкие верхний/нижний lip fields `.08/.095`, умеренные peaks `.045/.05` и одну мягкую crease `.008` с радиусом `.04`. Её тонкая цветная линия следует скульптуре с offset `.012` и height `.002`. Face остаётся одной закрытой поверхностью из 20 224 triangles.
+
+Контур чёлки проходит по диагонали лба. Её собственный immutable CPU blueprint не заменяет blueprint прежних режимов. Верхняя часть бордового торса, правое плечо, воротник и бант объёмнее. Левый рукав и манжета не меняются. Palette/материалы, maps/UV, общий свет, camera/grade/post и native controls прежние.
+
+Билеты расширяются только к свободному краю: каждый shared BoxGeometry имеет width `.9`, height `2.55`, thickness `.003` hand units и geometry translation `[.175,1.325,0]`. Его конечные локальные границы — X `[-.275,.625]`, Y `[.05,2.6]`. Primary mesh сохраняет local identity, физический paper scale `.16`; размеры листа `.144×.408×.00048` root units. Подрезка нижних `.05` hand units сохраняет положительный зазор до стойки. Симметричное расширение ранних proposals пересекало thumb/seam и отклонено; эти кадры не являются collision-qualified результатом.
+
+Secondary использует те же owned geometry/material/print map, local position `[.2897741572172491,.032641957203823034,-.0031]` и Z rotation `.25`. Его in-plane pivot остаётся `[0,1.05]` со сдвигом X `.03`. Плоскости, wrist-local grip position/quaternion, normal slot, толщина листов и interleaf gap сохраняются. Никакого отдельного поворота бумаги в composition нет. Обязательные right `[-.155883,0,.161828]` и left `[.35,0,.15]`, допуск `1e−6` и API прежние; новый paired marker/option не нужен.
+
+Фактический opposed pinch расположен примерно на `.3922/.4169` высоты двух новых quad, внутри их конечных площадок и общего normal slot. Старое `.45–.55` утверждение относится только к revision 8. Thumb обращён к внешней back face secondary, index — к внешней front face primary. Положительные зазоры не означают давление, трение или динамическую устойчивость. Полные paper volumes проверяются против обеих posed skin surfaces, новой ткани/тела, holder, реальной стойки и всех retained a87 triangles; конечные patch границы опоры проверяются отдельно.
+
+Стоимость нового `calm-support`: **70 168 drawn triangles / 24 meshes / 21 geometries / 17 materials / 2 skeletons / 7 537 512 bytes geometry buffers** плюс 2 816 bytes bone matrices. К revision 8 добавляется 396 triangles и 28 512 buffer bytes, без новых mesh/material/geometry объектов. Calm fringe blueprint — 147 432 CPU bytes. FPS/GPU/VRAM и performance acceptance не заявлены.
+
+Независимые targeted SOURCE/CPU и PACKAGE reviews, source bindings, реальные before/current/reference crops и полный history replay передаются отдельным immutable пакетом revision 10. Входные кадры браузера имеют JPEG provenance; PNG сравнения получен из их декодированных кропов. Они не доказывают lossless framebuffer или pixel identity с исходным sealed a87 PNG. Проксимальные raw skin/self и skin/cloth crossings не выдаются за ноль; перенос незатронутых данных требует полной equality, видимость проверяется в актуальной сцене. Ни sampled/static доказательства, ни закрытость отдельных деталей не означают universal solid/animation proof.
+
 Revision 8 добавляет отдельный статичный профиль `calm-support` к чистой базе `a033d6f104b3da98bfb767b3c0e0b3642e6325f1`. Прежние default/agreed/current-support/left-support сохраняются точно. Новая форма — предложение для визуальной проверки; аниматор остановлен. Production consumer не меняется.
 
 Revision 7 добавляет два статичных предложения хвата к принятой базе `dd6673441bf46b279bcc27a0bbe7f6748cc2c421`. Они включаются через `ticketGripPose` вместе с явной правой опорой. Вызовы без новой опции сохраняют геометрию, позу, бумагу и контакты revision 6. Общая визуальная приёмка открыта; аниматор остановлен.
@@ -59,7 +77,7 @@ Thumb и index обращены к противоположным сторона
 
 Запрещены код, зависимости, репозитории, tools, skills, документация, сервисы, API и credentials Аркадии/внутренней инфраструктуры Яндекса, включая read/search/copy/adapt/execute и косвенное использование через агентов. Разрешены собственный проект, ordinary Git/GitHub и public open-source с проверенной открытой лицензией. Native `menu-character-hands.ts`, algorithm/API/shared cache, binary и source JSON остаются read-only.
 
-## Новый профиль calm-support
+## Revision 8: профиль calm-support
 
 Требует явную right `[-.155883,0,.161828]` и сохранённую left `[.35,0,.15]`. Нижняя опора всей posed surface переносится по XYZ к right+[0,.002,0]. Root identity и holder прежние.
 
@@ -73,7 +91,7 @@ Forearm и cuff построены к фактическому shaped wrist. Mov
 
 В `calm-support` второй owned mesh использует те же geometry/material/print map и следует тому же grip. Local position `[.4388892594240831,.08288595629697071,-.0031]`, Z rotation .4 rad образуют веер вокруг середины листа со сдвигом X .03 hand units. Primary `ticket` сохраняет local identity. Плоскости параллельны и разнесены по local Z на .0031 hand units; между конечными volumes остаётся .000016 root units. Paper↔paper SAT и skin/cloth SAT проверяются для обоих листов. Старые четыре режима имеют один лист как прежде. Веер добавляет один mesh и 12 отрисовываемых triangles, но не новую geometry или material; общие ресурсы освобождаются один раз.
 
-## Отдельная правка лица, волос и ткани для calm-support
+## Revision 8: отдельная правка лица, волос и ткани
 
 После фиксации кисти и веера новый профиль получает более овальный рельеф носа: наклонённый elliptical field с поворотом .28 rad, радиусами .29/.205 author units и высотой .405. Bridge/alae/columella мягче, край улыбки чуть длиннее и асимметричнее. Все формы остаются на одном закрытом face mesh; новый отдельный нос не добавлен. Placement головы, глаз, бровей и шеи сохраняется.
 
