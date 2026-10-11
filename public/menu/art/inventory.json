@@ -1,7 +1,7 @@
 {
   "version": 5,
   "baseCommit": "bea9743c7622a7806a3d9b6824a9d912b0a41b65",
-  "previousArtCommit": "2f7f03e47c8b56aac8747c32ebbe018bca0420d8",
+  "previousArtCommit": "9b201fe150b2b1eea7f288c9abcf0dc74f60ed3a",
   "assets": [
     {
       "file": "board-paint.png",
@@ -215,8 +215,8 @@
     },
     {
       "file": "paper-tile.webp",
-      "bytes": 16428,
-      "sha256": "98ee88058cdddd4b6552a6b4e769583317c63cc140aeaf6320a0fe8f96bedc4e",
+      "bytes": 23122,
+      "sha256": "cad3ca5f2459a9596d9ccdb0e65d9410c3304d9225873a09de8908fe2035a019",
       "role": "runtime",
       "stage": "P1",
       "dimensions": [
@@ -224,13 +224,13 @@
         512
       ],
       "alpha": false,
-      "source": "built-in image_gen round5 edit of accepted9e6 project-generated material; PNG512 RGB and WebP encoding Sharp0.35.5",
+      "source": "built-in image_gen round10 edit of own accepted9b master; PNG512 RGB and WebP encoding Sharp0.35.5; see round10 prompts/generator",
       "rights": "AI-generated project material; no third-party source image"
     },
     {
       "file": "plaster-tile.webp",
-      "bytes": 41314,
-      "sha256": "bdd7a22209d5f4b78da3a8b7d6e2e6155585835aaa114313f7bd9a63a00b3773",
+      "bytes": 63838,
+      "sha256": "9b40b7f3466c867b3fdb8c5d3e35af19982ee4f66e34df682a4c4be315a5477d",
       "role": "runtime",
       "stage": "P1",
       "dimensions": [
@@ -238,7 +238,7 @@
         512
       ],
       "alpha": false,
-      "source": "built-in image_gen round5 edit of accepted9e6 project-generated material; PNG512 RGB and WebP encoding Sharp0.35.5",
+      "source": "built-in image_gen round10 edit of own accepted9b master; PNG512 RGB and WebP encoding Sharp0.35.5; see round10 prompts/generator",
       "rights": "AI-generated project material; no third-party source image"
     },
     {
@@ -316,8 +316,8 @@
     },
     {
       "file": "sources/paper-tile.png",
-      "bytes": 351889,
-      "sha256": "15642d0315d51c0abd48e355ad89de32752446e8a316b1448859117b0f46780e",
+      "bytes": 404103,
+      "sha256": "b0a384062ddfc5c99da99c235b4ff27b796193756df934ddca3157f69dbb653b",
       "role": "source",
       "stage": "P1",
       "dimensions": [
@@ -325,13 +325,13 @@
         512
       ],
       "alpha": false,
-      "source": "built-in image_gen round5 edit of accepted9e6 project-generated material; PNG512 RGB and WebP encoding Sharp0.35.5",
+      "source": "built-in image_gen round10 edit of own accepted9b master; PNG512 RGB and WebP encoding Sharp0.35.5; see round10 prompts/generator",
       "rights": "AI-generated project material; no third-party source image"
     },
     {
       "file": "sources/plaster-tile.png",
-      "bytes": 405064,
-      "sha256": "18c916a21859309e916037a9589f351365b1c82a13afd24fafb6f44681c8c7ec",
+      "bytes": 469880,
+      "sha256": "c4bff39a32b69e9da58990b931e6752baafb50bdbbd74a832fc81307af1db9d6",
       "role": "source",
       "stage": "P1",
       "dimensions": [
@@ -339,7 +339,7 @@
         512
       ],
       "alpha": false,
-      "source": "built-in image_gen round5 edit of accepted9e6 project-generated material; PNG512 RGB and WebP encoding Sharp0.35.5",
+      "source": "built-in image_gen round10 edit of own accepted9b master; PNG512 RGB and WebP encoding Sharp0.35.5; see round10 prompts/generator",
       "rights": "AI-generated project material; no third-party source image"
     },
     {
@@ -352,6 +352,24 @@
       "rights": "project-original artwork; no new project license asserted"
     },
     {
+      "file": "sources/refine-surfaces-round10-prompts.json",
+      "bytes": 9161,
+      "sha256": "5df15cd5404dee91b69f132ba74a4a582642042b4fb6120b0539ef4081d51e9f",
+      "role": "source",
+      "stage": "round10 proof/proposal",
+      "source": "project-owned round10 generator/provenance/actual contract; optional edge is source only",
+      "rights": "Project-original specification/SVG or trace of edits to own AI-generated material; no third-party artwork, new dependency or font"
+    },
+    {
+      "file": "sources/refine-surfaces-round10.cjs",
+      "bytes": 1522,
+      "sha256": "17a148385e674eea8bf4d2e6d0a91f38a5794a80f71f045720da07ef4b01ab42",
+      "role": "source",
+      "stage": "round10 proof/proposal",
+      "source": "project-owned round10 generator/provenance/actual contract; optional edge is source only",
+      "rights": "Project-original specification/SVG or trace of edits to own AI-generated material; no third-party artwork, new dependency or font"
+    },
+    {
       "file": "sources/refine-surfaces-round5.cjs",
       "bytes": 1567,
       "sha256": "12cbe24632aff19820614279167c0ecef710bd073818a7888676d27c75f69602",
@@ -359,6 +377,15 @@
       "stage": "P1",
       "source": "project-original encoding/specification/vector source; not an added runtime slot",
       "rights": "project-owned source; existing public dependency licenses recorded in provenance.md"
+    },
+    {
+      "file": "sources/round10-material-proof.json",
+      "bytes": 24376,
+      "sha256": "2dc32e678dc03e8e4868b15aa6a072b60f4586da48c18c0d250a54b5211cb434",
+      "role": "source",
+      "stage": "round10 proof/proposal",
+      "source": "project-owned round10 generator/provenance/actual contract; optional edge is source only",
+      "rights": "Project-original specification/SVG or trace of edits to own AI-generated material; no third-party artwork, new dependency or font"
     },
     {
       "file": "sources/round5-material-contract.json",
@@ -377,6 +404,29 @@
       "stage": "proposal",
       "source": "project-original encoding/specification/vector source; not an added runtime slot",
       "rights": "project-owned source; existing public dependency licenses recorded in provenance.md"
+    },
+    {
+      "file": "sources/settings-age-edge-round10-proposal.json",
+      "bytes": 3937,
+      "sha256": "d2a611aa07a4f9e8e958979c775f15f0071be0dc43d1402beaa5dd783fd4ba70",
+      "role": "source",
+      "stage": "round10 proof/proposal",
+      "source": "project-owned round10 generator/provenance/actual contract; optional edge is source only",
+      "rights": "Project-original specification/SVG or trace of edits to own AI-generated material; no third-party artwork, new dependency or font"
+    },
+    {
+      "file": "sources/settings-age-edge-round10.svg",
+      "bytes": 1167,
+      "sha256": "c51fa16dea949e4f65547d06637b3978bfab79f1814346c79a17ef13d66d382d",
+      "role": "source",
+      "stage": "round10 proof/proposal",
+      "source": "project-owned round10 generator/provenance/actual contract; optional edge is source only",
+      "rights": "Project-original specification/SVG or trace of edits to own AI-generated material; no third-party artwork, new dependency or font",
+      "dimensions": [
+        512,
+        115
+      ],
+      "alpha": true
     },
     {
       "file": "sources/settings-edge-print.svg",
@@ -412,8 +462,8 @@
     },
     {
       "file": "sources/stone-tile.png",
-      "bytes": 436319,
-      "sha256": "5917862b8f6be287d626e6318db740cea3824cbcc86c6022f54abe44dfdd8ca9",
+      "bytes": 555340,
+      "sha256": "f985a498d49f171e85fb6cd302fe2acc338d5ca305dcd977206a718ccd8ff33c",
       "role": "source",
       "stage": "P1",
       "dimensions": [
@@ -421,7 +471,7 @@
         512
       ],
       "alpha": false,
-      "source": "built-in image_gen round5 edit of accepted9e6 project-generated material; PNG512 RGB and WebP encoding Sharp0.35.5",
+      "source": "built-in image_gen round10 edit of own accepted9b master; PNG512 RGB and WebP encoding Sharp0.35.5; see round10 prompts/generator",
       "rights": "AI-generated project material; no third-party source image"
     },
     {
@@ -449,8 +499,8 @@
     },
     {
       "file": "stone-tile.webp",
-      "bytes": 49706,
-      "sha256": "8df07877e285a79636299d028297b420a365f7ebc7eba7433abe2f0b922ecd18",
+      "bytes": 83596,
+      "sha256": "0a3fcd361e9d6a6d870f4a2a9f69a9371bca00866d4b2bf9b4ee88e50f49cd9d",
       "role": "runtime",
       "stage": "P1",
       "dimensions": [
@@ -458,7 +508,7 @@
         512
       ],
       "alpha": false,
-      "source": "built-in image_gen round5 edit of accepted9e6 project-generated material; PNG512 RGB and WebP encoding Sharp0.35.5",
+      "source": "built-in image_gen round10 edit of own accepted9b master; PNG512 RGB and WebP encoding Sharp0.35.5; see round10 prompts/generator",
       "rights": "AI-generated project material; no third-party source image"
     },
     {
@@ -477,8 +527,8 @@
     },
     {
       "file": "wood-tile.png",
-      "bytes": 396120,
-      "sha256": "27784e949d9eee5913dda8e42aad9361f97a40804641ee947c4ea543746a8146",
+      "bytes": 436786,
+      "sha256": "514db0c168f2cc4f7df954492e2af7556e181b9240e6b81222b76c0fdb976d8e",
       "role": "source",
       "stage": "P1",
       "dimensions": [
@@ -486,13 +536,13 @@
         512
       ],
       "alpha": false,
-      "source": "built-in image_gen round5 edit of accepted9e6 project-generated material; PNG512 RGB and WebP encoding Sharp0.35.5",
+      "source": "built-in image_gen round10 edit of own accepted9b master; PNG512 RGB and WebP encoding Sharp0.35.5; see round10 prompts/generator",
       "rights": "AI-generated project material; no third-party source image"
     },
     {
       "file": "wood-tile.webp",
-      "bytes": 23538,
-      "sha256": "c482d522f21e744b2a5915a56d0db82a6fb523a3fb8a4cfff33519669cf894dd",
+      "bytes": 31132,
+      "sha256": "50c2c5994714702c2cb3eb278ac942402709a508f2fd579363d89a9f3b29518a",
       "role": "runtime",
       "stage": "P1",
       "dimensions": [
@@ -500,19 +550,19 @@
         512
       ],
       "alpha": false,
-      "source": "built-in image_gen round5 edit of accepted9e6 project-generated material; PNG512 RGB and WebP encoding Sharp0.35.5",
+      "source": "built-in image_gen round10 edit of own accepted9b master; PNG512 RGB and WebP encoding Sharp0.35.5; see round10 prompts/generator",
       "rights": "AI-generated project material; no third-party source image"
     }
   ],
   "budget": {
-    "runtimeFileBytesIncludingSVG": 358629,
-    "runtimeRasterBytesBothFallbacks": 342812,
+    "runtimeFileBytesIncludingSVG": 429331,
+    "runtimeRasterBytesBothFallbacks": 413514,
     "runtimeRasterGoalBytes": 2000000,
     "fallbackEachGoalBytes": 400000,
     "allUniqueP1MapsMiBWithoutFallbackWithoutSteam": 14.0,
     "allUniqueMapsBothFallbacksAndSteamMiB": 22.286458333333332,
     "baseline316FourLoadedMapsMiB": 4.666666666666666,
-    "note": "Unique RGBA8 full-mip estimates14MiB scene maps/22.286458MiB including both fallback rasters and disabled steam remain unchanged because all runtime image dimensions/slots remain. Excludes clones, DOM/CSS images, render targets, shadows and PMREM; not measured VRAM. Source-only EUROPE and settings-edge SVG excluded. Actual frozen1bab static counters before/after446calls/750627triangles/122geometries/23textures; not FPS. Source-only print proposal has no current Three cost. Sky5.1 keeps dimensions/slots; actual frozen29 fullstatic before/after484calls/792095triangles/129geometries/23textures. Other image maps remain accepted2f7 bytes; SVG byte delta only. Historical2f7 counters above refer to1bab."
+    "note": "Unique RGBA8 full-mip estimates14MiB scene maps/22.286458MiB including both fallback rasters and disabled steam remain unchanged because all runtime image dimensions/slots remain. Excludes clones, DOM/CSS images, render targets, shadows and PMREM; not measured VRAM. Source-only EUROPE and settings-edge SVG excluded. Actual frozen1bab static counters before/after446calls/750627triangles/122geometries/23textures; not FPS. Source-only print proposal has no current Three cost. Sky5.1 keeps dimensions/slots; actual frozen29 fullstatic before/after484calls/792095triangles/129geometries/23textures. Other image maps remain accepted2f7 bytes; SVG byte delta only. Historical2f7 counters above refer to1bab. Round10 supersedes current four wood/plaster/stone/paper maps; runtime byte delta 70702 B. All decoded dimensions/slots and14/22.286458MiB unique-image estimates retained. Actual frozena87 static459calls/688703triangles/129geometries/25textures before/after, not FPS/VRAM. Earlier round5/sky figures above are historical; source-only Settings age-edge layer has no current runtime cost."
   },
   "generation": {
     "tool": "built-in image_gen",
@@ -590,9 +640,9 @@
     ],
     "status": "Historical version4 generation; mastersInOutputPackage refers to that version4 package, not round5. Current selected masters are in round5SurfaceGeneration."
   },
-  "revision": "targeted-sky-frozen29",
-  "artVersion": "5.1-sky-followup",
-  "commonFixture": "29cff5e3edc69d06f620fdc6240766449c53e164",
+  "revision": "four-materials-frozen-a87",
+  "artVersion": "5.2-materials-round10",
+  "commonFixture": "a87c96107baebbc8de180c0add107b08356b4d61",
   "round5SurfaceGeneration": {
     "tool": "built-in image_gen",
     "mode": "five edits of accepted9e6 material targets; board-paint retained",
@@ -634,6 +684,52 @@
       {
         "file": "generated-masters/paper-tile.png",
         "sha256": "99275b56b22d01437fa3a0356dbf8181870d9bf04c8e839d7a48e0623264500f",
+        "dimensions": [
+          1254,
+          1254
+        ]
+      }
+    ],
+    "status": "Historical accepted2f7 generation; selected masters refer to immutable outputs/round5 package. Four current masters are replaced by round10SurfaceGeneration; leather remains accepted2f7."
+  },
+  "round10SurfaceGeneration": {
+    "tool": "built-in image_gen",
+    "mode": "Four edits of own accepted9b masters, targeted second wood/stone edit after actuala87 first pass",
+    "modelVersionSeed": "not reported; generated pixels are saved, not claimed to regenerate deterministically",
+    "prompts": "sources/refine-surfaces-round10-prompts.json",
+    "generator": "sources/refine-surfaces-round10.cjs",
+    "mastersInOutputPackage": [
+      {
+        "file": "generated/wood-tile.png",
+        "sha256": "3a60f7b5ff5354eb6fc77b7464e5249a3507d58b776f7ad259e2b610dec06908",
+        "bytes": 2388825,
+        "dimensions": [
+          1254,
+          1254
+        ]
+      },
+      {
+        "file": "generated/plaster-tile.png",
+        "sha256": "62d17355ef3f33d3539a035f5b52838bb5eb052f4c5cf9fb32a87a906c3a3761",
+        "bytes": 3123024,
+        "dimensions": [
+          1254,
+          1254
+        ]
+      },
+      {
+        "file": "generated/stone-tile.png",
+        "sha256": "7ca759df0eff28f5e9b8df3eac9c00ae9b853138480b5126e65ba24fef236fd5",
+        "bytes": 3356588,
+        "dimensions": [
+          1254,
+          1254
+        ]
+      },
+      {
+        "file": "generated/paper-tile.png",
+        "sha256": "448c8690e58ad01790b7fea62c2b9fe207f4a886e8570540ab4445a671d01a4d",
+        "bytes": 2393895,
         "dimensions": [
           1254,
           1254

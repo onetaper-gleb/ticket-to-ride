@@ -1,0 +1,152 @@
+{
+  "version": 1,
+  "status": "Source proposal only; not loaded or connected; no foreign geometry/material/UV/native CSS change",
+  "basisCommonCommit": "a87c96107baebbc8de180c0add107b08356b4d61",
+  "layer": "sources/settings-age-edge-round10.svg",
+  "dimensions": [
+    512,
+    115
+  ],
+  "alpha": true,
+  "target": "Existing settingsFrame/settingsInnerPlane front, optional transparent print once, separate from repeating paper albedo",
+  "actualTarget": {
+    "groups": [],
+    "indexCount": 54,
+    "localBounds": {
+      "max": [
+        0.6432750225067139,
+        0.14419563114643097,
+        0
+      ],
+      "min": [
+        -0.6432750225067139,
+        -0.14419563114643097,
+        0
+      ]
+    },
+    "materialKinds": [
+      "settingsPaper"
+    ],
+    "matrix": [
+      0.8910065241883679,
+      0,
+      -0.4539904997395467,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0.4539904997395467,
+      0,
+      0.8910065241883679,
+      0,
+      -1.753168310766671,
+      -0.2630157732000085,
+      0.9381769210881508,
+      1
+    ],
+    "name": "settingsInnerPlane",
+    "parent": "settingsFrame",
+    "uvBounds": {
+      "max": [
+        0.6432750225067139,
+        0.14419563114643097
+      ],
+      "min": [
+        -0.6432750225067139,
+        -0.14419563114643097
+      ]
+    },
+    "vertices": 20
+  },
+  "actualMaterial": {
+    "colorLinear": [
+      0.6938717612856897,
+      0.7529422167708612,
+      0.6795424696265424
+    ],
+    "emissiveIntensity": 1,
+    "emissiveLinear": [
+      0,
+      0,
+      0
+    ],
+    "kind": "settingsPaper",
+    "map": {
+      "center": [
+        0,
+        0
+      ],
+      "colorSpace": "srgb",
+      "dimensions": [
+        512,
+        512
+      ],
+      "flipY": true,
+      "offset": [
+        0,
+        0
+      ],
+      "repeat": [
+        1,
+        1
+      ],
+      "rotation": 0,
+      "wrap": [
+        1000,
+        1000
+      ]
+    },
+    "metalness": 0,
+    "name": "menu-surface/settingsPaper",
+    "roughness": 0.95,
+    "type": "MeshStandardMaterial"
+  },
+  "actualSourceRect": {
+    "height": 98,
+    "width": 390,
+    "x": 125,
+    "y": 655
+  },
+  "actualProjectedCorners": [
+    {
+      "x": 124.99999999999966,
+      "y": 655.0000000000001
+    },
+    {
+      "x": 515,
+      "y": 635.7160030755374
+    },
+    {
+      "x": 515,
+      "y": 723.4730128392374
+    },
+    {
+      "x": 124.99999999999966,
+      "y": 753.0000000000001
+    }
+  ],
+  "geometryUVToPrint": {
+    "formula": "s=(u-minU)/(maxU-minU), t=(v-minV)/(maxV-minV); normal flipY maps +localY to image top. Apply only to a dedicated optional print layer, never alter accepted base-paper map or geometry UV.",
+    "repeat": [
+      0.7772725234248956,
+      3.467511435850986
+    ],
+    "offset": [
+      0.5,
+      0.5
+    ],
+    "rotation": 0,
+    "flipY": true,
+    "imageFit": "One layer stretched to exact measured local bounds; source aspect512/115 is a draft, not a geometry size request"
+  },
+  "preserved": [
+    "Shared paper tile contains no edge, rectangle, text or cast shadow",
+    "settingsPaper source geometry/root/bounds/UV/hangers and native labels remain unchanged",
+    "Existing old settings-edge-print.svg and settings-paper-proposal.json byte-preserved as historical proposals",
+    "One semantic Settings label and decorative icon stay native; no physical CSS frame"
+  ],
+  "ownerHandoff": "Root/composer/environment decide whether and how to render a supported optional layer after acceptance. This art pass does not add a loader, map/material role, geometry, callback or dependency. Do not treat this SVG as a drop-in replacement for repeating paper-tile.webp.",
+  "unmeasuredCost": "No runtime cost in this pass. An accepted independent layer can add image/upload/material/draw resources, z-fighting/alpha ordering considerations; consumer must measure those if implemented.",
+  "rights": "Project-original SVG paths; no third-party artwork or new dependency/font."
+}

@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "ownParent": "9b201fe150b2b1eea7f288c9abcf0dc74f60ed3a",
+  "commonBaseline": "a87c96107baebbc8de180c0add107b08356b4d61",
+  "tool": "built-in image_gen edits; no CLI fallback",
+  "rights": "Edits of own accepted AI-generated masters; no third-party source image.",
+  "requests": [
+    {
+      "name": "wood-tile",
+      "source": "/Users/onetaper/Documents/Codex/2026-10-10/ticket-to-ride-menu-art/work/art/public/menu/art/wood-tile.png",
+      "prompt": "Use case: precise-object-edit. Edit target: supplied brown wooden texture tile. Asset: opaque seamless albedo texture for existing 512×512 game wood slot, scaled onto wall, window trim and roof with unchanged UV. Modify the texture itself: make the large regular horizontal grain bands about 60% quieter, replace obvious repeated stripes with irregular very fine close-grain wood and restrained local warm brown variations. Preserve the original overall mid-brown palette and matte aged wood character; do not darken overall or add lighting. Flat straight-on uniform diffuse albedo, no perspective. At tile size the surface must read as calm fine-grained wood, not broad zebra stripes. Seamlessly repeatable edges. No planks, seams, knots, cracks, borders, vignette, highlights, cast shadows, objects, text or frame. Deliver one square opaque full-bleed texture, preferably 1024×1024.",
+      "selectedGeneratedFile": "/Users/onetaper/.codex/generated_images/01a126d7-d3e2-76b2-b7de-7261cffb9ede/exec-6aad5cf2-0cd0-44de-a60a-3cd1b44c06e6.png",
+      "generatedBytes": 2388825,
+      "generatedSHA256": "3a60f7b5ff5354eb6fc77b7464e5249a3507d58b776f7ad259e2b610dec06908",
+      "inputSHA256": "27784e949d9eee5913dda8e42aad9361f97a40804641ee947c4ea543746a8146",
+      "initialResult": {
+        "selectedGeneratedFile": "/Users/onetaper/.codex/generated_images/01a126d7-d3e2-76b2-b7de-7261cffb9ede/exec-5c6f7866-bdba-4142-ba85-ba4c2335b56f.png",
+        "generatedBytes": 2500789,
+        "generatedSHA256": "3f60579aaf01eaabe5643d118967491963295e0e3f6ffabc1dd008bc622a54bf"
+      },
+      "followup": {
+        "prompt": "Use case: precise-object-edit. Edit the supplied full-bleed brown wood material tile again. It still reads as strong horizontal stripes when mapped onto a curved game station wall. Reduce contrast of ALL directional horizontal bands and lines by another roughly 65%, including broad and fine ones. Keep only very quiet irregular fine open-pore wooden texture with weak broken wavy grain, never continuous long parallel lines. Calm matte aged wood albedo. Preserve the original accepted tile's average sRGB tone near RGB(108,81,59), slightly less orange than this supplied edit; do not create a lighting gradient. The tile must stay natural wood rather than blank flat color but calm at a distance. Seamless full bleed opaque square preferably1024x1024. No planks, seams, cracks, knots, boards, regular waves, borders, vignette, highlights, baked light/shadow, frame, objects or text.",
+        "inputGeneratedFile": "/Users/onetaper/.codex/generated_images/01a126d7-d3e2-76b2-b7de-7261cffb9ede/exec-5c6f7866-bdba-4142-ba85-ba4c2335b56f.png",
+        "inputSHA256": "3f60579aaf01eaabe5643d118967491963295e0e3f6ffabc1dd008bc622a54bf",
+        "reason": "Actual pass1 still showed horizontal wood bands and floor grain was mostly filtered on repeat8x8."
+      }
+    },
+    {
+      "name": "plaster-tile",
+      "source": "/Users/onetaper/Documents/Codex/2026-10-10/ticket-to-ride-menu-art/work/art/public/menu/art/sources/plaster-tile.png",
+      "prompt": "Use case: precise-object-edit. Edit target: supplied warm beige fine plaster albedo tile. Asset: existing repeating wall/column game texture. Add quiet natural fine chalky granular variation and tiny irregular pores, lightly varied at very small scale, so uniform beige becomes softly lived-in. Preserve its original overall warm beige mean color and matte plaster character. No directional brush stripes; no large blotches, no dark speckles, no cracks or stains. Flat evenly lit straight-on material albedo, seamlessly repeatable edges, opaque square full bleed preferably 1024×1024. No baked lighting, vignette, edge darkening, borders, joints, frames, objects, text, highlights or cast shadows.",
+      "selectedGeneratedFile": "/Users/onetaper/.codex/generated_images/01a126d7-d3e2-76b2-b7de-7261cffb9ede/exec-d9e47313-06ce-4970-8c86-6fb4b502616f.png",
+      "generatedBytes": 3123024,
+      "generatedSHA256": "62d17355ef3f33d3539a035f5b52838bb5eb052f4c5cf9fb32a87a906c3a3761",
+      "inputSHA256": "18c916a21859309e916037a9589f351365b1c82a13afd24fafb6f44681c8c7ec"
+    },
+    {
+      "name": "stone-tile",
+      "source": "/Users/onetaper/Documents/Codex/2026-10-10/ticket-to-ride-menu-art/work/art/public/menu/art/sources/stone-tile.png",
+      "prompt": "Use case: precise-object-edit. Edit target: supplied warm grey-beige limestone/concrete albedo texture. Asset: existing 512×512 floor material repeats 8×8 in a stylized railway station scene. Add restrained irregular fine mineral grain and quiet small sandy mottling, enough to break the smooth uniform floor under lighting at this high repeat, without increasing large contrast patterns or forming seams. Preserve overall original warm grey-beige mean tone and matte worn stone character. Tiny low-contrast aggregate, not rough gravel. No large speckles, chips, cracks, blocks, geometric tiles, grout, slab edges, stripes or regular pattern. Seamless opaque square full-bleed flat albedo preferably 1024×1024. No lighting gradients, baked shadows, highlights, vignette, border, objects or text.",
+      "selectedGeneratedFile": "/Users/onetaper/.codex/generated_images/01a126d7-d3e2-76b2-b7de-7261cffb9ede/exec-9a93977a-19cb-4b85-b854-fa023765b96b.png",
+      "generatedBytes": 3356588,
+      "generatedSHA256": "7ca759df0eff28f5e9b8df3eac9c00ae9b853138480b5126e65ba24fef236fd5",
+      "inputSHA256": "5917862b8f6be287d626e6318db740cea3824cbcc86c6022f54abe44dfdd8ca9",
+      "initialResult": {
+        "selectedGeneratedFile": "/Users/onetaper/.codex/generated_images/01a126d7-d3e2-76b2-b7de-7261cffb9ede/exec-1320216d-a2c2-45ac-a612-731a48cc3c5d.png",
+        "generatedBytes": 3242779,
+        "generatedSHA256": "a10a4e554db24fdf5b78b43e7f23bb573e9ead238f5a796f7d778574fb38341f"
+      },
+      "followup": {
+        "prompt": "Use case: precise-object-edit. Edit supplied grey-beige mineral stone albedo tile for an existing game floor, a512x512 texture repeated8x8. Current grain gets filtered out so the floor appears uniformly flat. Keep fine grain but add quiet irregular sandy mineral variations at several small and medium scales, about8-50pixels when reduced to512, low contrast cloudy granular mineral character. No uniform directional noise. Match original accepted average sRGB RGB(170,162,150), slightly neutral-cooler than current orange edit. Calm matte warm-grey limestone/concrete, no stones or gravel rendered as objects. Natural stationary variance across whole seamless tile including boundaries, without a large single blotch or repeated motif. Opaque full bleed square preferably1024x1024, uniform flat albedo. No slab geometry, tile edges, grout, cracks, scratches, dark chips, large flecks, border, vignette, lighting gradient, highlights, cast shadows or text.",
+        "inputGeneratedFile": "/Users/onetaper/.codex/generated_images/01a126d7-d3e2-76b2-b7de-7261cffb9ede/exec-1320216d-a2c2-45ac-a612-731a48cc3c5d.png",
+        "inputSHA256": "a10a4e554db24fdf5b78b43e7f23bb573e9ead238f5a796f7d778574fb38341f",
+        "reason": "Actual pass1 still showed horizontal wood bands and floor grain was mostly filtered on repeat8x8."
+      }
+    },
+    {
+      "name": "paper-tile",
+      "source": "/Users/onetaper/Documents/Codex/2026-10-10/ticket-to-ride-menu-art/work/art/public/menu/art/sources/paper-tile.png",
+      "prompt": "Use case: precise-object-edit. Edit target: supplied cream paper albedo tile. Asset: existing repeating paper texture used for Settings sign and other papers. Add gentle aged fine cellulose fibers and quiet tan micrograin, slight warm ivory mottling, preserving the current pale cream mean color and high text contrast. More subtly old and tactile, still clean and calm. All areas including edges must have same stationary material character so repeats do not create a border. No dark flecks, water stains, folds, creases, holes, tears, edge wear, page outline, rectangle, frame, text, symbols, objects, lighting gradients, vignette or baked cast shadows. Seamless full bleed opaque square texture preferably 1024×1024, uniformly lit straight-on albedo.",
+      "selectedGeneratedFile": "/Users/onetaper/.codex/generated_images/01a126d7-d3e2-76b2-b7de-7261cffb9ede/exec-0b17b96f-1b51-4f30-9bb7-bda82fe350ff.png",
+      "generatedBytes": 2393895,
+      "generatedSHA256": "448c8690e58ad01790b7fea62c2b9fe207f4a886e8570540ab4445a671d01a4d",
+      "inputSHA256": "15642d0315d51c0abd48e355ad89de32752446e8a316b1448859117b0f46780e"
+    }
+  ],
+  "conversion": "Sharp0.35.5 Apache-2.0, resize512x512 fill/default Lanczos3, removeAlpha, PNG master, WebP quality86 effort6; no pixel grading."
+}
