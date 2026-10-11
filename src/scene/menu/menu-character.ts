@@ -8,7 +8,7 @@ export type MenuCashierOptions = {
   handRestLeft?: THREE.Vector3;
   handRestRight?: THREE.Vector3;
   /** Static, opt-in grip proposals; each requires its documented explicit right contact. */
-  ticketGripPose?: 'current-support' | 'left-support';
+  ticketGripPose?: 'current-support' | 'left-support' | 'calm-support';
 };
 
 export type MenuCashier = {
@@ -36,6 +36,13 @@ const CENTER_GRIPS = {
     roll: 0,
     position: [0.7882690879245537, 0.6251109000875527, 0.2517109814037603],
     quaternion: [0.639303971283832, -0.32700352075643085, 0.16986765900343323, 0.6749104445319488],
+  },
+  'calm-support': {
+    contact: [-0.155883, 0, 0.161828],
+    yaw: 0,
+    roll: 0,
+    position: [-0.319118002485063, 0.4846431371007577, 0.7467915179841788],
+    quaternion: [-0.4451734967935173, -0.859229374735728, 0.007128773495365032, 0.2519813880673216],
   },
   'left-support': {
     contact: [-0.155883, 0, 0.161828],
@@ -268,6 +275,122 @@ function seatHoldingSupport(hand: THREE.Group, contact: THREE.Vector3) {
   hand.updateMatrix();
 }
 
+/** Keep the calm proposal local to the returned rig; the native module and cache are frozen. */
+function setCalmHoldingPose(hand: THREE.Group) {
+  const rig = getHandRig(hand)!;
+  setHandPose(hand, { curl: [0.9, 1, 0.9, 0.9, 0.9], thumbOpposition: 0.9, wrist: [0, 0, 0] });
+  setPalmFlex(hand, { index: 1.0175, middle: 1.1, ring: 1.1, little: 1.1 });
+  const thumb = rig.fingers.thumb;
+  thumb[0].position.y += 0.1;
+  thumb[0].position.z += 0.4;
+  thumb[0].quaternion
+    .copy(rig.rest.get(thumb[0])!)
+    .multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.4, 0.6, 0.4)));
+  for (let i = 1; i < 3; i++)
+    thumb[i].quaternion
+      .copy(rig.rest.get(thumb[i])!)
+      .multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(i === 1 ? 0.48 : 0.43, 0, 0)));
+  const angle = (27 * Math.PI) / 180;
+  const across = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
+  const front = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle));
+  const y = across.multiplyScalar(Math.cos(0.15)).add(new THREE.Vector3(0, Math.sin(0.15), 0));
+  const z = front.negate(),
+    x = y.clone().cross(z).normalize();
+  hand.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
+  hand.scale.set(RESTING_HAND_SCALE * 1.05, RESTING_HAND_SCALE * 1.15, RESTING_HAND_SCALE);
+}
+
+/** Bake the static shaping into this owned surface, leaving a uniform wrist frame for paper. */
+function shapeCalmHoldingHand(hand: THREE.Group, root: THREE.Group, contact: THREE.Vector3) {
+  const rig = getHandRig(hand)!,
+    mesh = rig.mesh,
+    geometry = mesh.geometry;
+  const position = geometry.getAttribute('position') as THREE.BufferAttribute;
+  const normal = geometry.getAttribute('normal') as THREE.BufferAttribute;
+  const index = geometry.getAttribute('skinIndex') as THREE.BufferAttribute;
+  const weight = geometry.getAttribute('skinWeight') as THREE.BufferAttribute;
+  root.updateMatrixWorld(true);
+  rig.skeleton.update();
+  const inverseRoot = root.matrixWorld.clone().invert();
+  const wrist = new THREE.Vector3(0, -0.5, 0)
+    .applyMatrix4(hand.matrixWorld)
+    .applyMatrix4(inverseRoot);
+  const rootFromMesh = inverseRoot.clone().multiply(mesh.matrixWorld);
+  const points = Array.from({ length: position.count }, (_, i) =>
+    mesh.getVertexPosition(i, new THREE.Vector3()).applyMatrix4(rootFromMesh),
+  );
+  const center = new THREE.Vector3(-0.04179808686634692, 0.1943584368140822, 0.07524104214243844);
+  const direction = new THREE.Vector3(
+    -0.044572878879067586,
+    0.18695441226365087,
+    0.09183827182278013,
+  )
+    .sub(center)
+    .normalize();
+  hand.scale.setScalar(RESTING_HAND_SCALE);
+  root.updateMatrixWorld(true);
+  rig.skeleton.update();
+  const shapedFromMesh = inverseRoot.clone().multiply(mesh.matrixWorld);
+  const transforms: THREE.Matrix4[] = [],
+    keys: string[] = [];
+  for (let i = 0; i < position.count; i++) {
+    const matrix = new THREE.Matrix4();
+    matrix.elements.fill(0);
+    let thumbWeight = 0;
+    for (let j = 0; j < 4; j++) {
+      const bone = index.getComponent(i, j),
+        amount = weight.getComponent(i, j);
+      for (let k = 0; k < 16; k++)
+        matrix.elements[k] += rig.skeleton.boneMatrices[bone * 16 + k] * amount;
+      if (bone >= 2 && bone <= 5) thumbWeight += amount;
+    }
+    matrix
+      .premultiply(mesh.bindMatrixInverse)
+      .multiply(mesh.bindMatrix)
+      .premultiply(shapedFromMesh);
+    if (Math.abs(matrix.determinant()) < 1e-7)
+      throw new Error('Calm hand skin transform is singular');
+    transforms.push(matrix);
+    const bind = new THREE.Vector3().fromBufferAttribute(position, i);
+    keys.push(
+      bind
+        .toArray()
+        .map((v) => v.toFixed(7))
+        .join(':'),
+    );
+    const t = THREE.MathUtils.clamp(points[i].distanceTo(center) / 0.025, 0, 1);
+    points[i].addScaledVector(direction, 0.0168 * thumbWeight * (1 - t * t * (3 - 2 * t)));
+    bind.copy(points[i]).applyMatrix4(matrix.clone().invert());
+    position.setXYZ(i, bind.x, bind.y, bind.z);
+  }
+  const sums = new Map<string, THREE.Vector3>();
+  for (let i = 0; i < position.count; i += 3) {
+    const n = points[i + 1]
+      .clone()
+      .sub(points[i])
+      .cross(points[i + 2].clone().sub(points[i]));
+    for (let j = 0; j < 3; j++) {
+      const sum = sums.get(keys[i + j]) ?? new THREE.Vector3();
+      sum.add(n);
+      sums.set(keys[i + j], sum);
+    }
+  }
+  for (let i = 0; i < position.count; i++) {
+    const n = sums
+      .get(keys[i])!
+      .clone()
+      .normalize()
+      .applyMatrix3(new THREE.Matrix3().setFromMatrix4(transforms[i]).invert())
+      .normalize();
+    normal.setXYZ(i, n.x, n.y, n.z);
+  }
+  position.needsUpdate = true;
+  normal.needsUpdate = true;
+  const beforeSeat = hand.position.clone();
+  seatHoldingSupport(hand, contact);
+  return wrist.add(hand.position.clone().sub(beforeSeat));
+}
+
 /**
  * Builds an identity root at the counter contact plane. Contacts use cashier-local units.
  * Await preloadMenuHandSurfaces before the first call to avoid procedural extraction.
@@ -278,6 +401,8 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
   root.name = 'Menu ticket office cashier';
   const leftContact = options.handRestLeft?.clone() ?? new THREE.Vector3(0.35, 0, 0.15);
   const rightContact = options.handRestRight?.clone() ?? new THREE.Vector3(-0.35, 0, 0.15);
+  const calm = options.ticketGripPose === 'calm-support';
+  let calmWrist: THREE.Vector3 | undefined;
   const gripPose = options.ticketGripPose ? CENTER_GRIPS[options.ticketGripPose] : undefined;
   if (
     options.ticketGripPose &&
@@ -304,6 +429,7 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
     material: THREE.MeshStandardMaterial,
     name: string,
     contactY: number,
+    depths = widths,
   ) => {
     const foldCenters =
       material === materials.cloth
@@ -311,7 +437,7 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
           ? [0.18, 0.32]
           : [0.72, 0.86]
         : [];
-    const geometry = buildSleeve(points, widths, widths, foldCenters);
+    const geometry = buildSleeve(points, widths, depths, foldCenters);
     const positions = geometry.getAttribute('position');
     const floor = contactY + 0.002 - (parent === root ? 0 : parent.position.y);
     for (let i = 0; i < positions.count; i++) {
@@ -340,6 +466,8 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
         thumbOpposition: 0.35,
       });
       setPalmFlex(hand, { index: 1.15, middle: 1.25, ring: 1.15, little: 0.8 });
+    } else if (calm) {
+      setCalmHoldingPose(hand);
     } else {
       hand.rotation.set(-Math.PI / 2, -0.18, -0.18);
       hand.quaternion.premultiply(
@@ -364,13 +492,16 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
     hand.position.y += contact.y + 0.002 - posedBounds(hand).min.y;
     hand.updateMatrix();
     if (resting) roundRestingKnuckles(hand, contact);
-    else if (gripPose) seatHoldingSupport(hand, contact);
+    else if (gripPose) {
+      seatHoldingSupport(hand, contact);
+      if (calm) calmWrist = shapeCalmHoldingHand(hand, root, contact);
+    }
     return hand;
   };
   const left = createHand(1, leftContact, true);
   const right = createHand(-1, rightContact, false);
   const leftWrist = new THREE.Vector3(0, -0.5, 0).applyMatrix4(left.matrix);
-  const rightWrist = new THREE.Vector3(0, -0.5, 0).applyMatrix4(right.matrix);
+  const rightWrist = calmWrist ?? new THREE.Vector3(0, -0.5, 0).applyMatrix4(right.matrix);
   const leftElbow = leftContact.clone().add(new THREE.Vector3(0.055, 0.06, -0.21));
   const rightElbow = rightContact.clone().add(new THREE.Vector3(-0.055, 0.06, -0.21));
   // Keep the elbow on its anatomical side when a supplied contact reaches across the counter.
@@ -414,7 +545,7 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
   forearmPivot.attach(right);
   const localWrist = rightWrist.clone().sub(rightElbow);
   // The unreached pose needs fabric in front of the relaxed fingers.
-  const forearmClearance = new THREE.Vector3(0, 0, 0.05 * (1 - ticketReach));
+  const forearmClearance = new THREE.Vector3(0, 0, calm ? 0 : 0.05 * (1 - ticketReach));
   addSleeve(
     forearmPivot,
     [
@@ -422,21 +553,28 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
       localWrist.clone().multiplyScalar(0.4).add(forearmClearance),
       localWrist
         .clone()
-        .multiplyScalar(THREE.MathUtils.lerp(0.7, 0.87, ticketReach))
+        .multiplyScalar(calm ? 0.82 : THREE.MathUtils.lerp(0.7, 0.87, ticketReach))
         .add(forearmClearance),
     ],
-    [0.088, THREE.MathUtils.lerp(0.058, 0.074, ticketReach), 0.05],
+    calm ? [0.088, 0.065, 0.052] : [0.088, THREE.MathUtils.lerp(0.058, 0.074, ticketReach), 0.05],
     materials.cloth,
     'right moving forearm sleeve',
     rightContact.y,
+    calm ? [0.088, 0.06, 0.045] : undefined,
   );
   addSleeve(
     forearmPivot,
-    [localWrist.clone().multiplyScalar(THREE.MathUtils.lerp(0.68, 0.86, ticketReach)), localWrist],
-    [0.06, gripPose ? 0.026 : 0.049],
+    [
+      localWrist
+        .clone()
+        .multiplyScalar(calm ? 0.79 : THREE.MathUtils.lerp(0.68, 0.86, ticketReach)),
+      localWrist,
+    ],
+    calm ? [0.055, 0.025] : [0.06, gripPose ? 0.026 : 0.049],
     materials.cuff,
     'right moving cream cuff',
     rightContact.y,
+    calm ? [0.045, 0.022] : undefined,
   );
 
   // The wrist bone owns the paper so wrist rotations cannot leave it behind.
@@ -459,7 +597,11 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
     ticketGrip.quaternion.fromArray(gripPose.quaternion).normalize();
     ticketGrip.scale.setScalar(HAND_SCALE / RESTING_HAND_SCALE);
   }
-  const ticketGeometry = new THREE.BoxGeometry(TICKET_WIDTH, TICKET_HEIGHT, TICKET_THICKNESS);
+  const ticketGeometry = new THREE.BoxGeometry(
+    calm ? TICKET_WIDTH / 2 : TICKET_WIDTH,
+    TICKET_HEIGHT,
+    TICKET_THICKNESS,
+  );
   ticketGeometry.translate(0, TICKET_HEIGHT / 2, 0);
   const ticket = new THREE.Mesh(ticketGeometry, materials.paper);
   ticket.name = 'neutral cashier ticket — replace print after art handoff';
