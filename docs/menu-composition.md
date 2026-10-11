@@ -163,3 +163,11 @@ Exported createMenuDepthPasses(depthTexture, perspectiveCamera) возвраща
 Caller освобождает каждый pass с composer; depth target остаётся у AO. post.setSize/setPixelRatio передают физические размеры. При смене near/far consumer обновляет uniforms или пересоздаёт passes. Own preview подключает hooks; main/Sites/чужой Diorama не изменены. Интегратору нужны renderer/depth hooks в src/scene/Diorama.tsx; точный запрос и пример находятся в новом output package. Старые immutable checkpoints сохранены.
 
 Fresh same1672 before/after,14crops/master,current title/native/safezones/contacts/resource/cost/targeted independent review выпускаются отдельным checkpoint. В новом master actual art9b201fe;2f7 остаётся print baseline. Художественная приёмка OPEN, animatorSTOPPED/adaptivedeferred. Только ownproject/ordinaryGit/verified public licensedOSS; ничего Arcadia/internalYandex прямо или косвенно.
+
+### Раунд 9: сборка принятого интерьера, поезда и спокойного хвата
+
+Поверх принятой 998 подключены полные histories environment ec996512/3e5b773 и cashier4da0dea. Первый assembly-only commit сохраняет весь свет/grade/VSM/depth из998. Foreign source/art равны принятым exact tips; dirty train material hooks не подключены. Camera/FOV34/yaw27/rail−.78, native frames, title3308tri/15mm, holder/root/wholeleft и native hand module/cache/bin/source JSON прежние.
+
+Supported composition option теперь принимает calm-support вместе с coupled right marker(−.155883,0,.161828), как left-support. Без option сохраняется agreed. Root выбрал calm-support только для текущего сравнения: own preview явно включает его; ?agreed-grip пропускает option, ?left-support-grip сохраняет прежний comparison. Оба calm holding meshes используют общий owned paper material и print; paper placement остаётся в native wrist→ticketGrip chain. Production профиль окончательно не выбран.
+
+Свежий assembly-only1672 кадр сохранён отдельно рядом с исходником и baseline998, до собственного следующего светового прохода. Master14 указывает новые currentInputs и actual art9b. Геометрия проёма/поезда/лица и рука принадлежат их владельцам; compositor меняет только supported grade/light и сообщает конкретные остатки. Художественная приёмка OPEN, animatorSTOPPED/adaptivedeferred; main/Diorama/network/Sites не изменяются. Никаких Arcadia/internalYandex источников или инструментов прямо либо косвенно.

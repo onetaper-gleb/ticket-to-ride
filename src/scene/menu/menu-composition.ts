@@ -146,7 +146,7 @@ export async function createMenuComposition(
     assetBase?: string;
     signal?: AbortSignal;
     /** Explicit static comparison profile; omission keeps the agreed cashier pose. */
-    ticketGripPose?: 'left-support';
+    ticketGripPose?: 'left-support' | 'calm-support';
   } = {},
 ): Promise<MenuComposition> {
   const base = options.assetBase ?? '/menu/';
@@ -209,7 +209,7 @@ export async function createMenuComposition(
     const rightContact = models.counter.handRestRight;
     if (!rightContact.parent) throw new Error('Menu right-hand contact has no parent');
     const rightWorld = anchor.localToWorld(
-      options.ticketGripPose === 'left-support'
+      options.ticketGripPose === 'left-support' || options.ticketGripPose === 'calm-support'
         ? new THREE.Vector3(-0.155883, 0, 0.161828)
         : new THREE.Vector3(0.1, 0, 0.15),
     );
