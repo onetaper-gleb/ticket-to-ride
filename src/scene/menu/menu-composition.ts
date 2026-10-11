@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { buildMenuModels, type MenuModels } from './menu-models';
 import { buildMenuCashier, type MenuCashier } from './menu-character';
 import { preloadMenuHandSurfaces } from './menu-character-hands';
@@ -12,6 +13,73 @@ import {
 import { menuCompositionPreset, type MenuRect } from './menu-composition-presets';
 
 let areaLightsReady = false;
+
+/** Apply before the first render; shadow filtering is owned by the renderer. */
+export const menuCompositionRenderSettings = {
+  shadowMapType: THREE.VSMShadowMap,
+} as const;
+
+const menuDepthShader = {
+  uniforms: {
+    tDiffuse: { value: null },
+    tDepth: { value: null },
+    resolution: { value: new THREE.Vector2(1, 1) },
+    direction: { value: new THREE.Vector2(1, 0) },
+    near: { value: 0.1 },
+    far: { value: 80 },
+  },
+  vertexShader:
+    'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+  fragmentShader: `
+    #include <packing>
+    uniform sampler2D tDiffuse, tDepth;
+    uniform vec2 resolution, direction;
+    uniform float near, far;
+    varying vec2 vUv;
+    float distanceAt(vec2 p){
+      return -perspectiveDepthToViewZ(texture2D(tDepth,p).x,near,far);
+    }
+    void main(){
+      float depth=distanceAt(vUv);
+      float radius=clamp(max(4.85-depth,0.0)*2.2+max(depth-7.45,0.0)*1.15,0.0,3.0);
+      radius*=resolution.y/941.0;
+      vec4 color=vec4(0.0); float total=0.0;
+      for(int i=-4;i<=4;i++){
+        vec2 p=clamp(vUv+direction*float(i)*radius*.5/resolution,vec2(0.0),vec2(1.0));
+        float weight=exp(-float(i*i)/8.0);
+        if(abs(distanceAt(p)-depth)>max(.2,depth*.025))weight=0.0;
+        color+=texture2D(tDiffuse,p)*weight; total+=weight;
+      }
+      gl_FragColor=color/max(total,.001);
+    }`,
+};
+
+class MenuDepthPass extends ShaderPass {
+  override setSize(width: number, height: number) {
+    this.uniforms.resolution.value.set(width, height);
+  }
+}
+
+/**
+ * Add after AO and before OutputPass. Borrows the full-resolution perspective
+ * depth texture; the caller owns and disposes both passes with its composer.
+ */
+export function createMenuDepthPasses(
+  depth: THREE.DepthTexture,
+  camera: THREE.PerspectiveCamera,
+): readonly [ShaderPass, ShaderPass] {
+  if (!(camera.near > 0 && Number.isFinite(camera.far) && camera.far > camera.near))
+    throw new Error('Menu depth requires a finite perspective camera range');
+  const create = (axis: 0 | 1) => {
+    const pass = new MenuDepthPass(menuDepthShader);
+    pass.uniforms.tDepth.value = depth;
+    pass.uniforms.near.value = camera.near;
+    pass.uniforms.far.value = camera.far;
+    pass.uniforms.direction.value.set(axis === 0 ? 1 : 0, axis === 1 ? 1 : 0);
+    return pass;
+  };
+  return [create(0), create(1)];
+}
 
 export type MenuScreenPoint = { x: number; y: number };
 /** Clockwise, starting at the top left of the physical front face. */
@@ -115,6 +183,7 @@ export async function createMenuComposition(
         paper: { color: '#d8d2bc', roughness: 0.95 },
         settingsPaper: { color: '#d9e1d7', roughness: 0.95 },
         brass: { color: '#a18e70', roughness: 0.55, metalness: 0.4 },
+        titleBrass: { color: '#e8b66c', roughness: 0.35, metalness: 0.42 },
         iron: { color: '#3d454a', roughness: 0.6, metalness: 0.25 },
         steel: { color: '#3d454a', roughness: 0.6, metalness: 0.45 },
         sky: { color: '#000000', emissive: '#ffffff', emissiveIntensity: 1 },
@@ -186,8 +255,8 @@ function assemble(
   scene.background = new THREE.Color('#a4c5e7');
   scene.add(models.root);
   const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 80);
-  const fill = new THREE.HemisphereLight('#bed0e2', '#918675', 0.8);
-  const keyLight = new THREE.DirectionalLight('#ffead0', 3.2);
+  const fill = new THREE.HemisphereLight('#bed0e2', '#918675', 0.5);
+  const keyLight = new THREE.DirectionalLight('#ffead0', 4.8);
   keyLight.position.set(8, 5, -4);
   keyLight.castShadow = true;
   keyLight.shadow.mapSize.set(2048, 2048);
@@ -199,34 +268,36 @@ function assemble(
     near: 0.1,
     far: 25,
   });
-  keyLight.shadow.normalBias = 0.004;
+  keyLight.shadow.normalBias = 0.001;
   keyLight.shadow.bias = -0.00015;
-  keyLight.shadow.radius = 24;
-  keyLight.shadow.intensity = 0.65;
+  keyLight.shadow.radius = 28;
+  keyLight.shadow.blurSamples = 12;
+  keyLight.shadow.intensity = 0.9;
   // Three.js owns the shared LTC lookup tables; each renderer owns their GPU upload.
   if (!areaLightsReady) {
     RectAreaLightUniformsLib.init();
     areaLightsReady = true;
   }
-  const softFill = new THREE.RectAreaLight('#fff1dd', 4.5, 5, 4);
-  softFill.position.set(2, 3, 4);
-  softFill.lookAt(0, 0.5, 0);
+  const softFill = new THREE.RectAreaLight('#fff1dd', 3.3, 3, 2.4);
+  softFill.position.set(0, 1.35, 3);
+  softFill.lookAt(0, 0.9, 0);
   // Reflected platform daylight reaches the roof underside from below.
-  const canopyFill = new THREE.RectAreaLight('#dedbd0', 1.8, 4, 2);
+  const canopyFill = new THREE.RectAreaLight('#dedbd0', 1.1, 4, 2);
   canopyFill.name = 'canopy-bounce-fill';
   canopyFill.position.set(4.2, -0.45, -1);
   canopyFill.up.set(0, 0, 1);
   canopyFill.lookAt(4.2, 0, -1);
   models.parts.canopy.add(canopyFill);
-  const railFill = new THREE.SpotLight('#ffe2b1', 110, 12, 0.3, 0.9, 2);
+  const railFill = new THREE.SpotLight('#ffe2b1', 95, 12, 0.3, 0.9, 2);
   railFill.position.set(4, 1.7, 1.4);
   scene.add(fill, keyLight, softFill, railFill, railFill.target);
   const lampLights = models.parts.lamps.map((fixture) => {
     const windowLamp = fixture.name === 'lamp-window';
     const distantLamp = fixture.name === 'lamp-distant';
+    const boardLamp = fixture.name === 'lamp-board';
     const light = new THREE.SpotLight(
       '#ffcf83',
-      windowLamp ? 5 : distantLamp ? 4 : 2,
+      windowLamp ? 10 : distantLamp ? 5 : 3.2,
       windowLamp ? 3 : distantLamp ? 3.5 : 5,
       windowLamp ? 1.1 : distantLamp ? 0.8 : 0.9,
       windowLamp ? 1 : 0.75,
@@ -243,11 +314,13 @@ function assemble(
     );
     fixture.add(light, target);
     light.target = target;
-    light.castShadow = windowLamp;
+    light.castShadow = boardLamp;
     light.shadow.mapSize.set(1024, 1024);
-    light.shadow.normalBias = 0.002;
+    light.shadow.normalBias = 0.001;
     light.shadow.bias = -0.0001;
     light.shadow.radius = 2;
+    light.shadow.blurSamples = 12;
+    light.shadow.intensity = 0.85;
     return light;
   });
   let disposed = false;
