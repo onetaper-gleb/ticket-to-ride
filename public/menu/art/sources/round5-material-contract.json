@@ -1,0 +1,475 @@
+{
+  "version": 5,
+  "ownBase": "9e6a6b250135fef2f59cc3a5ba95bfb6a7419ce2",
+  "commonFixture": "1bab208aa1871f93a7af15265ad2053dff6db312",
+  "immutableSnapshotSHA256": "082aa0f920d96753bdb5db517c1bc7739244c2eb664a7bdd92a2644f31e6cdfe",
+  "replacementMode": "Existing filenames, dimensions, surface slots, UV, loader and material options retained. Five base-color maps only; no objects, background geometry, baked shadows or lights.",
+  "runtimeMaps": [
+    "wood-tile.webp",
+    "stone-tile.webp",
+    "plaster-tile.webp",
+    "leather-tile.webp",
+    "paper-tile.webp"
+  ],
+  "actualSurfaces": [
+    {
+      "color": "c6cbd1",
+      "kind": "cream",
+      "map": {
+        "colorSpace": "srgb",
+        "dimensions": [
+          512,
+          512
+        ],
+        "offset": [
+          0,
+          0
+        ],
+        "repeat": [
+          1,
+          1
+        ],
+        "rotation": 0
+      },
+      "metalness": 0,
+      "roughness": 0.95
+    },
+    {
+      "color": "ffffff",
+      "kind": "green",
+      "map": {
+        "colorSpace": "srgb",
+        "dimensions": [
+          512,
+          512
+        ],
+        "offset": [
+          0,
+          0
+        ],
+        "repeat": [
+          1,
+          1
+        ],
+        "rotation": 0
+      },
+      "metalness": 0.06,
+      "roughness": 0.64
+    },
+    {
+      "color": "ffffff",
+      "kind": "wood",
+      "map": {
+        "colorSpace": "srgb",
+        "dimensions": [
+          512,
+          512
+        ],
+        "offset": [
+          0,
+          0
+        ],
+        "repeat": [
+          1,
+          1
+        ],
+        "rotation": 0
+      },
+      "metalness": 0,
+      "roughness": 0.76
+    },
+    {
+      "color": "887660",
+      "kind": "woodDark",
+      "map": {
+        "colorSpace": "srgb",
+        "dimensions": [
+          512,
+          512
+        ],
+        "offset": [
+          0,
+          0
+        ],
+        "repeat": [
+          1,
+          1
+        ],
+        "rotation": 0
+      },
+      "metalness": 0,
+      "roughness": 0.76
+    },
+    {
+      "color": "000000",
+      "kind": "sky",
+      "map": {
+        "colorSpace": "srgb",
+        "dimensions": [
+          1024,
+          512
+        ],
+        "offset": [
+          0,
+          0.4
+        ],
+        "repeat": [
+          1,
+          0.7
+        ],
+        "rotation": 0
+      },
+      "metalness": 0,
+      "roughness": 0.76
+    },
+    {
+      "color": "d8d2bc",
+      "kind": "paper",
+      "map": {
+        "colorSpace": "srgb",
+        "dimensions": [
+          512,
+          512
+        ],
+        "offset": [
+          0,
+          0
+        ],
+        "repeat": [
+          1,
+          1
+        ],
+        "rotation": 0
+      },
+      "metalness": 0,
+      "roughness": 0.95
+    },
+    {
+      "color": "978771",
+      "kind": "plasterShade",
+      "map": null,
+      "metalness": 0,
+      "roughness": 0.76
+    },
+    {
+      "color": "c0b9ae",
+      "kind": "stone",
+      "map": {
+        "colorSpace": "srgb",
+        "dimensions": [
+          512,
+          512
+        ],
+        "offset": [
+          0,
+          0
+        ],
+        "repeat": [
+          8,
+          8
+        ],
+        "rotation": 0
+      },
+      "metalness": 0,
+      "roughness": 0.92
+    },
+    {
+      "color": "3d454a",
+      "kind": "iron",
+      "map": null,
+      "metalness": 0.25,
+      "roughness": 0.6
+    },
+    {
+      "color": "ffe7ff",
+      "kind": "canopyPaint",
+      "map": {
+        "colorSpace": "srgb",
+        "dimensions": [
+          512,
+          512
+        ],
+        "offset": [
+          0,
+          0
+        ],
+        "repeat": [
+          1,
+          1
+        ],
+        "rotation": 0
+      },
+      "metalness": 0.08,
+      "roughness": 0.7
+    },
+    {
+      "color": "557242",
+      "kind": "foliage",
+      "map": null,
+      "metalness": 0,
+      "roughness": 0.76
+    },
+    {
+      "color": "718c48",
+      "kind": "foliageLight",
+      "map": null,
+      "metalness": 0,
+      "roughness": 0.76
+    },
+    {
+      "color": "36542e",
+      "kind": "foliageDark",
+      "map": null,
+      "metalness": 0,
+      "roughness": 0.76
+    },
+    {
+      "color": "adc5b5",
+      "kind": "glass",
+      "map": null,
+      "metalness": 0,
+      "roughness": 0.38
+    },
+    {
+      "color": "d4a45b",
+      "kind": "glassWarm",
+      "map": null,
+      "metalness": 0,
+      "roughness": 0.38
+    },
+    {
+      "color": "ffda90",
+      "kind": "warm",
+      "map": null,
+      "metalness": 0,
+      "roughness": 0.76
+    },
+    {
+      "color": "942e27",
+      "kind": "red",
+      "map": null,
+      "metalness": 0,
+      "roughness": 0.76
+    },
+    {
+      "color": "ae844d",
+      "kind": "brass",
+      "map": null,
+      "metalness": 0.72,
+      "roughness": 0.36
+    },
+    {
+      "color": "abb8b0",
+      "kind": "boardPaint",
+      "map": {
+        "colorSpace": "srgb",
+        "dimensions": [
+          512,
+          512
+        ],
+        "offset": [
+          0,
+          0
+        ],
+        "repeat": [
+          1,
+          1
+        ],
+        "rotation": 0
+      },
+      "metalness": 0,
+      "roughness": 0.88
+    },
+    {
+      "color": "f2d5bd",
+      "kind": "settingsPaper",
+      "map": {
+        "colorSpace": "srgb",
+        "dimensions": [
+          512,
+          512
+        ],
+        "offset": [
+          0,
+          0
+        ],
+        "repeat": [
+          1,
+          1
+        ],
+        "rotation": 0
+      },
+      "metalness": 0,
+      "roughness": 0.95
+    },
+    {
+      "color": "3d454a",
+      "kind": "steel",
+      "map": null,
+      "metalness": 0.45,
+      "roughness": 0.6
+    },
+    {
+      "color": "ffffff",
+      "kind": "leather",
+      "map": {
+        "colorSpace": "srgb",
+        "dimensions": [
+          512,
+          512
+        ],
+        "offset": [
+          0,
+          0
+        ],
+        "repeat": [
+          1,
+          1
+        ],
+        "rotation": 0
+      },
+      "metalness": 0,
+      "roughness": 0.9
+    }
+  ],
+  "sky": {
+    "file": "distant-sky.svg",
+    "dimensions": [
+      1024,
+      512
+    ],
+    "repeat": [
+      1,
+      0.7
+    ],
+    "offset": [
+      0,
+      0.4
+    ],
+    "cameraFrame": [
+      1672,
+      941
+    ],
+    "method": "Read-only raycasts against frozen actual scene triangles, Texture.transformUv includes flipY. Three first-hit samples prove sky visibility at fixed pixels; the first sample is occluded and excluded.",
+    "samples": [
+      {
+        "bitmapPixel": [
+          538.5798890562623,
+          98.10836799222216
+        ],
+        "bitmapUV": [
+          0.5259569229065062,
+          0.1916179062348089
+        ],
+        "firstHitIsSky": false,
+        "object": "distant-backdrop/sky",
+        "pixel": [
+          1280,
+          260
+        ],
+        "sky": true,
+        "uv": [
+          0.5259569229065062,
+          0.5834029910931302
+        ]
+      },
+      {
+        "bitmapPixel": [
+          592.2513321792445,
+          102.94034171961972
+        ],
+        "bitmapUV": [
+          0.5783704415812935,
+          0.20105535492113225
+        ],
+        "firstHitIsSky": true,
+        "object": "distant-backdrop/sky",
+        "pixel": [
+          1380,
+          275
+        ],
+        "sky": true,
+        "uv": [
+          0.5783704415812935,
+          0.5699209215412397
+        ]
+      },
+      {
+        "bitmapPixel": [
+          651.2899196145253,
+          94.88705217395731
+        ],
+        "bitmapUV": [
+          0.6360253121235598,
+          0.1853262737772604
+        ],
+        "firstHitIsSky": true,
+        "object": "distant-backdrop/sky",
+        "pixel": [
+          1490,
+          250
+        ],
+        "sky": true,
+        "uv": [
+          0.6360253121235598,
+          0.5923910374610566
+        ]
+      },
+      {
+        "bitmapPixel": [
+          721.0627956744019,
+          104.55099962875228
+        ],
+        "bitmapUV": [
+          0.7041628864007831,
+          0.20420117114990677
+        ],
+        "firstHitIsSky": true,
+        "object": "distant-backdrop/sky",
+        "pixel": [
+          1620,
+          280
+        ],
+        "sky": true,
+        "uv": [
+          0.7041628864007831,
+          0.5654268983572761
+        ]
+      }
+    ],
+    "interpretation": "Visible samples reach bitmap x592..721/y95..105. New middle cloud occupies x548..707 around this band; sample x721 stays blue. Fixed far depth/postprocess softens cloud. No station or trees baked into SVG."
+  },
+  "clock": {
+    "file": "clock-face.svg",
+    "dimensions": [
+      512,
+      512
+    ],
+    "hours": 12,
+    "minutes": 48,
+    "hands": "retained separate geometry; no hands drawn into dial",
+    "changes": "Warm ivory #E4D1AE, hour ticks9px, minute ticks4px, minute inner radius66, hour inner radius85, sparse fine original wear."
+  },
+  "preserved": {
+    "canonicalEuropeSHA256": "39b05d8b8863db9f61a6a9c31646f0fa5f9a5429e567f7c4e2d93cbae6340aed",
+    "runtimeEuropeSHA256": "e9b0b7e69891a4fca342951ae3bce8612fa332a7cb2baa021ec0ee05846cae85",
+    "nativeHTMLCSS": "byte-identical accepted frozen harness",
+    "cameraLightGeometryLoadersCallbacks": "unchanged frozen1bab",
+    "newFontsDependencies": false
+  },
+  "staticCounters": {
+    "before": {
+      "calls": 446,
+      "geometries": 122,
+      "textures": 23,
+      "triangles": 750627
+    },
+    "after": {
+      "calls": 446,
+      "geometries": 122,
+      "textures": 23,
+      "triangles": 750627
+    },
+    "boundary": "Actual renderer.info after reset/render; excludes native CSS painting, CPU diagnostics and frame timing. Not FPS or measured VRAM."
+  }
+}
