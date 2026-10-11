@@ -284,3 +284,47 @@ textures23. Камера, station matrix, native corners и retained title3308tr
 свете. Собственный grade не задан; animator STOP. Интерьер и предыдущие
 пакеты остаются неизменными. Только собственный проект, ordinary Git и
 проверенные public licensed OSS; никакой Arcadia/internal Yandex.
+
+## Раунд 9: isolated trainIron и trainHeadlamp
+
+Два optional material hooks добавлены отдельным этапом поверх принятой3e5.
+`trainIron` применяется только к iron pieces поезда; `trainHeadlamp` — только
+к primitive с именем `train-headlamp-lens`, прежде использовавшему `warm`.
+Default palette iron/warm/brass, geometry/UV/transforms и остальные роли
+не меняются. Имена batch meshes сохраняют прежние iron/warm suffixes;
+линза сохраняет castShadow=false, остальные shadow flags прежние.
+
+При отсутствующих или explicit undefined `surfaces`/`materialOverrides`
+новые роли alias к actual resolved `iron`/`warm`, включая material и map
+identity. Новых owned materials/maps/geometries нет. При собственном map
+или override, включая `{}`, каждая роль создаёт один owned material.
+Он наследует пять actual base свойств: color, roughness, metalness,
+emissive, emissiveIntensity; затем применяет только defined поля этого
+whitelist. Нулевые значения и HDR Color сохраняются, неизвестные runtime
+поля игнорируются. Numeric guards выполняются до allocation:
+roughness/metalness finite[0,1], emissiveIntensity finite>=0.
+
+Карта выбирается explicit role map, иначе actual resolved base.map.
+При карте создаётся один owned SRGB/RepeatWrapping clone с прежними
+image/source/transform/sampling полями. Caller Texture/overrides и image
+не меняются и не освобождаются kit. Как в принятом titleBrass, публичный
+Three Texture.clone увеличивает shared Source.version; это квалификация
+shared source, не изменение caller texture version/sampler/image.
+
+Новая роль публикуется в surfaces cache после успешного clone/setup.
+Ошибка clone или setup освобождает pending material/returned map once;
+failed role не остаётся в cache, direct kit.material retry разрешён.
+Ошибка сборки целого environment использует прежний parent cleanup;
+повторная сборка создаёт свежий kit. models.dispose остаётся idempotent.
+Эти targeted CPU/resource proofs не означают полного отсутствия engine
+leaks или нулевого GPU расхода от собственного mapped override.
+
+В сравнительном preview используются только empty overrides `{}`:
+default, trainIron, trainHeadlamp и обе роли. Это проверка alias/present
+при одинаковых resolved base значениях, не выбранный новый grade.
+Compositor применяет hooks только после отдельной SOURCE+PACKAGE приёмки.
+Семь pivots, радиусы .24/.16, gauge ±.41, все14 wheel/rail contacts,
+retained title3308tri/15mm и унаследованные192 degenerate triangles
+сохранены. Новые textures/lights/camera/форма не выбираются. Принятые
+пакеты неизменны, художественная приёмка OPEN, animatorSTOP; широкий
+gameplay/native/desktop/FPS suite и production5175/Sites не затрагиваются.

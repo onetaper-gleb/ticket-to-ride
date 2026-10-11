@@ -16,6 +16,7 @@ export const MENU_PALETTE = {
   glassWarm: '#d4a45b',
   burgundy: '#7b3536',
   iron: '#252d2d',
+  trainIron: '#252d2d',
   steel: '#817c73',
   wood: '#865d3c',
   canopyWood: '#865d3c',
@@ -26,6 +27,7 @@ export const MENU_PALETTE = {
   settingsPaper: '#f4e8cf',
   glass: '#adc5b5',
   warm: '#ffda90',
+  trainHeadlamp: '#ffda90',
   stone: '#a99b87',
   foliage: '#557242',
   foliageLight: '#718c48',
@@ -81,6 +83,7 @@ export function createMenuModelKit(
 
   function material(kind: MenuMaterial): THREE.MeshStandardMaterial {
     assertAlive();
+    const isolatedRole = kind === 'titleBrass' || kind === 'trainIron' || kind === 'trainHeadlamp';
     const inheritedKind =
       kind === 'settingsPaper'
         ? 'paper'
@@ -90,7 +93,11 @@ export function createMenuModelKit(
             ? 'wood'
             : kind === 'titleBrass'
               ? 'brass'
-              : undefined;
+              : kind === 'trainIron'
+                ? 'iron'
+                : kind === 'trainHeadlamp'
+                  ? 'warm'
+                  : undefined;
     if (inheritedKind && surfaceMaps[kind] === undefined && overrides[kind] === undefined)
       return material(inheritedKind);
     let result = materials.get(kind);
@@ -100,7 +107,7 @@ export function createMenuModelKit(
         Object.entries(overrides[kind] ?? {}).filter(
           ([key, value]) =>
             value !== undefined &&
-            (kind !== 'titleBrass' ||
+            (!isolatedRole ||
               ['color', 'roughness', 'metalness', 'emissive', 'emissiveIntensity'].includes(key)),
         ),
       ) as MenuSurfaceOptions;
@@ -150,11 +157,11 @@ export function createMenuModelKit(
       });
       result.name = `menu-surface/${kind}`;
       result.userData.menuSurface = kind;
-      // The optional title role must remain retryable after a failed map clone/setup.
-      if (kind !== 'titleBrass') materials.set(kind, result);
+      // Publish isolated roles only after map setup succeeds, so failures remain retryable.
+      if (!isolatedRole) materials.set(kind, result);
       const source =
         surfaceMaps[kind] ??
-        (kind === 'canopyWood' || kind === 'titleBrass'
+        (kind === 'canopyWood' || isolatedRole
           ? inherited?.map
           : inheritedKind
             ? surfaceMaps[inheritedKind]
@@ -174,9 +181,9 @@ export function createMenuModelKit(
           if (override.color === undefined && !inherited)
             result.color.set(kind === 'wood' && !surfaceMaps.wood ? '#ae9479' : '#ffffff');
         }
-        if (kind === 'titleBrass') materials.set(kind, result);
+        if (isolatedRole) materials.set(kind, result);
       } catch (error) {
-        if (kind === 'titleBrass') {
+        if (isolatedRole) {
           if (pendingMap) {
             textures.delete(pendingMap);
             pendingMap.dispose();
@@ -198,7 +205,7 @@ export function createMenuModelKit(
     assertAlive();
     geometries.add(geometry);
     const result = meshWithSurface(parent, geometry, material(kind), name);
-    result.castShadow = kind !== 'warm' && kind !== 'sky';
+    result.castShadow = kind !== 'warm' && kind !== 'trainHeadlamp' && kind !== 'sky';
     return result;
   }
 
@@ -282,7 +289,8 @@ export function createMenuModelKit(
         pieces.delete(kind);
         if (!merged) throw new Error(`Cannot merge menu geometry: ${name}/${kind}`);
         geometries.add(merged);
-        mesh(parent, merged, kind, `${name}/${kind}`);
+        const meshKind = kind === 'trainIron' ? 'iron' : kind === 'trainHeadlamp' ? 'warm' : kind;
+        mesh(parent, merged, kind, `${name}/${meshKind}`);
       }
       pieces.clear();
     }

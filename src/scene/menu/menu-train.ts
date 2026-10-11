@@ -9,6 +9,22 @@ import {
 
 type TrainBatch = ReturnType<MenuModelKit['batch']>;
 
+function trainBatch(kit: MenuModelKit, parent: THREE.Object3D, name: string): TrainBatch {
+  const batch = kit.batch(parent, name);
+  return {
+    add(geometry, kind, position, rotation) {
+      const role =
+        kind === 'iron'
+          ? 'trainIron'
+          : kind === 'warm' && geometry.name === 'train-headlamp-lens'
+            ? 'trainHeadlamp'
+            : kind;
+      batch.add(geometry, role, position, rotation);
+    },
+    flush: batch.flush,
+  };
+}
+
 export type MenuTrain = {
   root: THREE.Group;
   chimneyAnchor: THREE.Object3D;
@@ -30,7 +46,7 @@ function boilerRadiusAt(z: number) {
 export function buildMenuTrain(kit: MenuModelKit): MenuTrain {
   const root = new THREE.Group();
   root.name = 'menu-train';
-  const staticParts = kit.batch(root, 'train-static');
+  const staticParts = trainBatch(kit, root, 'train-static');
   addLocomotive(staticParts);
   addCoach(staticParts);
   staticParts.flush();
@@ -855,7 +871,7 @@ function addWheelAxle(
   spokes: number,
 ) {
   const pivot = menuAnchor(parent, name, [0, radius, z]);
-  const batch = kit.batch(pivot, name);
+  const batch = trainBatch(kit, pivot, name);
   addCylinder(batch, 'steel', 0.028, 0.028, halfTrack * 2, [0, 0, 0], [0, 0, HALF_PI], 12);
   for (const side of [-1, 1]) {
     const x = side * halfTrack;
