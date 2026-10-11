@@ -93,3 +93,13 @@ Own native affected QA проверяет actual три размера, four/fiv
 Rightworld byteequality сохраняется с текущим61a. В round5 оркестратор разрешил cashier owner будущую targeted right wrist/forearm/grip pose вместе с parent paper; для такого принятого tip прежняя world pose не будет hard invariant. Anchors/root identity/holder contacts/transform-once остаются. Старую pose compositor самостоятельно не восстанавливает. До нового принятого tip sampled61a qualification остаётся исторической границей проверки.
 
 Dynamic hints/friends/errors/обаRetry/footer24/focus/scroll и доступное h1 сохранены. Проверяются только затронутые desktop/material/light/placement/native contrast/reuse/cleanup и current draw cost; старая broad game/loader QA не повторяется. Анимация остановлена, адаптив отложен. Точные owner заявки и текущие residuals сохраняются в own outputs/master14; root читает локально, reverse messages не нужны.
+
+## Принятый арт пятого раунда
+
+После frozen c8bec импортирована полная rootaccepted история art2f7f03e47c8b56aac8747c32ebbe018bca0420d8 поверх9e6. Пять existing512²maps, sky/dial/continue и provenance подключены в собственной общей сцене через exact Git blobs, dirty foreign files не используются. Environmente6ba/cashier61a остаются прежними; непринятый environmenta479 не импортируется. Камера, light/post/shadows, contacts, исправленный back luggage и весь native layout сохранены.
+
+HDR wood/stone/green/canopy linearRGB текущего c8bec сохраняется: diagnostic hex snapshots из art material-contract не восстанавливают HDR значения. Settings physical#d9e1d7/.95 и overlay#e4dcc6b3 уже дают кремовый тон с новой paper map; proposed legacy tint не применяется автоматически.
+
+Own native print заменяет итоговый rectangular border одним accepted sources/settings-edge-print.svg512×128 на whole settings face. Final pseudo border0/inset0, background100%100%, pointer-events:none; icon/label наz1 выше printz0. Native bounds/padding/fonts/labels/focus/scroll/footer24/actions и обаRetry прежние. SVG содержит только printed line/patina: physical edge/thickness/hooks остаются у environment. Это одна browser decode/paint layer без нового Three texture/material/mesh; actual decode/paint и full draw cost фиксируются отдельно с честными оценками raster memory.
+
+Current accepted inputs/evidence/master14 и новый immutable common checkpoint сохраняются отдельно от frozen c8bec. Полная художественная приёмка открыта, аниматор остановлен, адаптив отложен. Ничего из Arcadia/internalYandex прямо или косвенно; ownproject/ordinaryGit/GitHub/verified publicOSS.
