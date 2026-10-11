@@ -46,41 +46,24 @@ export default function GameSession({ onOpenNetwork }: GameSessionProps = {}) {
   });
   current.current = state;
   const readSave = useCallback((slot: MenuSaveSlot) => {
-    const epoch = sessionEpoch.current;
     const generation = ++saveReadGeneration.current[slot];
     const version = createGame({ seed: 'version-check' }).rulesVersion;
     setMenuSaves((value) => ({ ...value, [slot]: { loading: true, error: null } }));
     loadMatch(version, slot)
       .then((value) => {
-        if (
-          mounted.current &&
-          generation === saveReadGeneration.current[slot] &&
-          ((epoch === sessionEpoch.current && !current.current) || tutorialMode.current)
-        ) {
+        if (mounted.current && generation === saveReadGeneration.current[slot]) {
           if (slot === 'current') setSaved((existing) => existing ?? value);
-          else if (epoch === sessionEpoch.current) setTutorialSave((existing) => existing ?? value);
+          else setTutorialSave((existing) => existing ?? value);
         }
         if (mounted.current && generation === saveReadGeneration.current[slot])
           setMenuSaves((status) => ({ ...status, [slot]: { loading: false, error: null } }));
       })
       .catch((reason) => {
-        if (
-          mounted.current &&
-          generation === saveReadGeneration.current[slot] &&
-          epoch === sessionEpoch.current
-        )
+        if (mounted.current && generation === saveReadGeneration.current[slot])
           setMenuSaves((status) => ({
             ...status,
             [slot]: { loading: false, error: String(reason?.message ?? reason) },
           }));
-      })
-      .finally(() => {
-        if (
-          mounted.current &&
-          generation === saveReadGeneration.current[slot] &&
-          epoch !== sessionEpoch.current
-        )
-          setMenuSaves((status) => ({ ...status, [slot]: { loading: false, error: null } }));
       });
   }, []);
   useEffect(() => {
@@ -116,6 +99,9 @@ export default function GameSession({ onOpenNetwork }: GameSessionProps = {}) {
         );
         return false;
       }
+      // A newly accepted save supersedes every older read of this slot, including retries.
+      saveReadGeneration.current[slot]++;
+      setMenuSaves((status) => ({ ...status, [slot]: { loading: false, error: null } }));
       if (slot === 'tutorial') setTutorialSave(save);
       else setSaved(save);
       writing.catch(() =>
