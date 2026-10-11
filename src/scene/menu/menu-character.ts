@@ -41,7 +41,7 @@ const CENTER_GRIPS = {
     contact: [-0.155883, 0, 0.161828],
     yaw: 0,
     roll: 0,
-    position: [-0.319118002485063, 0.4846431371007577, 0.7467915179841788],
+    position: [-0.3196178324959038, 0.4848844255929303, 0.745798483754429],
     quaternion: [-0.4451734967935173, -0.859229374735728, 0.007128773495365032, 0.2519813880673216],
   },
   'left-support': {
@@ -600,7 +600,7 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
   const ticketGeometry = new THREE.BoxGeometry(
     calm ? TICKET_WIDTH / 2 : TICKET_WIDTH,
     TICKET_HEIGHT,
-    TICKET_THICKNESS,
+    calm ? TICKET_THICKNESS / 2 : TICKET_THICKNESS,
   );
   ticketGeometry.translate(0, TICKET_HEIGHT / 2, 0);
   const ticket = new THREE.Mesh(ticketGeometry, materials.paper);
@@ -611,7 +611,7 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
   if (calm) {
     const secondary = new THREE.Mesh(ticketGeometry, materials.paper);
     secondary.name = 'cashier secondary fan ticket';
-    secondary.position.set(0.508889259424083, 0.08288595629697071, -0.025);
+    secondary.position.set(0.4388892594240831, 0.08288595629697071, -0.0031);
     secondary.rotation.z = 0.4;
     secondary.castShadow = true;
     secondary.receiveShadow = true;
