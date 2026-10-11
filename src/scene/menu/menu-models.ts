@@ -83,7 +83,7 @@ export type MenuEnvironmentParts = {
 };
 
 const FLOOR_Y = -0.9;
-const RAIL_Y = -0.65;
+const RAIL_Y = -0.78;
 
 export type MenuEnvironmentArt = {
   clockFace?: THREE.Texture;
@@ -1095,12 +1095,15 @@ function buildPlatform(root: THREE.Group, kit: MenuModelKit) {
   trackRoot.rotation.y = -0.65;
   railwayRoot.add(trackRoot);
   const batch = kit.batch(trackRoot, 'platform-and-track');
-  batch.add(slopedBed(0.66, 0.76, -0.05, -0.25, 9), 'stone', [-0.98, 0, -3]);
+  // The broad floor backing is 2 mm below the tile faces and their narrow joints.
+  const baseBottom = -0.122;
+  const ballastTop = -0.095;
+  batch.add(slopedBed(0.66, 0.76, -0.05, baseBottom, 9), 'stone', [-0.98, 0, -3]);
   for (let z = -7.125; z < 1.1; z += 0.75)
     batch.add(menuBox(0.68, 0.035, 0.745, 0.006), 'cream', [-0.98, -0.0675, z]);
-  batch.add(slopedBed(1.12, 1.6, -0.13, -0.25, 9), 'stone', [0, 0, -3]);
+  batch.add(slopedBed(1.3, 1.6, ballastTop, baseBottom, 9), 'stone', [0, 0, -3]);
   for (let z = -7.3; z < 1.1; z += 0.42) {
-    batch.add(menuBox(1.3, 0.06, 0.13, 0.005), 'woodDark', [0, -0.1, z]);
+    batch.add(menuBox(1.3, 0.025, 0.13, 0.005), 'woodDark', [0, -0.0825, z]);
     for (const x of [-0.41, 0.41])
       batch.add(new THREE.BoxGeometry(0.09, 0.008, 0.11), 'iron', [x, -0.066, z]);
   }
@@ -1112,7 +1115,7 @@ function buildPlatform(root: THREE.Group, kit: MenuModelKit) {
     const x = Math.sin(i * 17.31) * 0.59,
       z = -7.4 + ((i * 0.173) % 8.8);
     const r = 0.018 + (i % 4) * 0.004;
-    batch.add(new THREE.IcosahedronGeometry(r, 0), 'stone', [x, -0.133, z]);
+    batch.add(new THREE.IcosahedronGeometry(r, 0), 'stone', [x, ballastTop + r * 0.42, z]);
   }
   batch.flush();
   return { railwayRoot, platform: trackRoot };
