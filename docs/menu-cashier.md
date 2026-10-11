@@ -1,5 +1,7 @@
 # Кассирша меню «Билетная касса»
 
+Revision 8 добавляет отдельный статичный профиль `calm-support` к чистой базе `a033d6f104b3da98bfb767b3c0e0b3642e6325f1`. Прежние default/agreed/current-support/left-support сохраняются точно. Новая форма — предложение для визуальной проверки; аниматор остановлен. Production consumer не меняется.
+
 Revision 7 добавляет два статичных предложения хвата к принятой базе `dd6673441bf46b279bcc27a0bbe7f6748cc2c421`. Они включаются через `ticketGripPose` вместе с явной правой опорой. Вызовы без новой опции сохраняют геометрию, позу, бумагу и контакты revision 6. Общая визуальная приёмка открыта; аниматор остановлен.
 
 ## API и опоры
@@ -47,7 +49,7 @@ Thumb и index обращены к противоположным сторона
 
 Проверены native module/binary/source JSON hashes, ранее созданный и новый native cache, независимость buffers/materials/skeletons и exactly-once disposal. `dispose()` идемпотентен, освобождает также holder после reparent. Внешние textures освобождает их владелец. Builder не содержит rAF, timers или mixer.
 
-Стоимость каждой позы: **68 384 triangles / 23 meshes / 21 geometries / 17 materials / 2 skeletons / 7 409 928 bytes geometry buffers**. Новая поза не добавляет topology. Warm CPU assembly с preloaded native и тёплым blueprint измеряется отдельно для каждого варианта; это не cold extraction, GPU или FPS benchmark.
+Стоимость прежних четырёх режимов revision 7: **68 384 triangles / 23 meshes / 21 geometries / 17 materials / 2 skeletons / 7 409 928 bytes geometry buffers**. Новая поза не добавляет topology. Warm CPU assembly с preloaded native и тёплым blueprint измеряется отдельно для каждого варианта; это не cold extraction, GPU или FPS benchmark.
 
 Кадры собраны на immutable compositor `1bab208aa1871f93a7af15265ad2053dff6db312`: camera `[.04,.52,6.4]`, FOV 34°, station yaw 27°, viewport 1672×941, DPR 1. Camera, lights, maps, DOM, post и окружение сохранены в scratch harness. Голова имеет прежний projected bbox 183.8455×168.1489 px. Проверки, source hashes, exact clean tip, portable preview и одинаковые before/after/reference crops передаются в отдельном пакете revision 7.
 
@@ -56,3 +58,25 @@ Thumb и index обращены к противоположным сторона
 Геометрия использует собственные helpers проекта; frozen hands сохраняют собственный алгоритм и CPU binary preload. Новых моделей, ассетов и зависимостей нет. Существующий Three.js использует публичную MIT-лицензию. Map/UV/provenance печати `public/menu/art/ticket-print.svg` принадлежат 2D дизайнеру и здесь не меняются.
 
 Запрещены код, зависимости, репозитории, tools, skills, документация, сервисы, API и credentials Аркадии/внутренней инфраструктуры Яндекса, включая read/search/copy/adapt/execute и косвенное использование через агентов. Разрешены собственный проект, ordinary Git/GitHub и public open-source с проверенной открытой лицензией. Native `menu-character-hands.ts`, algorithm/API/shared cache, binary и source JSON остаются read-only.
+
+## Новый профиль calm-support
+
+Требует явную right `[-.155883,0,.161828]` и сохранённую left `[.35,0,.15]`. Нижняя опора всей posed surface переносится по XYZ к right+[0,.002,0]. Root identity и holder прежние.
+
+Новая кисть использует собственный экземпляр frozen rig. Wrist возвращён к `[0,0,0]`; index/middle/ring/little сгибаются по +X с коэффициентами `[1.0175,1.1,1.1,1.1]`. У thumb локальная base position добавляет `[0,.1,.4]`, base Euler `[.4,.6,.4]`, следующие суставы X `[.48,.43]`. Пальцы направлены вправо и на .15 rad вверх в принятом общем ракурсе. Начальная форма расширена по native X/Y в 1.05/1.15 раза и запечена в независимо принадлежащие экземпляру positions/normals. Итоговый hand scale снова равномерный .218, чтобы wrist→grip→paper сохранял прямоугольный лист без сдвига отдельных мировых координат.
+
+Подушечка thumb округлена локальным плавным смещением .0168 root units с радиусом .025 около проверенной пары opposing pads. Indices, skin weights и native cache не меняются. Нормали пересчитаны по площади совпадающих surface vertices в posed coordinates и возвращены через skin transform. Форма рассчитана на эту статичную позу.
+
+Primary лист identity 0.55×2.1×.003 hand units, физический scale .16. Grip имеет фиксированные wrist-local position/quaternion. Два листа толщиной .00048 root units каждый размещены рядом между opposing pads: index обращён к внешней front face primary, thumb — к внешней back face secondary. Зазоры к этим сторонам около .000174; opposing points находятся внутри конечных quad на .45–.55 высоты. Это положительные зазоры, а не симуляция давления. Оба полных paper volumes проверяются отдельно.
+
+Forearm и cuff построены к фактическому shaped wrist. Moving sleeve widths `[.088,.065,.052]`, depths `[.088,.06,.045]`; cuff widths `[.055,.025]`, depths `[.045,.022]`. Cuff занимает участок .79–1 длины локального forearm. Старые hidden-pair результаты не переносятся на этот профиль: нужна новая независимая проверка всей опоры, шва и finite papers на принятом compositor `a783ca33f67a3af3106bc4debb61adf2deb90bfe`.
+
+В `calm-support` второй owned mesh использует те же geometry/material/print map и следует тому же grip. Local position `[.4388892594240831,.08288595629697071,-.0031]`, Z rotation .4 rad образуют веер вокруг середины листа со сдвигом X .03 hand units. Primary `ticket` сохраняет local identity. Плоскости параллельны и разнесены по local Z на .0031 hand units; между конечными volumes остаётся .000016 root units. Paper↔paper SAT и skin/cloth SAT проверяются для обоих листов. Старые четыре режима имеют один лист как прежде. Веер добавляет один mesh и 12 отрисовываемых triangles, но не новую geometry или material; общие ресурсы освобождаются один раз.
+
+## Отдельная правка лица, волос и ткани для calm-support
+
+После фиксации кисти и веера новый профиль получает более овальный рельеф носа: наклонённый elliptical field с поворотом .28 rad, радиусами .29/.205 author units и высотой .405. Bridge/alae/columella мягче, край улыбки чуть длиннее и асимметричнее. Все формы остаются на одном закрытом face mesh; новый отдельный нос не добавлен. Placement головы, глаз, бровей и шеи сохраняется.
+
+Край чёлки имеет bevel .018 и depth .12 author units; её нижний левый контур немного ниже. Для новой чёлки используется отдельный immutable CPU blueprint: вызовы нового профиля не заменяют cache старых режимов. Cloth roughness .96, hair .9, face .92; palette, внешний свет, camera, print maps/UV и compositor grading не меняются. Эти правки применяются только к `calm-support` и записаны отдельным коммитом. Полное сходство с PNG и визуальная приёмка остаются открытыми.
+
+Стоимость calm-support: **69 772 drawn triangles / 24 meshes / 21 geometries / 17 materials / 2 skeletons / 7 509 000 bytes geometry buffers** плюс 2 816 bytes bone matrices. Отдельный calm fringe CPU blueprint занимает 140 304 bytes. Локальный warm CPU assembly с preloaded native измерен отдельно; FPS/GPU и performance acceptance не заявлены.
