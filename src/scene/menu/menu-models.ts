@@ -691,10 +691,10 @@ function buildBoard(
       let geometry: THREE.BufferGeometry | undefined;
       try {
         geometry = new THREE.ExtrudeGeometry(ownedShapes, {
-          depth: 0.008,
+          depth: 0.012,
           bevelEnabled: true,
-          bevelThickness: 0.001,
-          bevelSize: 0.001,
+          bevelThickness: 0.0015,
+          bevelSize: 0.0025,
           bevelSegments: 1,
           steps: 1,
           curveSegments: 1,
