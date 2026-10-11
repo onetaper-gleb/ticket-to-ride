@@ -317,6 +317,10 @@ function assemble(
     light.target = target;
     light.castShadow = boardLamp;
     light.shadow.mapSize.set(1024, 1024);
+    if (boardLamp) {
+      light.shadow.camera.near = 0.05;
+      light.shadow.camera.updateProjectionMatrix();
+    }
     light.shadow.normalBias = 0.001;
     light.shadow.bias = -0.0001;
     light.shadow.radius = 2;
