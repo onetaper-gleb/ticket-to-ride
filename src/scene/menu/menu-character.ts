@@ -420,8 +420,8 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
   const handRestLeft = contactAnchor('handRestLeft', leftContact, root);
   const handRestRight = contactAnchor('handRestRight', rightContact, root);
   const ticketReach = THREE.MathUtils.clamp((rightContact.x + 0.35) / 0.52, 0, 1);
-  root.add(buildCashierUpperBody());
-  const materials = createCashierMaterials();
+  root.add(buildCashierUpperBody(calm));
+  const materials = createCashierMaterials(calm);
   const addSleeve = (
     parent: THREE.Object3D,
     points: THREE.Vector3[],

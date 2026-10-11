@@ -16,10 +16,10 @@ export const MENU_CASHIER_PALETTE = {
   paper: '#f1e3c7',
 } as const;
 
-export function createCashierMaterials() {
+export function createCashierMaterials(calm = false) {
   const cloth = new THREE.MeshStandardMaterial({
     color: MENU_CASHIER_PALETTE.cloth,
-    roughness: 1,
+    roughness: calm ? 0.96 : 1,
   });
   const cuff = new THREE.MeshStandardMaterial({
     color: MENU_CASHIER_PALETTE.cream,

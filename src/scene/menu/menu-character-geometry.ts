@@ -199,9 +199,20 @@ function roundedCollar(points: [number, number][]) {
   });
 }
 
-function characterFactory(parent: THREE.Group) {
+function characterFactory(parent: THREE.Group, calm = false) {
   const materials = new Map<string, THREE.MeshStandardMaterial>();
-  const material = (color: string, roughness = color === CASHIER_STYLE.cloth ? 1 : 0.94) => {
+  const material = (
+    color: string,
+    roughness = calm
+      ? color === CASHIER_STYLE.cloth
+        ? 0.96
+        : color === CASHIER_STYLE.hair
+          ? 0.9
+          : 0.94
+      : color === CASHIER_STYLE.cloth
+        ? 1
+        : 0.94,
+  ) => {
     const key = `${color}:${roughness}`;
     let result = materials.get(key);
     if (!result) {
@@ -253,7 +264,7 @@ type Factory = ReturnType<typeof characterFactory>;
 type FaceForm = ReturnType<typeof sculptedFace>;
 
 /** The face is one closed surface; facial volumes are displacements of that surface. */
-function sculptedFace() {
+function sculptedFace(calm = false) {
   const style = CASHIER_STYLE;
   const w = style.headWidth;
   const h = style.headHeight;
@@ -300,7 +311,8 @@ function sculptedFace() {
   const eyeY = 0.065;
   const eyeWidth = 0.205;
   const eyeHeight = 0.205;
-  const mouthY = (x: number) => -0.92 + 0.12 * (x / 0.38) ** 2;
+  const mouthY = (x: number) =>
+    calm ? -0.9 + 0.1 * (x / 0.42) ** 2 + 0.03 * (x / 0.42) : -0.92 + 0.12 * (x / 0.38) ** 2;
   const noseWidth = style.nose[0] * 0.8256;
   const noseY = -0.28;
   const noseHeight = style.nose[1] * 0.6613;
@@ -318,18 +330,28 @@ function sculptedFace() {
       result += 0.035 * Math.exp(-(((radius - 1.05) / 0.26) ** 2));
       result += 0.06 * gaussian(x, y, side * eyeX, eyeY + 0.24, 0.38, 0.15);
     }
-    // Bridge, broad tip, alae and columella all belong to the same skin mesh.
-    result += 0.095 * gaussian(x, y, 0, 0.02, noseWidth * 0.69, 0.44);
-    result += (style.nose[2] + 0.175) * gaussian(x, y, 0, noseY, noseWidth, noseHeight);
-    for (const side of [-1, 1])
-      result +=
-        0.065 * gaussian(x, y, side * noseWidth * 0.7, noseY - 0.075, noseWidth * 0.57, 0.17);
-    result += 0.055 * gaussian(x, y, 0, noseY - 0.19, noseWidth * 0.46, 0.15);
+    if (calm) {
+      result += 0.065 * gaussian(x, y, 0, 0.01, noseWidth * 0.66, 0.4);
+      const nx = (Math.cos(0.28) * x + Math.sin(0.28) * (y + 0.32)) / 0.29;
+      const ny = (-Math.sin(0.28) * x + Math.cos(0.28) * (y + 0.32)) / 0.205;
+      result += 0.405 * Math.exp(-((nx * nx + ny * ny) ** 1.5));
+      for (const side of [-1, 1])
+        result += 0.045 * gaussian(x, y, side * 0.195, -0.39, 0.145, 0.12);
+      result += 0.03 * gaussian(x, y, 0, -0.49, 0.12, 0.115);
+    } else {
+      // Bridge, broad tip, alae and columella all belong to the same skin mesh.
+      result += 0.095 * gaussian(x, y, 0, 0.02, noseWidth * 0.69, 0.44);
+      result += (style.nose[2] + 0.175) * gaussian(x, y, 0, noseY, noseWidth, noseHeight);
+      for (const side of [-1, 1])
+        result +=
+          0.065 * gaussian(x, y, side * noseWidth * 0.7, noseY - 0.075, noseWidth * 0.57, 0.17);
+      result += 0.055 * gaussian(x, y, 0, noseY - 0.19, noseWidth * 0.46, 0.15);
+    }
     const lipY = mouthY(x);
     const lipMask = Math.exp(-((x / 0.39) ** 4));
-    result += lipMask * (0.035 * Math.exp(-(((y - lipY - 0.045) / 0.06) ** 2)));
-    result += lipMask * (0.038 * Math.exp(-(((y - lipY + 0.06) / 0.075) ** 2)));
-    result -= lipMask * (0.022 * Math.exp(-(((y - lipY) / 0.025) ** 2)));
+    result += lipMask * ((calm ? 0.025 : 0.035) * Math.exp(-(((y - lipY - 0.045) / 0.06) ** 2)));
+    result += lipMask * ((calm ? 0.025 : 0.038) * Math.exp(-(((y - lipY + 0.06) / 0.075) ** 2)));
+    result -= lipMask * ((calm ? 0.018 : 0.022) * Math.exp(-(((y - lipY) / 0.025) ** 2)));
     return result;
   };
   const front = (x: number, y: number) => {
@@ -484,32 +506,32 @@ let fringeBlueprint:
     }
   | undefined;
 
+let calmFringeBlueprint: typeof fringeBlueprint;
+
 /** A closed curved fringe follows the forehead and crown instead of floating as a flat plate. */
-function sweptFringe(face: FaceForm): THREE.BufferGeometry {
-  if (fringeBlueprint) {
+function sweptFringe(face: FaceForm, calm = false): THREE.BufferGeometry {
+  const blueprint = calm ? calmFringeBlueprint : fringeBlueprint;
+  if (blueprint) {
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute(
-      'position',
-      new THREE.BufferAttribute(fringeBlueprint.positions.slice(), 3),
-    );
-    geometry.setAttribute('normal', new THREE.BufferAttribute(fringeBlueprint.normals.slice(), 3));
-    geometry.setIndex(new THREE.BufferAttribute(fringeBlueprint.index.slice(), 1));
+    geometry.setAttribute('position', new THREE.BufferAttribute(blueprint.positions.slice(), 3));
+    geometry.setAttribute('normal', new THREE.BufferAttribute(blueprint.normals.slice(), 3));
+    geometry.setIndex(new THREE.BufferAttribute(blueprint.index.slice(), 1));
     return geometry;
   }
   const shape = new THREE.Shape();
-  shape.moveTo(-1.08, 0.32);
+  shape.moveTo(calm ? -1.11 : -1.08, calm ? 0.27 : 0.32);
   shape.bezierCurveTo(-1.12, 0.72, -1.05, 1.36, -0.61, 1.58);
   shape.bezierCurveTo(-0.27, 1.59, 0.53, 1.59, 0.92, 1.3);
   shape.quadraticCurveTo(0.98, 1.04, 0.86, 0.98);
   shape.bezierCurveTo(0.62, 0.93, 0.12, 0.95, -0.08, 0.88);
-  shape.bezierCurveTo(-0.36, 0.69, -0.55, 0.24, -0.83, 0.27);
-  shape.quadraticCurveTo(-0.96, 0.28, -1.08, 0.32);
+  shape.bezierCurveTo(-0.36, calm ? 0.73 : 0.69, -0.55, calm ? 0.25 : 0.24, -0.83, 0.27);
+  shape.quadraticCurveTo(-0.96, 0.28, calm ? -1.11 : -1.08, calm ? 0.27 : 0.32);
   shape.closePath();
   const extrusion = new THREE.ExtrudeGeometry(shape, {
-    depth: 0.095,
+    depth: calm ? 0.12 : 0.095,
     bevelEnabled: true,
-    bevelSize: 0.03,
-    bevelThickness: 0.03,
+    bevelSize: calm ? 0.018 : 0.03,
+    bevelThickness: calm ? 0.018 : 0.03,
     bevelSegments: 4,
     steps: 1,
     curveSegments: 20,
@@ -622,15 +644,17 @@ function sweptFringe(face: FaceForm): THREE.BufferGeometry {
     normals.setXYZ(i, normal.x, normal.y, normal.z);
   }
   const index = smooth.index!.array;
-  fringeBlueprint = {
+  const snapshot = {
     positions: new Float32Array(p.array),
     normals: new Float32Array(normals.array),
     index: index instanceof Uint16Array ? index.slice() : new Uint32Array(index),
   };
+  if (calm) calmFringeBlueprint = snapshot;
+  else fringeBlueprint = snapshot;
   return smooth;
 }
 
-function buildCashierHead(person: THREE.Group, factory: Factory) {
+function buildCashierHead(person: THREE.Group, factory: Factory, calm = false) {
   const style = CASHIER_STYLE;
   const { mesh, oval, round } = factory;
   const head = new THREE.Group();
@@ -646,11 +670,11 @@ function buildCashierHead(person: THREE.Group, factory: Factory) {
   person.add(head);
   const w = style.headWidth;
   const h = style.headHeight;
-  const face = sculptedFace();
+  const face = sculptedFace(calm);
   const faceMaterial = new THREE.MeshStandardMaterial({
     color: '#ffffff',
     vertexColors: true,
-    roughness: 0.94,
+    roughness: calm ? 0.92 : 0.94,
     metalness: 0,
   });
   faceMaterial.name = 'Скульптура лица: ' + style.name;
@@ -735,12 +759,16 @@ function buildCashierHead(person: THREE.Group, factory: Factory) {
       head,
     );
   }
-  const mouthPoints: [number, number][] = [-0.38, -0.2, 0, 0.2, 0.38].map((x) => [
-    x,
-    face.mouthY(x),
-  ]);
+  const mouthPoints: [number, number][] = (
+    calm ? [-0.42, -0.21, 0, 0.21, 0.42] : [-0.38, -0.2, 0, 0.2, 0.38]
+  ).map((x) => [x, face.mouthY(x)]);
   mesh(
-    faceRibbon(face, mouthPoints, [0.005, 0.019, 0.023, 0.019, 0.005], 0.005),
+    faceRibbon(
+      face,
+      mouthPoints,
+      calm ? [0.004, 0.018, 0.02, 0.018, 0.004] : [0.005, 0.019, 0.023, 0.019, 0.005],
+      0.005,
+    ),
     MENU_CASHIER_PALETTE.smile,
     [0, 0, 0],
     head,
@@ -762,7 +790,7 @@ function buildCashierHead(person: THREE.Group, factory: Factory) {
     [0, 0, 0],
     head,
   );
-  mesh(sweptFringe(face), style.hair, [0, 0, 0], head);
+  mesh(sweptFringe(face, calm), style.hair, [0, 0, 0], head);
   for (const side of [-1, 1])
     oval([0.22, 0.76, 0.28], style.hair, [side * w * 0.99, -0.08, 0.2], head);
   round([0.4, 0.16, 0.11], MENU_CASHIER_PALETTE.gold, [w * 0.77, h * 0.55, 0.77], head).rotation.z =
@@ -930,12 +958,12 @@ function consolidateUpperBody(person: THREE.Group): void {
  * materials are unique to the returned group and owned by its cashier bundle.
  * Head/body animation is outside P1; sleeves, cuffs and hands are built separately.
  */
-export function buildCashierUpperBody(): THREE.Group {
+export function buildCashierUpperBody(calm = false): THREE.Group {
   const person = new THREE.Group();
   person.name = 'Статичный верх кассирши меню';
-  const factory = characterFactory(person);
+  const factory = characterFactory(person, calm);
   buildCashierClothes(person, factory);
-  buildCashierHead(person, factory);
+  buildCashierHead(person, factory, calm);
   consolidateUpperBody(person);
   return person;
 }
