@@ -477,16 +477,22 @@ export function buildMenuSemaphore(
   body.add(new THREE.CylinderGeometry(0.017 * f, 0.02 * f, 1.386 * f, 20), 'iron', at(0, 0.723, 0));
   body.add(new THREE.SphereGeometry(0.043 * f, 20, 12), 'red', at(0, 1.444, 0));
   body.add(menuBox(0.05 * f, 0.16 * f, 0.075 * f, 0.01 * f), 'iron', at(0, 1.1, 0.026));
+  // A short neck joins the spectacle casting to the fixed shaft, below the finial.
   body.add(
-    new THREE.CylinderGeometry(0.063 * f, 0.063 * f, 0.04 * f, 24),
+    new THREE.BoxGeometry(0.029 * f, 0.105 * f, 0.029 * f),
     'iron',
-    at(0, 1.08, 0.07),
+    at(-0.012, 1.215, 0.065),
+  );
+  body.add(
+    new THREE.CylinderGeometry(0.046 * f, 0.046 * f, 0.033 * f, 24),
+    'iron',
+    at(-0.012, 1.165, 0.074),
     [Math.PI / 2, 0, 0],
   );
   body.add(
-    new THREE.CylinderGeometry(0.028 * f, 0.028 * f, 0.014 * f, 24),
+    new THREE.CylinderGeometry(0.026 * f, 0.026 * f, 0.009 * f, 24),
     'glassWarm',
-    at(0, 1.08, 0.096),
+    at(-0.012, 1.165, 0.094),
     [Math.PI / 2, 0, 0],
   );
   body.add(
@@ -499,17 +505,42 @@ export function buildMenuSemaphore(
   const pivotPosition = at(0, 1.26, 0.047);
   const armPivot = menuAnchor(root, 'semaphore-arm-pivot', pivotPosition);
   const arm = kit.batch(armPivot, 'semaphore-arm');
-  arm.add(menuBox(armLength, 0.07 * f, 0.022 * f, 0.009 * Math.min(f, armLength / 0.55)), 'red', [
-    (0.245 / 0.55) * armLength,
+  const bladeHeight = 0.07 * f;
+  const bladeDepth = 0.022 * f;
+  const bladeMinX = (0.245 / 0.55 - 0.5) * armLength;
+  const bladeMaxX = bladeMinX + armLength;
+  // Two adjacent original-width accents form one through-thickness white band.
+  // Solid sections share exact end planes; both faces and the thin edges carry the stripe.
+  const stripeWidth = ((2 * 0.074) / 0.55) * armLength;
+  const stripeMinX = 0.61 * armLength - stripeWidth / 2;
+  const stripeMaxX = stripeMinX + stripeWidth;
+  const radius = 0.009 * Math.min(f, armLength / 0.55);
+  for (const [from, to, left, right] of [
+    [bladeMinX, stripeMinX, true, false],
+    [stripeMaxX, bladeMaxX, false, true],
+  ] as const)
+    arm.add(semaphoreBladeSection(to - from, bladeHeight, bladeDepth, radius, left, right), 'red', [
+      (from + to) / 2,
+      0,
+      0,
+    ]);
+  arm.add(new THREE.BoxGeometry(stripeWidth, bladeHeight, bladeDepth), 'paper', [
+    (stripeMinX + stripeMaxX) / 2,
     0,
     0,
   ]);
-  for (const z of [-0.012, 0.012])
-    arm.add(new THREE.BoxGeometry((0.074 / 0.55) * armLength, 0.072 * f, 0.003 * f), 'paper', [
-      (0.424 / 0.55) * armLength,
-      0,
-      z * f,
-    ]);
+  arm.add(
+    new THREE.CylinderGeometry(0.038 * f, 0.038 * f, 0.031 * f, 24),
+    'iron',
+    [0, 0, 0.013 * f],
+    [Math.PI / 2, 0, 0],
+  );
+  arm.add(
+    new THREE.CylinderGeometry(0.018 * f, 0.018 * f, 0.008 * f, 20),
+    'red',
+    [0, 0, 0.032 * f],
+    [Math.PI / 2, 0, 0],
+  );
   arm.flush();
   root.userData.contact = menuFloorContact(root);
   root.userData.armBind = {
@@ -520,6 +551,43 @@ export function buildMenuSemaphore(
   };
   root.userData.semaphoreSize = { height, armLength };
   return { root, armPivot };
+}
+
+/** Closed blade section; only the two outer ends round over, never the painted joints. */
+function semaphoreBladeSection(
+  width: number,
+  height: number,
+  depth: number,
+  radius: number,
+  roundLeft: boolean,
+  roundRight: boolean,
+) {
+  const r = Math.min(radius, width / 3, height / 3);
+  // At extreme legal aspect ratios, a straight end avoids collapsed Float32 arc samples.
+  if (r < Math.max(width, height) * 1e-6) return new THREE.BoxGeometry(width, height, depth);
+  const x = width / 2;
+  const y = height / 2;
+  const left = roundLeft ? r : 0;
+  const right = roundRight ? r : 0;
+  const shape = new THREE.Shape();
+  shape.moveTo(-x + left, -y);
+  shape.lineTo(x - right, -y);
+  if (right) shape.quadraticCurveTo(x, -y, x, -y + right);
+  shape.lineTo(x, y - right);
+  if (right) shape.quadraticCurveTo(x, y, x - right, y);
+  shape.lineTo(-x + left, y);
+  if (left) shape.quadraticCurveTo(-x, y, -x, y - left);
+  shape.lineTo(-x, -y + left);
+  if (left) shape.quadraticCurveTo(-x, -y, -x + left, -y);
+  shape.closePath();
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth,
+    steps: 1,
+    curveSegments: 4,
+    bevelEnabled: false,
+  });
+  geometry.translate(0, 0, -depth / 2);
+  return geometry;
 }
 
 function menuTube(points: readonly MenuPoint[], radius: number, segments: number, closed = false) {
