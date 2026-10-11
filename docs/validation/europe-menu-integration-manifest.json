@@ -1,13 +1,15 @@
 {
-  "createdUTC": "2026-10-11T04:55:24.219324+00:00",
+  "createdUTC": "2026-10-11T05:05:16.733571+00:00",
   "branch": "integration/europe-menu-technical",
-  "runtimeCommit": "43c38e84bd195261eaf8170f9b69345639dcc221",
+  "runtimeCommit": "a54302e16ac78b676a665d716886df3eb403452a",
   "baseCommit": "c295bb4c3e7b0671c073ac6f0a49b2649a37c319",
-  "acceptedMenuCommit": "a87c96107baebbc8de180c0add107b08356b4d61",
-  "mergeCommit": "0bef8a6a82770b8de55eb1630648064543652339",
+  "acceptedMenuCommit": "78c945e0aa23a7f6c6f089e3c00222a5036e7bad",
+  "mergeCommit": "a54302e16ac78b676a665d716886df3eb403452a",
+  "ownHostRuntimeCommit": "43c38e84bd195261eaf8170f9b69345639dcc221",
+  "retainedCheckpoint": "checkpoints/menu-a87-integrated",
   "mainObserved": "d64517d7e0d37a87b0e34c5ed635893ecf8c041c",
-  "acceptedHistoryCommits": 150,
-  "acceptedBundleSHA256": "f1d8515cea32c506a50ef080696643082ccafaf7ae67402813f76a08ea698db1",
+  "acceptedHistoryCommits": 154,
+  "acceptedBundleSHA256": "2cce12862401a1da86915671a6186b918306b6f75570482eb9247d57150015d4",
   "protectedExact": true,
   "acceptedMenuPublicExact": true,
   "artInventoryVerifiedEntries": 40,
@@ -729,13 +731,13 @@
     },
     {
       "path": "src/scene/menu/menu-composition.ts",
-      "bytes": 19093,
-      "sha256": "b56c5b41f0231bbb6aac2c60fac74f5eb6f6630a20c505e7fe98e841635f5dd9"
+      "bytes": 19331,
+      "sha256": "c209088f9bd9d9132772b219cb16fcbf6b5ad4065bc3167acf0daca684b3bf07"
     },
     {
       "path": "src/scene/menu/menu-model-utils.ts",
-      "bytes": 13406,
-      "sha256": "9b1d808337689929c7ff27356516e717dfb0cd58000b984631f105c01b764bce"
+      "bytes": 13788,
+      "sha256": "6b0b4864707492c538a4a12dde5e75dc59ceb6bce0090b03e02c32522ebff8ff"
     },
     {
       "path": "src/scene/menu/menu-models.ts",
@@ -749,8 +751,8 @@
     },
     {
       "path": "src/scene/menu/menu-train.ts",
-      "bytes": 25972,
-      "sha256": "dba2bd417737dd4102e43ca57f8f4da6aaad1786cc6295833a7eb153cdbb1e61"
+      "bytes": 26453,
+      "sha256": "938f765811113c6731e97906962dc89772227c91b77cdaf9fb54c3cb20282285"
     },
     {
       "path": "src/scene/player-reserve.ts",
@@ -965,14 +967,14 @@
   ],
   "build": [
     {
+      "path": "assets/index-8KMQ14RL.js",
+      "bytes": 2119330,
+      "sha256": "cc250e62dddafc3deb16fb504c5cce7b8ab434107da6aaf3edbc7f146aa56260"
+    },
+    {
       "path": "assets/index-CLsx87e3.css",
       "bytes": 56282,
       "sha256": "5d82a8834b124ac304ef8c3081e966f3381bf403050f2575703c829c859232d3"
-    },
-    {
-      "path": "assets/index-DI-zwihh.js",
-      "bytes": 2118851,
-      "sha256": "513f1d00f291b3baceab143a61b3c5410078743fcca0c61eb41b2d8653c04982"
     },
     {
       "path": "fonts/IBMPlexMono-Regular.woff2",
@@ -997,7 +999,7 @@
     {
       "path": "index.html",
       "bytes": 610,
-      "sha256": "2ea805536ac4f2cbbd0661a4cfc009149cc4e9cc593f613774bb4640e1438e3c"
+      "sha256": "494bf0fb3f3ceecf13be48248e9ac73130e4e8b521bed2608af5c2e1af42d2df"
     },
     {
       "path": "menu/art/board-paint.png",
@@ -1317,6 +1319,16 @@
   ],
   "evidence": [
     {
+      "path": "europe-menu-upgrade-browser-proof.json",
+      "bytes": 6769,
+      "sha256": "fc504f59f81bcc137f352d070844581b74e45689a8e0be8687216440f82d5766"
+    },
+    {
+      "path": "europe-menu-teardown-proof.json",
+      "bytes": 1945,
+      "sha256": "cbcd84688450207fec83d1884a18ff23ddaed585ee70c2036dcf3cc5cea428e2"
+    },
+    {
       "path": "europe-menu-browser-proof.json",
       "bytes": 8195,
       "sha256": "ea48dd43b731918ae73ff33168fcbd6e8720983246e7a37a56a8552c69e989dc"
@@ -1333,25 +1345,38 @@
     },
     {
       "path": "europe-menu-desktop.png",
-      "bytes": 1439433,
-      "sha256": "ceeba79904f70ee44cc605d42316f26fe065b4ae62d5a739cb4ec4ef0c86af2a"
+      "bytes": 1474691,
+      "sha256": "950a1c83745bbb3ad9260c0c503b7fc7c9d66db6acbbdef16189568e18137ef1"
     },
     {
       "path": "europe-menu-dpr2.png",
-      "bytes": 3130466,
-      "sha256": "e02a74e55437e00941af09315abbf66c1893b8ebf6161455a5a687c11bc3db6f"
+      "bytes": 3166794,
+      "sha256": "ec70a9922dbeeea30ecd4123adbd62a4424ade4715ac41ec4e2d27a2d9ccf825"
     },
     {
       "path": "europe-menu-two-retry.png",
-      "bytes": 1395703,
-      "sha256": "1c1c4f6f1645bb60ee819aa73495300597acbf44f74d548f6509671242dd9267"
+      "bytes": 1423382,
+      "sha256": "41f37d039ef4f384fc1691fefaa9a447f81a98fda0247c1b6212cf71de4707d1"
     },
     {
       "path": "europe-menu-integration-review.md",
-      "bytes": 15849,
-      "sha256": "bd30ac67b8ac7b8358122c4b541a6eef1a2535f7a47409d133671ac0b0bc187e"
+      "bytes": 21110,
+      "sha256": "f0a2aba3e0ccee19c83b19e631f34513eca78b0ff59f0dd16eac55ca4c6dba76"
     }
   ],
+  "independentReview": {
+    "reviewSHA256": "f0a2aba3e0ccee19c83b19e631f34513eca78b0ff59f0dd16eac55ca4c6dba76",
+    "sourceProbe": {
+      "path": "../work/menu-integration-review/menu-source-78c945e-probe.mts",
+      "bytes": 28255,
+      "sha256": "4630bfc97c5b4a54bb53c24b3d6fccc6e37e533f6715748fdba0daa1dce448da"
+    },
+    "sourceEvidence": {
+      "path": "../work/menu-integration-review/menu-source-78c945e.json",
+      "bytes": 12681,
+      "sha256": "d7c0f0a1c18b5bed717b77ae8ee81678b437586353ef5cdf83496818547ec3a9"
+    }
+  },
   "buildEnvironment": {
     "VITE_NETWORK_URL": "ws://127.0.0.1:8898"
   },
@@ -1365,6 +1390,8 @@
   "gates": {
     "technical": "browser+source checked",
     "artistic": "OPEN",
+    "productionPose": "OPEN",
+    "adaptive": "DEFERRED",
     "animator": "STOPPED",
     "mainRelease": false,
     "SitesRelease": false
@@ -1380,11 +1407,17 @@
   "checks": {
     "format": "passed",
     "check": "passed",
-    "serverCheck": "passed",
+    "serverCheck": {
+      "sourceCommit": "43c38e84bd195261eaf8170f9b69345639dcc221",
+      "passed": true,
+      "unchangedAtUpgrade": true
+    },
     "build": "passed",
     "tests": {
+      "sourceCommit": "43c38e84bd195261eaf8170f9b69345639dcc221",
       "files": 29,
-      "passed": 316
+      "passed": 316,
+      "upgradeScope": "Only three accepted menu modules changed; targeted CPU/render/native/2-client smoke. No finite/voice/PointerLock repeats."
     }
   }
 }
