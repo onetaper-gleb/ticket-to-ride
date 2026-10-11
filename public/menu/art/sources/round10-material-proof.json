@@ -1,0 +1,954 @@
+{
+  "version": 1,
+  "ownParent": "9b201fe150b2b1eea7f288c9abcf0dc74f60ed3a",
+  "commonBaseline": "a87c96107baebbc8de180c0add107b08356b4d61",
+  "commonStatus": "Root SOURCE+PACKAGE accepted; artistic OPEN; animator STOPPED",
+  "changedRuntimeMaps": [
+    "wood-tile.webp",
+    "plaster-tile.webp",
+    "stone-tile.webp",
+    "paper-tile.webp"
+  ],
+  "sourceInputs": "Four own accepted image_gen masters; four first edits plus targeted wood/stone followups; six original generated results saved in output package. AI generation is not seed-reproducible; exact PNG512 to WebP encoding is reproducible with Sharp0.35.5.",
+  "generator": "sources/refine-surfaces-round10.cjs",
+  "prompts": "sources/refine-surfaces-round10-prompts.json",
+  "encoding": "resize512x512 fill/default Lanczos3, removeAlpha, PNG master; WebP quality86 effort6. No pixel grading.",
+  "assetChecks": {
+    "commonCommit": "a87c96107baebbc8de180c0add107b08356b4d61",
+    "onlyUuidNamesNormalized": true,
+    "actualProbeEqual": true,
+    "materialLinearOptionsUVLightCameraGeometryStructureNativeProjectedEqual": true,
+    "staticCounters": {
+      "calls": 459,
+      "geometries": 129,
+      "textures": 25,
+      "triangles": 688703
+    },
+    "textureChecks": [
+      {
+        "file": "wood-tile.webp",
+        "states": {
+          "control": {
+            "bytes": 23538,
+            "sha256": "c482d522f21e744b2a5915a56d0db82a6fb523a3fb8a4cfff33519669cf894dd",
+            "mode": "RGB",
+            "dimensions": [
+              512,
+              512
+            ],
+            "minAlpha": 255,
+            "meanRGB": [
+              107.61151885986328,
+              81.32903289794922,
+              59.078880310058594
+            ],
+            "lumaStd": 5.624623844944462,
+            "rowMeanLumaStd": 1.869161463473642,
+            "adjacentLumaMeanAbs": 2.7227382372951316,
+            "edgeMeanAbsRGB": {
+              "leftRight": 5.305338541666667,
+              "topBottom": 5.964192708333333
+            }
+          },
+          "candidate": {
+            "bytes": 31132,
+            "sha256": "50c2c5994714702c2cb3eb278ac942402709a508f2fd579363d89a9f3b29518a",
+            "mode": "RGB",
+            "dimensions": [
+              512,
+              512
+            ],
+            "minAlpha": 255,
+            "meanRGB": [
+              105.74779891967773,
+              77.13993072509766,
+              52.29566192626953
+            ],
+            "lumaStd": 5.399718098444161,
+            "rowMeanLumaStd": 1.1995131388517541,
+            "adjacentLumaMeanAbs": 3.5430566536203516,
+            "edgeMeanAbsRGB": {
+              "leftRight": 6.428385416666667,
+              "topBottom": 5.681640625
+            }
+          }
+        }
+      },
+      {
+        "file": "plaster-tile.webp",
+        "states": {
+          "control": {
+            "bytes": 41314,
+            "sha256": "bdd7a22209d5f4b78da3a8b7d6e2e6155585835aaa114313f7bd9a63a00b3773",
+            "mode": "RGB",
+            "dimensions": [
+              512,
+              512
+            ],
+            "minAlpha": 255,
+            "meanRGB": [
+              203.66270065307617,
+              192.91685104370117,
+              175.67656326293945
+            ],
+            "lumaStd": 5.735360586305684,
+            "rowMeanLumaStd": 0.53915486997648,
+            "adjacentLumaMeanAbs": 4.868298082421113,
+            "edgeMeanAbsRGB": {
+              "leftRight": 6.024739583333333,
+              "topBottom": 6.490885416666667
+            }
+          },
+          "candidate": {
+            "bytes": 63838,
+            "sha256": "9b40b7f3466c867b3fdb8c5d3e35af19982ee4f66e34df682a4c4be315a5477d",
+            "mode": "RGB",
+            "dimensions": [
+              512,
+              512
+            ],
+            "minAlpha": 255,
+            "meanRGB": [
+              205.56728744506836,
+              192.74445343017578,
+              174.48116302490234
+            ],
+            "lumaStd": 8.558169138597918,
+            "rowMeanLumaStd": 0.7635443432726083,
+            "adjacentLumaMeanAbs": 7.3419365643346355,
+            "edgeMeanAbsRGB": {
+              "leftRight": 9.231119791666666,
+              "topBottom": 9.64453125
+            }
+          }
+        }
+      },
+      {
+        "file": "stone-tile.webp",
+        "states": {
+          "control": {
+            "bytes": 49706,
+            "sha256": "8df07877e285a79636299d028297b420a365f7ebc7eba7433abe2f0b922ecd18",
+            "mode": "RGB",
+            "dimensions": [
+              512,
+              512
+            ],
+            "minAlpha": 255,
+            "meanRGB": [
+              170.14086151123047,
+              162.0846061706543,
+              150.16775131225586
+            ],
+            "lumaStd": 7.2244282996109,
+            "rowMeanLumaStd": 0.7720541093319819,
+            "adjacentLumaMeanAbs": 5.392779848795254,
+            "edgeMeanAbsRGB": {
+              "leftRight": 6.63671875,
+              "topBottom": 7.343098958333333
+            }
+          },
+          "candidate": {
+            "bytes": 83596,
+            "sha256": "0a3fcd361e9d6a6d870f4a2a9f69a9371bca00866d4b2bf9b4ee88e50f49cd9d",
+            "mode": "RGB",
+            "dimensions": [
+              512,
+              512
+            ],
+            "minAlpha": 255,
+            "meanRGB": [
+              172.75587844848633,
+              161.2921371459961,
+              148.513427734375
+            ],
+            "lumaStd": 14.312494788753108,
+            "rowMeanLumaStd": 1.2210933755701905,
+            "adjacentLumaMeanAbs": 10.614274209194594,
+            "edgeMeanAbsRGB": {
+              "leftRight": 13.444661458333334,
+              "topBottom": 12.285807291666666
+            }
+          }
+        }
+      },
+      {
+        "file": "paper-tile.webp",
+        "states": {
+          "control": {
+            "bytes": 16428,
+            "sha256": "98ee88058cdddd4b6552a6b4e769583317c63cc140aeaf6320a0fe8f96bedc4e",
+            "mode": "RGB",
+            "dimensions": [
+              512,
+              512
+            ],
+            "minAlpha": 255,
+            "meanRGB": [
+              229.82361602783203,
+              216.08068084716797,
+              188.7619514465332
+            ],
+            "lumaStd": 2.975873747442662,
+            "rowMeanLumaStd": 0.36123144419561715,
+            "adjacentLumaMeanAbs": 1.734536750473949,
+            "edgeMeanAbsRGB": {
+              "leftRight": 3.4765625,
+              "topBottom": 3.6022135416666665
+            }
+          },
+          "candidate": {
+            "bytes": 23122,
+            "sha256": "cad3ca5f2459a9596d9ccdb0e65d9410c3304d9225873a09de8908fe2035a019",
+            "mode": "RGB",
+            "dimensions": [
+              512,
+              512
+            ],
+            "minAlpha": 255,
+            "meanRGB": [
+              232.36709213256836,
+              216.71853256225586,
+              185.49374771118164
+            ],
+            "lumaStd": 3.8434199740845214,
+            "rowMeanLumaStd": 0.4525406718518969,
+            "adjacentLumaMeanAbs": 2.433731576030455,
+            "edgeMeanAbsRGB": {
+              "leftRight": 4.197265625,
+              "topBottom": 4.354166666666667
+            }
+          }
+        }
+      }
+    ],
+    "actualFrameDeltas": [
+      {
+        "region": "wall",
+        "rect": [
+          580,
+          0,
+          610,
+          941
+        ],
+        "dimensions": [
+          610,
+          941
+        ],
+        "changedPixels": 349313,
+        "meanAbsRGBDelta": 1.5303130607480706,
+        "maximumChannelDelta": 32
+      },
+      {
+        "region": "roof",
+        "rect": [
+          470,
+          0,
+          1202,
+          370
+        ],
+        "dimensions": [
+          1202,
+          370
+        ],
+        "changedPixels": 259517,
+        "meanAbsRGBDelta": 1.6155761418656593,
+        "maximumChannelDelta": 32
+      },
+      {
+        "region": "interior",
+        "rect": [
+          610,
+          190,
+          400,
+          405
+        ],
+        "dimensions": [
+          400,
+          405
+        ],
+        "changedPixels": 97415,
+        "meanAbsRGBDelta": 1.8862098765432098,
+        "maximumChannelDelta": 32
+      },
+      {
+        "region": "foreground",
+        "rect": [
+          0,
+          650,
+          1672,
+          291
+        ],
+        "dimensions": [
+          1672,
+          291
+        ],
+        "changedPixels": 290539,
+        "meanAbsRGBDelta": 0.9843956384243959,
+        "maximumChannelDelta": 25
+      },
+      {
+        "region": "settings",
+        "rect": [
+          120,
+          620,
+          400,
+          140
+        ],
+        "dimensions": [
+          400,
+          140
+        ],
+        "changedPixels": 51067,
+        "meanAbsRGBDelta": 1.5776904761904762,
+        "maximumChannelDelta": 29
+      },
+      {
+        "region": "paper",
+        "rect": [
+          630,
+          480,
+          330,
+          125
+        ],
+        "dimensions": [
+          330,
+          125
+        ],
+        "changedPixels": 13381,
+        "meanAbsRGBDelta": 0.6578020202020202,
+        "maximumChannelDelta": 15
+      },
+      {
+        "region": "floor",
+        "rect": [
+          420,
+          825,
+          835,
+          116
+        ],
+        "dimensions": [
+          835,
+          116
+        ],
+        "changedPixels": 93106,
+        "meanAbsRGBDelta": 1.611497694266639,
+        "maximumChannelDelta": 12
+      }
+    ],
+    "captureFormat": "JPEG/JFIF browser captures saved as .jpg without re-encoding",
+    "compressionLimit": "Browser full frames and clips are JPEG/JFIF, independently compressed. Actual frame deltas include compression; individual clips need not equal a decoded full-frame crop. No lossless pixel attribution is claimed. Original reference/accepted baseline and generated/master inputs remain PNG.",
+    "limits": "Read-only PIL/numpy decode and statistics, no pixel editing. Edge adjacency/row statistics are diagnostics, not a mathematical seamlessness or artistic acceptance proof. Static scene counts are not FPS/VRAM. Exact scene geometry source is separately hash-checked."
+  },
+  "acceptedInputProof": {
+    "commonCommit": "a87c96107baebbc8de180c0add107b08356b4d61",
+    "ownParent": "9b201fe150b2b1eea7f288c9abcf0dc74f60ed3a",
+    "sourceStatus": "Root SOURCE+PACKAGE accepted; artistic OPEN; animator STOPPED",
+    "snapshotBytes": 105770185,
+    "snapshotSHA256": "8235d5c4b8c570d80312ff16a05e22b1afab8101cbfa145fb3906c43323167ea",
+    "acceptedFrameSHA256": "ee3c495756097b61cefc18357083c63c27cc53349489882a073d7a4dc859d6da",
+    "referenceSHA256": "c74c6688b8dfb7e36f258d334b543175f90e74ecb2274dfc1f0cf7c04ad70d4a",
+    "source5EqualGit": true,
+    "source5": {
+      "AGENTS.md": "AGENTS.md",
+      "menu-composition-art.ts": "src/scene/menu/menu-composition-art.ts",
+      "menu-composition-presets.ts": "src/scene/menu/menu-composition-presets.ts",
+      "menu-composition.ts": "src/scene/menu/menu-composition.ts",
+      "menu-composition.md": "docs/menu-composition.md"
+    },
+    "harnessInputs": [
+      {
+        "file": "index.html",
+        "sha256": "1a6ee9446807fc9c1f8f64b718df7a0cd27852148663c24f07d36b627083ad52"
+      },
+      {
+        "file": "preview.ts",
+        "sha256": "47e085b0a683fbc76660c316ec6137cd8ffc9d7a625b99c8656794359bd97b58"
+      },
+      {
+        "file": "public/licenses/three.txt",
+        "sha256": "bfe119ea4fd413f5f7ca3fcd63adb0c4a073ed39daa2fe7d3e6b769e21272601"
+      },
+      {
+        "file": "tsconfig.json",
+        "sha256": "27d6a9bd888e228359352b539e14008288323cf5ba6d14198fc62e62373f5363"
+      },
+      {
+        "file": "vite.config.mjs",
+        "sha256": "616700156da2d9c222b9f2e1ac68028aeb8982c87655d38359b2cfe503def89b"
+      }
+    ],
+    "sceneInputs": [
+      {
+        "file": "src/scene/menu/menu-character-geometry.ts",
+        "sha256": "8ec40d503e869097c7445976c77639b5e1c134ff3d5c744bb0e1c3404d5f9a18"
+      },
+      {
+        "file": "src/scene/menu/menu-character-hands.ts",
+        "sha256": "ab52b59cb9a9498378cd14a6ac2e4e08ec1956908dacd26d6fe53252067756a1"
+      },
+      {
+        "file": "src/scene/menu/menu-character-materials.ts",
+        "sha256": "2fd96015b7136c28d4fa4060118d9b105aae9142cbcb2b7602ce997cc4e0223c"
+      },
+      {
+        "file": "src/scene/menu/menu-character.ts",
+        "sha256": "c70b95887b020adc35a7ec493c07b7dcfce5d29a8ef57cad48f5cc5b230e2426"
+      },
+      {
+        "file": "src/scene/menu/menu-composition-art.ts",
+        "sha256": "ada3e9a203732edfe8b927d872b1e4b37ed3aaa26427275521356621e4f6b426"
+      },
+      {
+        "file": "src/scene/menu/menu-composition-presets.ts",
+        "sha256": "63a11178d1b7a168e240890c3221f9b8a944756e5f045c38f450a21cb278d3da"
+      },
+      {
+        "file": "src/scene/menu/menu-composition.ts",
+        "sha256": "b56c5b41f0231bbb6aac2c60fac74f5eb6f6630a20c505e7fe98e841635f5dd9"
+      },
+      {
+        "file": "src/scene/menu/menu-model-utils.ts",
+        "sha256": "9b1d808337689929c7ff27356516e717dfb0cd58000b984631f105c01b764bce"
+      },
+      {
+        "file": "src/scene/menu/menu-models.ts",
+        "sha256": "bd3e42676116e544ce094b11eaec941f0fa72246a4c5b78c32941dd5fa1d97c4"
+      },
+      {
+        "file": "src/scene/menu/menu-props.ts",
+        "sha256": "725b12ba3a323de56f97612fae64aa4c9c57b16629d19efa1fe38a01a6daba32"
+      },
+      {
+        "file": "src/scene/menu/menu-train.ts",
+        "sha256": "dba2bd417737dd4102e43ca57f8f4da6aaad1786cc6295833a7eb153cdbb1e61"
+      },
+      {
+        "file": "src/ui/rules-pages.ts",
+        "sha256": "aa69ca582546a8d2eae668681d30812cba12c571be5d5821141e21fe864b3e10"
+      }
+    ],
+    "ownHarnessDelta": "Import prefix, fixed synchronous SSAO kernel/noise seed10087 restored immediately after constructor, DOM-only read-only material/geometry/UV/settings diagnostics; same code in control/candidate. Native HTML/CSS/callbacks and exact a87 camera/light/geometry/material/UV/postprocess settings unchanged."
+  },
+  "affectedActualMaterials": [
+    {
+      "colorLinear": [
+        0.5775804404214573,
+        0.5775804404214573,
+        0.5583403896257968
+      ],
+      "emissiveIntensity": 1,
+      "emissiveLinear": [
+        0,
+        0,
+        0
+      ],
+      "kind": "cream",
+      "map": {
+        "center": [
+          0,
+          0
+        ],
+        "colorSpace": "srgb",
+        "dimensions": [
+          512,
+          512
+        ],
+        "flipY": true,
+        "offset": [
+          0,
+          0
+        ],
+        "repeat": [
+          1,
+          1
+        ],
+        "rotation": 0,
+        "wrap": [
+          1000,
+          1000
+        ]
+      },
+      "metalness": 0,
+      "name": "menu-surface/cream",
+      "roughness": 0.95,
+      "type": "MeshStandardMaterial"
+    },
+    {
+      "colorLinear": [
+        0.82,
+        1,
+        1.17
+      ],
+      "emissiveIntensity": 0.09,
+      "emissiveLinear": [
+        0.1844749944900301,
+        0.08865558627723595,
+        0.040915196900556984
+      ],
+      "kind": "wood",
+      "map": {
+        "center": [
+          0,
+          0
+        ],
+        "colorSpace": "srgb",
+        "dimensions": [
+          512,
+          512
+        ],
+        "flipY": true,
+        "offset": [
+          0,
+          0
+        ],
+        "repeat": [
+          1,
+          1
+        ],
+        "rotation": 0,
+        "wrap": [
+          1000,
+          1000
+        ]
+      },
+      "metalness": 0,
+      "name": "menu-surface/wood",
+      "roughness": 0.95,
+      "type": "MeshStandardMaterial"
+    },
+    {
+      "colorLinear": [
+        0.1878207722902346,
+        0.13286832154414627,
+        0.08228270712149792
+      ],
+      "emissiveIntensity": 0.035,
+      "emissiveLinear": [
+        0.13843161502267545,
+        0.054480276435339814,
+        0.02217388478862708
+      ],
+      "kind": "woodDark",
+      "map": {
+        "center": [
+          0,
+          0
+        ],
+        "colorSpace": "srgb",
+        "dimensions": [
+          512,
+          512
+        ],
+        "flipY": true,
+        "offset": [
+          0,
+          0
+        ],
+        "repeat": [
+          1,
+          1
+        ],
+        "rotation": 0,
+        "wrap": [
+          1000,
+          1000
+        ]
+      },
+      "metalness": 0,
+      "name": "menu-surface/woodDark",
+      "roughness": 0.92,
+      "type": "MeshStandardMaterial"
+    },
+    {
+      "colorLinear": [
+        0.85,
+        0.74,
+        0.6
+      ],
+      "emissiveIntensity": 1,
+      "emissiveLinear": [
+        0,
+        0,
+        0
+      ],
+      "kind": "stone",
+      "map": {
+        "center": [
+          0,
+          0
+        ],
+        "colorSpace": "srgb",
+        "dimensions": [
+          512,
+          512
+        ],
+        "flipY": true,
+        "offset": [
+          0,
+          0
+        ],
+        "repeat": [
+          8,
+          8
+        ],
+        "rotation": 0,
+        "wrap": [
+          1000,
+          1000
+        ]
+      },
+      "metalness": 0,
+      "name": "menu-surface/stone",
+      "roughness": 0.92,
+      "type": "MeshStandardMaterial"
+    },
+    {
+      "colorLinear": [
+        0.6866853124288864,
+        0.6444796819634361,
+        0.5028864580233624
+      ],
+      "emissiveIntensity": 1,
+      "emissiveLinear": [
+        0,
+        0,
+        0
+      ],
+      "kind": "paper",
+      "map": {
+        "center": [
+          0,
+          0
+        ],
+        "colorSpace": "srgb",
+        "dimensions": [
+          512,
+          512
+        ],
+        "flipY": true,
+        "offset": [
+          0,
+          0
+        ],
+        "repeat": [
+          1,
+          1
+        ],
+        "rotation": 0,
+        "wrap": [
+          1000,
+          1000
+        ]
+      },
+      "metalness": 0,
+      "name": "menu-surface/paper",
+      "roughness": 0.95,
+      "type": "MeshStandardMaterial"
+    },
+    {
+      "colorLinear": [
+        1.12,
+        1.15,
+        1.12
+      ],
+      "emissiveIntensity": 0.09,
+      "emissiveLinear": [
+        0.1844749944900301,
+        0.08865558627723595,
+        0.040915196900556984
+      ],
+      "kind": "canopyWood",
+      "map": {
+        "center": [
+          0,
+          0
+        ],
+        "colorSpace": "srgb",
+        "dimensions": [
+          512,
+          512
+        ],
+        "flipY": true,
+        "offset": [
+          0,
+          0
+        ],
+        "repeat": [
+          1,
+          1
+        ],
+        "rotation": 0,
+        "wrap": [
+          1000,
+          1000
+        ]
+      },
+      "metalness": 0,
+      "name": "menu-surface/canopyWood",
+      "roughness": 0.92,
+      "type": "MeshStandardMaterial"
+    },
+    {
+      "colorLinear": [
+        0.6938717612856897,
+        0.7529422167708612,
+        0.6795424696265424
+      ],
+      "emissiveIntensity": 1,
+      "emissiveLinear": [
+        0,
+        0,
+        0
+      ],
+      "kind": "settingsPaper",
+      "map": {
+        "center": [
+          0,
+          0
+        ],
+        "colorSpace": "srgb",
+        "dimensions": [
+          512,
+          512
+        ],
+        "flipY": true,
+        "offset": [
+          0,
+          0
+        ],
+        "repeat": [
+          1,
+          1
+        ],
+        "rotation": 0,
+        "wrap": [
+          1000,
+          1000
+        ]
+      },
+      "metalness": 0,
+      "name": "menu-surface/settingsPaper",
+      "roughness": 0.95,
+      "type": "MeshStandardMaterial"
+    }
+  ],
+  "actualFirstHitSamples": [
+    {
+      "bitmapPixel": [
+        94.70263218534842,
+        75.69318498392192
+      ],
+      "kind": "wood",
+      "object": "station-static/b80cfbd0-37ac-43b1-b18c-bae4e75ebc0e",
+      "parent": "station-root",
+      "pixel": [
+        650,
+        125
+      ],
+      "uv": [
+        -0.8150339215129914,
+        1.8521617480782775
+      ]
+    },
+    {
+      "bitmapPixel": [
+        383.5328128073386,
+        75.723400938736
+      ],
+      "kind": "woodDark",
+      "object": "cashier-interior/woodDark",
+      "parent": "cashier-interior",
+      "pixel": [
+        665,
+        265
+      ],
+      "uv": [
+        0.7490875250143331,
+        0.8521027325415312
+      ]
+    },
+    {
+      "bitmapPixel": [
+        486.7526663654952,
+        161.0968386044268
+      ],
+      "kind": "wood",
+      "object": "cashier-interior/wood",
+      "parent": "cashier-interior",
+      "pixel": [
+        900,
+        240
+      ],
+      "uv": [
+        0.9506888014951078,
+        1.685357737100729
+      ]
+    },
+    {
+      "bitmapPixel": [
+        154.34185672254537,
+        231.5411465564141
+      ],
+      "kind": "canopyWood",
+      "object": "canopy/canopyWood",
+      "parent": "station-canopy",
+      "pixel": [
+        1220,
+        110
+      ],
+      "uv": [
+        0.30144893891122143,
+        0.5477711981320037
+      ]
+    },
+    {
+      "bitmapPixel": [
+        159.99131471168914,
+        134.88960954301513
+      ],
+      "kind": "boardPaint",
+      "object": "boardInnerPlane",
+      "parent": "boardFrame",
+      "pixel": [
+        120,
+        130
+      ],
+      "uv": [
+        -0.6875169634537321,
+        0.7365437313612986
+      ]
+    },
+    {
+      "bitmapPixel": [
+        63.74870661076989,
+        262.05910558813696
+      ],
+      "kind": "cream",
+      "object": "station-static/74d3ed29-598e-4be8-9073-3393caac8197",
+      "parent": "station-root",
+      "pixel": [
+        50,
+        480
+      ],
+      "uv": [
+        -2.87549080740084,
+        0.48816580939816995
+      ]
+    },
+    {
+      "bitmapPixel": [
+        46.59001637630308,
+        325.1804513550305
+      ],
+      "kind": "stone",
+      "object": "foreground-floor/stone",
+      "parent": "station-floor",
+      "pixel": [
+        800,
+        875
+      ],
+      "uv": [
+        0.8863745157168709,
+        0.6706102413684008
+      ]
+    },
+    {
+      "bitmapPixel": [
+        258.70997930190833,
+        86.27929507150293
+      ],
+      "kind": "stone",
+      "object": "foreground-floor/stone",
+      "parent": "station-floor",
+      "pixel": [
+        1020,
+        865
+      ],
+      "uv": [
+        0.938161616040505,
+        0.8539357189766839
+      ]
+    },
+    {
+      "bitmapPixel": [
+        276.3861436662117,
+        282.2937049655338
+      ],
+      "kind": "green",
+      "object": "lower-facade/green",
+      "parent": "lower-facade",
+      "pixel": [
+        425,
+        840
+      ],
+      "uv": [
+        0.5398166868480697,
+        0.44864510748919184
+      ]
+    },
+    {
+      "bitmapPixel": [
+        324.3919566970915,
+        462.5728755084224
+      ],
+      "kind": "settingsPaper",
+      "object": "settingsInnerPlane",
+      "parent": "settingsFrame",
+      "pixel": [
+        220,
+        670
+      ],
+      "uv": [
+        -0.3664219595759931,
+        0.09653735252261245
+      ]
+    },
+    {
+      "bitmapPixel": [
+        243.8350603307465,
+        60.97260035493218
+      ],
+      "kind": "settingsPaper",
+      "object": "settingsInnerPlane",
+      "parent": "settingsFrame",
+      "pixel": [
+        465,
+        715
+      ],
+      "uv": [
+        0.47624035220848926,
+        -0.11908711006822686
+      ]
+    }
+  ],
+  "settingsEdgeProposal": "sources/settings-age-edge-round10-proposal.json; source only, no runtime cost or foreign integration",
+  "preserved": {
+    "other32InventoryRecordsByteEqual": true,
+    "canonicalEuropeSHA256": "39b05d8b8863db9f61a6a9c31646f0fa5f9a5429e567f7c4e2d93cbae6340aed",
+    "skySHA256": "6cf1bd3b9fd27d6368cc4bb85938db84efb60fbe7b67493a42f74b7e3cf5be7e",
+    "geometryLightCameraMaterialLinearOptionsUVNativeProjection": "Paired DOM probe equal after normalization of runtime UUID names only; frozen scene12 exact Git. Native HTML/CSS/callbacks exact accepted harness; JS control/candidate byte equal.",
+    "ticketPrintRotation": "Exact a87 loader: center(.5,.5), rotationPI/2 unchanged",
+    "stoneRepeat": [
+      8,
+      8
+    ],
+    "newFontsDependencies": false,
+    "HDRHexConversion": false
+  },
+  "cost": {
+    "runtimeFileBytesIncludingSVG": 429331,
+    "runtimeRasterBytesBothFallbacks": 413514,
+    "deltaBytes": 70702,
+    "uniqueRGBA8FullMipMiB": 14,
+    "includingFallbackSteamMiB": 22.286458333333332,
+    "staticCounters": {
+      "calls": 459,
+      "geometries": 129,
+      "textures": 25,
+      "triangles": 688703
+    },
+    "boundary": "Same decoded image dimensions and slots. Estimates exclude clones/DOM/CSS/render targets/shadows/PMREM; not measured VRAM or FPS. No decode/filter timing measured."
+  },
+  "limits": "Actual owner browser paired JPEG/JFIF captures; crop statistics include independent JPEG compression, not lossless attribution. Original reference/accepted baseline/generated/master files remain PNG. No production integration or broad game/adaptive/animation suites. Same diagnostic SSAO seed10087 is declared. Artist acceptance stays open; source proposal does not alter Settings geometry. Subtle grain and foreground/depth filtering do not solve model shapes or lighting differences."
+}

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="115" viewBox="0 0 512 115">
+  <title>Optional aged Settings paper edge</title>
+  <desc>Project-original source proposal only. Sparse transparent edge wear, no text, full frame, baked light or cast shadow. Align once to the existing Settings inner plane; never repeat on the shared paper tile.</desc>
+  <g fill="#A58251" opacity=".12">
+    <path d="M4 5L62 3 103 5 103 6 59 6 6 8Z"/>
+    <path d="M212 4L259 3 287 5 287 6 248 6 214 6Z"/>
+    <path d="M365 4L409 3 466 5 505 4 505 7 463 8 412 6 367 7Z"/>
+    <path d="M4 110L55 108 94 110 136 109 136 111 96 113 50 111 4 113Z"/>
+    <path d="M238 111L289 109 323 110 323 112 288 113 238 113Z"/>
+    <path d="M397 110L440 109 475 111 507 109 507 112 479 114 444 112 397 113Z"/>
+    <path d="M3 15L5 30 4 46 6 61 4 81 6 101 3 104 2 80 4 62 2 44 3 29Z"/>
+    <path d="M508 14L510 28 508 50 510 75 507 97 510 104 506 103 506 97 508 76 506 50 509 29Z"/>
+  </g>
+  <g fill="none" stroke="#987647" stroke-width=".7" stroke-linecap="round" opacity=".16">
+    <path d="m9 13 2-4m-3 32 1 7m497 29-1 9m-26 23 6-.8m-331 1 13 .4m111-104 7-.5m-244 103 4-.4"/>
+  </g>
+</svg>
