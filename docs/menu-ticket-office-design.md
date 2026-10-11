@@ -1,6 +1,6 @@
 # Меню «Билетная касса»: производственная спецификация
 
-Версия5.1 — targeted sky follow-up,11октября2026. Own accepted parent2f7f03e, current frozen comparison29cff5e (rootPACKAGEPASS/source reviewpending). Меняется только distant-sky.svg с ownmetadata/proof; другие acceptedround5 assets сохранены. Точный clean tip/paired1672/package находятся в handoff; это ещё не художественная приёмка/production.
+Версия5.1 — targeted sky follow-up,11октября2026. Own accepted parent2f7f03e, current frozen comparison29cff5e (rootSOURCE+PACKAGEaccepted/artisticgateOPEN). Меняется только distant-sky.svg с ownmetadata/proof; другие acceptedround5 assets сохранены. Точный clean tip/paired1672/package находятся в handoff; это ещё не художественная приёмка/production.
 
 Документ задаёт native DOM и его совмещение с физической рамой. Геометрия, камера, свет и физические грани принадлежат владельцам 3D сцены; production UI подключает интегратор. Обязательная политика AGENTS.md: только обычный Git/GitHub, собственный код и публичные open-source инструменты с проверенными лицензиями; никакой Аркадии или внутренней инфраструктуры Яндекса, включая косвенное использование. Анимации остаются закрыты.
 
@@ -185,7 +185,7 @@ Inventory39, XML13; 21 прежний asset побайтово сохранён.
 
 ## Уточнение неба5.1 на frozen29, 11 октября2026
 
-Принятый own parent`2f7f03e47c8b56aac8747c32ebbe018bca0420d8`/round5 ZIP сохранён неизменным. Только `distant-sky.svg` и own inventory/provenance/spec/source proof. Общий frozen`29cff5e3edc69d06f620fdc6240766449c53e164` — rootPACKAGEPASS, source review pending, не productionrelease. ImmutableZIP50054237B/SHA2562421c06293c770db6c7376164492b510a75910098fa3089b9985b06aa8700c67 и кадрSHA256ce409e88569f666109e002aa34f211e4262a6e6f3252ec10b0f30533e7fac0c1. Source5/scene12/harness5 exactGit/ZIP. Own harness добавляет только importprefix и DOM/read-only42sky raycast diagnostics. NativeHTML/CSS/callbacks и before/afterJS одинаковы; linear material arrays не восстанавливались из HDRhex.
+Принятый own parent`2f7f03e47c8b56aac8747c32ebbe018bca0420d8`/round5 ZIP сохранён неизменным. Только `distant-sky.svg` и own inventory/provenance/spec/source proof. Общий frozen`29cff5e3edc69d06f620fdc6240766449c53e164` — rootSOURCE+PACKAGEaccepted, artisticgateOPEN, не productionrelease. ImmutableZIP50054237B/SHA2562421c06293c770db6c7376164492b510a75910098fa3089b9985b06aa8700c67 и кадрSHA256ce409e88569f666109e002aa34f211e4262a6e6f3252ec10b0f30533e7fac0c1. Source5/scene12/harness5 exactGit/ZIP. Own harness добавляет только importprefix и DOM/read-only42sky raycast diagnostics. NativeHTML/CSS/callbacks и before/afterJS одинаковы; linear material arrays не восстанавливались из HDRhex.
 
 Новый actual29 замер:15first-hit sky из42grid samples;27occluded rays исключены. Видимая bitmapполоса x506–721/y90–129, skyrepeat1×.7/offset0×.4/flipY/linearcolor[0,0,0]/emissive[1,1,1]/intensity1 прежние. Прежние три1bab rays не использованы как доказательство. Большое правое облако перемещено в видимую область; translateY12sourcepixel выводит crest ниже retained canopyedge и оставляет синий просвет сверху/слева. Градиент стал синее, diffuse cloudbody имеет собственный мягкий цветовой переход. В карту не добавлены деревья, станция, объекты или fixed3Dshadows; nativeSVG1024×512opaque, project-original, imagegen не запускался.
 

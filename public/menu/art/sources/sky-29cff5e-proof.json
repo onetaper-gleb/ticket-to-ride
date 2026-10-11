@@ -1,7 +1,7 @@
 {
   "ownParent": "2f7f03e47c8b56aac8747c32ebbe018bca0420d8",
   "commonBaseline": "29cff5e3edc69d06f620fdc6240766449c53e164",
-  "baselineStatus": "Root PACKAGE PASS; source acceptance pending. Frozen comparison only, not production release.",
+  "baselineStatus": "Root SOURCE+PACKAGE accepted; independent common source/CPU review no newP1/P2. Frozen technical baseline, artistic gate OPEN, not production release.",
   "skyFile": "distant-sky.svg",
   "oldSHA256": "c9c4768c539e7f499086b1ce8ae252eb1ee581b796c96e116bc926065cbe4fbe",
   "newSHA256": "6cf1bd3b9fd27d6368cc4bb85938db84efb60fbe7b67493a42f74b7e3cf5be7e",
