@@ -166,9 +166,19 @@ export async function createMenuComposition(
     models = buildMenuModels({
       ...art,
       materialOverrides: {
-        wood: { color: new THREE.Color(0.85, 1.1, 1.45) },
+        wood: {
+          color: new THREE.Color(0.82, 1, 1.17),
+          roughness: 0.95,
+          emissive: '#775439',
+          emissiveIntensity: 0.09,
+        },
         canopyWood: { color: new THREE.Color(1.12, 1.15, 1.12), roughness: 0.92 },
-        woodDark: { color: '#887660' },
+        woodDark: {
+          color: '#786651',
+          roughness: 0.92,
+          emissive: '#684229',
+          emissiveIntensity: 0.035,
+        },
         leather: { roughness: 0.9 },
         cream: { color: '#c8c8c5', roughness: 0.95 },
         stone: { color: new THREE.Color(0.85, 0.74, 0.6), roughness: 0.92 },
@@ -183,7 +193,7 @@ export async function createMenuComposition(
         boardPaint: { color: '#abb8b0', roughness: 0.88 },
         paper: { color: '#d8d2bc', roughness: 0.95 },
         settingsPaper: { color: '#d9e1d7', roughness: 0.95 },
-        brass: { color: '#a18e70', roughness: 0.55, metalness: 0.4 },
+        brass: { color: '#b59056', roughness: 0.42, metalness: 0.4 },
         titleBrass: { color: '#e8b66c', roughness: 0.35, metalness: 0.42 },
         iron: { color: '#3d454a', roughness: 0.6, metalness: 0.25 },
         steel: { color: '#3d454a', roughness: 0.6, metalness: 0.45 },
@@ -297,8 +307,8 @@ function assemble(
     const distantLamp = fixture.name === 'lamp-distant';
     const boardLamp = fixture.name === 'lamp-board';
     const light = new THREE.SpotLight(
-      '#ffcf83',
-      windowLamp ? 10 : distantLamp ? 5 : 3.2,
+      windowLamp ? '#ffdaab' : '#ffcf83',
+      windowLamp ? 6.5 : distantLamp ? 5 : 3.2,
       windowLamp ? 3 : distantLamp ? 3.5 : 5,
       windowLamp ? 1.1 : distantLamp ? 0.8 : 0.9,
       windowLamp ? 1 : 0.75,
@@ -309,9 +319,9 @@ function assemble(
     const target = new THREE.Object3D();
     target.name = `${fixture.name}-light-target`;
     target.position.set(
-      0,
+      windowLamp ? 0.8 : 0,
       light.position.y - (windowLamp ? 1 : 1.5),
-      windowLamp ? -0.25 : distantLamp ? -0.2 : -0.5,
+      windowLamp ? -0.65 : distantLamp ? -0.2 : -0.5,
     );
     fixture.add(light, target);
     light.target = target;
