@@ -1271,55 +1271,63 @@ function buildBackdrop(root: THREE.Group, kit: MenuModelKit) {
   const backdropRoot = part(root, 'distant-backdrop');
   const batch = kit.batch(backdropRoot, 'distant-backdrop');
   batch.add(menuBox(24, 14, 0.1), 'sky', [3, 2, -13]);
-  // Small connected crowns in three depth planes leave sky and trunk openings.
+  // Uneven overlapping crowns extend below the roofs, with small lobes along their edges.
   const trees = [
-    [0.62, 2.58, -11.9, 0.62, 1.1],
-    [1.48, 2.5, -11.4, 0.45, 1.04],
-    [2.26, 2.99, -12.15, 0.7, 1.22],
-    [3.4, 2.64, -12.6, 0.43, 0.86],
-    [3.72, 2.36, -11.72, 0.52, 0.82],
-    [5.2, 2.52, -12.48, 0.58, 1.0],
-    [6.48, 2.01, -11.82, 0.5, 0.88],
-    [7.68, 2.23, -12.2, 0.6, 0.97],
-    [9.02, 2.38, -11.65, 0.57, 0.86],
-    [10.22, 2.1, -12.55, 0.54, 0.92],
+    [0.6, 2.68, -11.91, 1.03, 1.4],
+    [1.55, 2.9, -11.44, 0.97, 1.4],
+    [2.59, 2.25, -12.09, 1.1, 1.26],
+    [3.51, 1.8, -11.59, 0.78, 1.18],
+    [4.47, 1.84, -12.31, 1.02, 1.35],
+    [5.48, 1.38, -11.82, 0.69, 1.05],
+    [6.48, 1.66, -11.56, 0.97, 1.12],
+    [7.48, 1.51, -12.1, 0.86, 1.03],
+    [8.74, 1.8, -11.73, 1.06, 1.2],
+    [10.12, 1.4, -12.35, 0.91, 1.08],
   ];
   for (const [tree, [x, y, z, spread, height]] of trees.entries()) {
-    const trunkTop = new THREE.Vector3(x + spread * 0.035, y + height * 0.08, z);
-    const trunkMiddle = new THREE.Vector3(x - spread * 0.045, y - height * 0.68, z + 0.03);
+    const lean = Math.sin(tree * 1.7 + 0.4) * spread * 0.11;
+    const turn = tree * 0.93 + 0.32;
+    const trunkTop = new THREE.Vector3(x + lean, y + height * 0.08, z);
+    const trunkMiddle = new THREE.Vector3(x - lean * 0.6, y - height * 0.68, z + 0.03);
     const trunkBase = new THREE.Vector3(x, FLOOR_Y, z + 0.04);
     batch.add(backdropBranch(trunkBase, trunkMiddle, spread * 0.041), 'woodDark');
     batch.add(backdropBranch(trunkMiddle, trunkTop, spread * 0.029), 'woodDark');
-    for (const [limb, [dx, dy, dz]] of [
-      [-0.51, -0.17, 0.11],
-      [-0.24, 0.3, -0.19],
-      [0.28, 0.19, 0.16],
-      [0.55, -0.22, -0.06],
+    for (const [limb, [dx, dy, dz, size]] of [
+      [-0.47, -0.24, 0.11, 1.1],
+      [-0.23, 0.31, -0.19, 0.86],
+      [0.3, 0.18, 0.16, 1.0],
+      [0.51, -0.13, -0.06, 0.93],
     ].entries()) {
-      const end = new THREE.Vector3(x + dx * spread, y + dy * height, z + dz * spread);
-      const start = new THREE.Vector3(x, y - height * 0.5, z + 0.02);
+      const phase = tree * 2.11 + limb;
+      const offset = Math.sin(phase + 0.8) * 0.075;
+      const end = new THREE.Vector3(
+        x + (dx * Math.cos(turn) - dz * Math.sin(turn) + offset) * spread,
+        y + (dy + Math.cos(phase) * 0.045) * height,
+        z + (dx * Math.sin(turn) + dz * Math.cos(turn)) * spread,
+      );
+      const start = new THREE.Vector3(x - lean * 0.44, y - height * 0.5, z + 0.02);
       batch.add(backdropBranch(start, end, spread * 0.019), 'woodDark');
-      // Each branch enters its lower crown; the central lobe connects neighbouring crowns.
-      const crown = backdropFoliage(spread * 0.29, tree * 2.11 + limb);
-      crown.scale(1.13, (height / spread) * 0.69, 0.93);
+      // Broad branch crowns overlap the core; smaller lobes break their outer silhouette.
+      const crown = backdropFoliage(spread * 0.35 * size, phase);
+      crown.scale(1.13, (height / spread) * 0.9, 0.93);
       batch.add(crown, dy > 0 ? 'foliageLight' : 'foliage', [end.x, end.y, end.z]);
-      for (const [leaf, [lx, ly, lz]] of [
-        [-0.23, 0.1, 0.04],
-        [0.13, 0.23, -0.08],
-        [0.23, -0.06, 0.05],
+      for (const [leaf, [lx, ly, lz, radius]] of [
+        [-0.23, 0.1, 0.04, 0.16],
+        [0.1, 0.25, -0.08, 0.2],
+        [0.25, -0.09, 0.05, 0.13],
       ].entries()) {
-        const lobe = backdropFoliage(spread * 0.18, tree * 2.11 + limb + leaf * 1.73);
-        lobe.scale(1.0, (height / spread) * 0.72, 0.88);
+        const lobe = backdropFoliage(spread * radius * size, phase + leaf * 1.73);
+        lobe.scale(1.0, (height / spread) * (0.8 + offset), 0.88);
         batch.add(lobe, dy > 0 ? 'foliageLight' : 'foliage', [
-          end.x + lx * spread,
-          end.y + ly * height,
-          end.z + lz * spread,
+          end.x + lx * spread * size,
+          end.y + ly * height * size,
+          end.z + lz * spread * size,
         ]);
       }
     }
-    const core = backdropFoliage(spread * 0.28, tree * 2.11);
-    core.scale(1.0, (height / spread) * 0.77, 0.81);
-    batch.add(core, 'foliageDark', [x, y, z - spread * 0.02]);
+    const core = backdropFoliage(spread * 0.32, tree * 2.11);
+    core.scale(1.08, (height / spread) * 1.1, 0.96);
+    batch.add(core, 'foliageDark', [x + lean * 0.3, y - height * 0.04, z - spread * 0.02]);
   }
   // Recessed bays, pitched roof volumes and a separate canopy break the golden wall.
   batch.add(menuBox(8.7, 0.16, 1.65), 'stone', [4.2, FLOOR_Y + 0.08, -10.2]);
