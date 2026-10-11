@@ -221,3 +221,34 @@ Before/after сравниваются при implemented Medium и ground−.78 
 Карта — собственная `surfaces.titleBrass`, иначе фактическая resolved brass.map. При карте действует прежний kit ownership: один owned Texture clone, shared image/source, сохранённый transform; caller Texture и borrowed map не освобождаются. Новая роль попадает в кеш только после успешного clone/setup; при ошибке pending material/returned map освобождаются once, старый brass/title сохраняются и повторная попытка может создать запрошенную карту. Стандартный Three Texture.clone увеличивает shared Source.version; это существующая SharedSource qualification, не смена картинки или sampling caller input. На обычном unmapped brass дополнительной карты нет.
 
 Canonical6paths/3holes, Medium15mm/3308tri, geometry/UV/positive scale/retained reuse/layout/anchors/calls сохраняются. Цвет и roughness заголовка выбирает compositor через optional caller override; этот API commit не задаёт новый grade, свет или чужой preset. Проверка проводится targeted fixtures/default alias/partial/full/defined0/HDR/numeric rejection/mapped ownership/error rollback и независимым read-only review. Accepted50/912 packages неизменяемы; общая художественная приёмка открыта, animationSTOP.
+
+## Раунд 7: задний проём и глубина интерьера
+
+После принятого titleBrass760 геометрия меняется только внутри `buildInterior`.
+Outer facade/window/frame/counter не правятся. Interior group сохраняет local
+position `[0, 0, -1.1]`; station identity, cashier/counter anchors, holder, native
+board/settings frames, retained title и rail/train остаются прежними.
+
+Передний проём passage имеет x=.97..1.53, spring y=1.28 и crown y=1.75.
+Задний проём x=1.92..2.56, crown y=2.0, расположен на local z=-1.53.
+Две эллиптические четверти задают вертикальную касательную к откосам. Реальный
+деревянный свод растёт и расширяется между ними; откосы, порог и пол связывают
+обе стены. Проём остаётся сквозным в отдельный геометрический двор, не является
+наклейкой или плоскостью, закрывающей небо. Дворовые детали сдвинуты вдоль новой
+оси прохода. Тёплый деревянный потолок позади неизменённой наружной арки имеет
+настоящую толщину; новые карты, материалы или источники света не создаются.
+
+Четыре ряда стеллажа соединяют передний край полки с recessed back, включая
+полную глубину перегородок. Толщина полки .065, глубина .53.. .695; боковые
+стойки и верхняя полка поддерживают единый корпус. Parcels/books имеют прежние
+material roles; их плоскости опираются на верх полки.
+
+Сравнение выполняется в frozen accepted common a783 при actual1672, с тем же
+camera/yaw/grade/light/native frames и общим AO kernel для пары. Interior
+6630→7938 triangles (+1308), meshes12→12; actual multipass760223→765455,
+calls484→484, renderer geometry/textures129/23. Это геометрический этап;
+финальные daylight/wood grade/depth и художественная приёмка остаются у
+compositor/root. Аниматор остановлен. Не повторяются неизменные gameplay,
+широкие native/desktop/FPS/VRAM suites. Только собственный проект, ordinary Git
+и проверенные public licensed OSS; никакой Arcadia/internal Yandex напрямую
+или через агентов.

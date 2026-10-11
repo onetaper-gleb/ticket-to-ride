@@ -377,16 +377,57 @@ function buildFacade(root: THREE.Group, kit: MenuModelKit) {
 function buildInterior(root: THREE.Group, kit: MenuModelKit) {
   const interior = part(root, 'cashier-interior', [0, 0, -1.1]);
   const batch = kit.batch(interior, 'cashier-interior');
-  // The doorway is an actual opening in the back wall, with a deeper jamb and threshold.
+  // Elliptic quarter arcs keep a vertical tangent at both tall jambs.
+  const roundTop = (
+    path: THREE.Path,
+    left: number,
+    right: number,
+    spring: number,
+    crown: number,
+    reverse = false,
+  ) => {
+    const center = (left + right) / 2;
+    const rx = (right - left) / 2;
+    const ry = crown - spring;
+    const k = 0.5522847498307936;
+    const side = reverse ? 1 : -1;
+    path.bezierCurveTo(
+      center + side * rx,
+      spring + k * ry,
+      center + side * k * rx,
+      crown,
+      center,
+      crown,
+    );
+    path.bezierCurveTo(
+      center - side * k * rx,
+      crown,
+      center - side * rx,
+      spring + k * ry,
+      center - side * rx,
+      spring,
+    );
+  };
+  const interiorExtrude = (shape: THREE.Shape, depth: number, bevel = 0) =>
+    new THREE.ExtrudeGeometry(shape, {
+      depth,
+      steps: 1,
+      curveSegments: 24,
+      bevelEnabled: bevel > 0,
+      bevelThickness: bevel,
+      bevelSize: bevel,
+      bevelSegments: 2,
+    });
+  // A tall opening sits to the right of the cashier, through a continuous wooden passage.
   const back = new THREE.Shape();
   back.moveTo(-1.1, -0.9);
-  back.lineTo(0.39, -0.9);
-  back.lineTo(0.39, 1.25);
-  back.quadraticCurveTo(0.7, 2.02, 1.01, 1.25);
-  back.lineTo(1.01, -0.9);
-  back.lineTo(1.1, -0.9);
-  back.lineTo(1.1, 2.1);
-  back.lineTo(-1.1, 2.1);
+  back.lineTo(0.97, -0.9);
+  back.lineTo(0.97, 1.28);
+  roundTop(back, 0.97, 1.53, 1.28, 1.75);
+  back.lineTo(1.53, -0.9);
+  back.lineTo(1.6, -0.9);
+  back.lineTo(1.6, 2.13);
+  back.lineTo(-1.1, 2.13);
   back.closePath();
   const storageOpening = new THREE.Path();
   storageOpening.moveTo(-0.91, 0.2);
@@ -395,83 +436,111 @@ function buildInterior(root: THREE.Group, kit: MenuModelKit) {
   storageOpening.lineTo(-0.02, 0.2);
   storageOpening.closePath();
   back.holes.push(storageOpening);
-  batch.add(extrude(back, 0.075, 0), 'woodDark', [0, 0, -0.04]);
+  batch.add(interiorExtrude(back, 0.075), 'wood', [0, 0, -0.04]);
   batch.add(menuBox(0.1, 2.78, 1.02), 'woodDark', [-0.94, 0.49, 0.39]);
-  batch.add(menuBox(0.1, 3.0, 1.02), 'woodDark', [1.1, 0.6, 0.39]);
-  batch.add(menuBox(1.9, 0.09, 1.13), 'woodDark', [0, 2.025, 0.3]);
-  batch.add(menuBox(0.2, 0.065, 0.48), 'wood', [0, 2.0125, 0.4]);
-  for (const x of [0.335, 1.065]) {
-    batch.add(verticalWood(menuBox(0.1, 2.3, 0.19, 0.016)), 'wood', [x, 0.28, 0.085]);
-    batch.add(menuBox(0.025, 2.25, 0.045), 'woodDark', [x + (x < 0.7 ? 0.05 : -0.05), 0.28, 0.18]);
-  }
+  batch.add(
+    verticalWood(menuBox(0.1, 3.0, Math.hypot(0.61, 1.02))),
+    'wood',
+    [1.245, 0.6, 0.39],
+    [0, Math.atan2(-0.61, 1.02), 0],
+  );
+  // The warm ceiling is a solid return behind the unchanged outer arch.
+  batch.add(menuBox(2.6, 0.09, 1.13), 'wood', [0.3, 2.025, 0.3]);
+  batch.add(menuBox(2.46, 0.065, 0.12), 'wood', [0.3, 2.0125, 0.56]);
   const doorArch = new THREE.Shape();
-  doorArch.moveTo(0.325, 1.25);
-  doorArch.quadraticCurveTo(0.7, 2.16, 1.075, 1.25);
-  doorArch.lineTo(0.975, 1.25);
-  doorArch.quadraticCurveTo(0.7, 2.02, 0.425, 1.25);
+  doorArch.moveTo(0.87, -0.9);
+  doorArch.lineTo(0.87, 1.28);
+  roundTop(doorArch, 0.87, 1.63, 1.28, 1.87);
+  doorArch.lineTo(1.63, -0.9);
+  doorArch.lineTo(1.53, -0.9);
+  doorArch.lineTo(1.53, 1.28);
+  roundTop(doorArch, 0.97, 1.53, 1.28, 1.75, true);
+  doorArch.lineTo(0.97, -0.9);
   doorArch.closePath();
-  batch.add(extrude(doorArch, 0.19, 0.01), 'wood', [0, 0, -0.03]);
-  batch.add(menuBox(0.62, 0.055, 0.27), 'wood', [0.7, -0.07, 0.04]);
-  // A second real arch opens onto a separate courtyard beyond the long reveals.
+  batch.add(interiorExtrude(doorArch, 0.16, 0.006), 'wood', [0, 0, -0.03]);
+  batch.add(menuBox(0.56, 0.055, 0.27), 'wood', [1.25, -0.07, 0.04]);
+  // The same round profile rises toward the taller courtyard end of the passage.
   const yardWall = new THREE.Shape();
-  yardWall.moveTo(0.895, -0.9);
-  yardWall.lineTo(1.1, -0.9);
-  yardWall.lineTo(1.1, 1.25);
-  yardWall.quadraticCurveTo(1.5125, 2.1, 1.925, 1.25);
-  yardWall.lineTo(1.925, -0.9);
-  yardWall.lineTo(2.22, -0.9);
-  yardWall.lineTo(2.22, 2.1);
-  yardWall.lineTo(0.895, 2.1);
+  yardWall.moveTo(1.57, -0.9);
+  yardWall.lineTo(1.92, -0.9);
+  yardWall.lineTo(1.92, 1.28);
+  roundTop(yardWall, 1.92, 2.56, 1.28, 2.0);
+  yardWall.lineTo(2.56, -0.9);
+  yardWall.lineTo(2.88, -0.9);
+  yardWall.lineTo(2.88, 2.13);
+  yardWall.lineTo(1.57, 2.13);
   yardWall.closePath();
-  batch.add(extrude(yardWall, 0.075, 0), 'cream', [0, 0, -1.56]);
+  batch.add(interiorExtrude(yardWall, 0.075), 'cream', [0, 0, -1.56]);
   for (const [front, rear] of [
-    [0.38, 1.1],
-    [1.055, 1.925],
+    [0.94, 1.89],
+    [1.56, 2.59],
   ])
     batch.add(
-      verticalWood(menuBox(0.055, 2.05, Math.hypot(rear - front, 1.53))),
+      verticalWood(menuBox(0.06, 2.18, Math.hypot(rear - front, 1.53))),
       'wood',
-      [(front + rear) / 2, 0.9775, -0.7325],
+      [(front + rear) / 2, 0.19, -0.765],
       [0, Math.atan2(rear - front, -1.53), 0],
     );
+  const vault = new THREE.Shape();
+  vault.moveTo(-0.34, 1.28);
+  roundTop(vault, -0.34, 0.34, 1.28, 1.82);
+  vault.lineTo(0.28, 1.28);
+  roundTop(vault, -0.28, 0.28, 1.28, 1.75, true);
+  vault.closePath();
+  const vaultGeometry = interiorExtrude(vault, 1.53);
+  vaultGeometry.rotateY(Math.PI);
+  const vaultPositions = vaultGeometry.getAttribute('position');
+  for (let index = 0; index < vaultPositions.count; index++) {
+    const t = -vaultPositions.getZ(index) / 1.53;
+    vaultPositions.setY(
+      index,
+      1.28 + (vaultPositions.getY(index) - 1.28) * (1 + t * (0.72 / 0.47 - 1)),
+    );
+    vaultPositions.setX(
+      index,
+      vaultPositions.getX(index) * (1 + t * (0.64 / 0.56 - 1)) + 1.25 + t * 0.99,
+    );
+  }
+  vaultGeometry.computeVertexNormals();
+  batch.add(vaultGeometry, 'wood');
   const passageFloor = new THREE.Shape();
-  passageFloor.moveTo(0.3525, -0.0325);
-  passageFloor.lineTo(1.0825, -0.0325);
-  passageFloor.lineTo(1.9525, 1.4975);
-  passageFloor.lineTo(1.0725, 1.4975);
+  passageFloor.moveTo(0.91, 0);
+  passageFloor.lineTo(1.59, 0);
+  passageFloor.lineTo(2.62, 1.53);
+  passageFloor.lineTo(1.86, 1.53);
   passageFloor.closePath();
   const floorGeometry = extrude(passageFloor, 0.055, 0);
   floorGeometry.rotateX(-Math.PI / 2);
   batch.add(floorGeometry, 'wood', [0, -0.1025, 0]);
-  batch.add(menuBox(1.35, 0.065, 1.69), 'woodDark', [1.15, 2.02, -0.76], [0, -0.4, 0]);
-  batch.add(menuBox(1.32, 0.025, 1.925), 'stone', [1.6, -0.06, -2.45]);
-  batch.add(menuBox(2.8, 1.3, 0.08), 'cream', [2.43, 0.52, -3.6]);
-  batch.add(menuBox(0.42, 0.71, 0.025), 'glass', [2.02, 0.73, -3.545]);
-  batch.add(menuBox(0.49, 0.045, 0.12), 'stone', [2.02, 0.35, -3.51]);
-  batch.add(menuBox(0.035, 0.71, 0.04), 'green', [2.02, 0.73, -3.52]);
-  batch.add(menuBox(0.42, 0.03, 0.04), 'green', [2.02, 0.86, -3.52]);
-  batch.add(menuBox(3.0, 1.5, 0.035), 'sky', [2.1, 1.85, -3.72]);
+  batch.add(menuBox(1.32, 0.025, 1.925), 'stone', [2.21, -0.06, -2.45]);
+  batch.add(menuBox(2.8, 1.3, 0.08), 'cream', [3.04, 0.52, -3.6]);
+  batch.add(menuBox(0.42, 0.71, 0.025), 'glass', [3.08, 0.73, -3.545]);
+  batch.add(menuBox(0.49, 0.045, 0.12), 'stone', [3.08, 0.35, -3.51]);
+  batch.add(menuBox(0.035, 0.71, 0.04), 'green', [3.08, 0.73, -3.52]);
+  batch.add(menuBox(0.42, 0.03, 0.04), 'green', [3.08, 0.86, -3.52]);
+  batch.add(menuBox(3.0, 1.5, 0.035), 'sky', [2.71, 1.85, -3.72]);
   const yardTrunk = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(2.2, -0.0475, -2.9),
-    new THREE.Vector3(2.18, 0.6, -2.9),
-    new THREE.Vector3(2.09, 1.47, -2.94),
+    new THREE.Vector3(2.81, -0.0475, -2.9),
+    new THREE.Vector3(2.79, 0.6, -2.9),
+    new THREE.Vector3(2.7, 1.47, -2.94),
   ]);
   batch.add(new THREE.TubeGeometry(yardTrunk, 10, 0.022, 6, false), 'woodDark');
   for (const [index, [x, y, z]] of [
-    [1.93, 1.26, -2.86],
-    [2.13, 1.44, -3.01],
-    [2.34, 1.25, -2.88],
+    [2.54, 1.26, -2.86],
+    [2.74, 1.44, -3.01],
+    [2.95, 1.25, -2.88],
   ].entries()) {
     const branch = new THREE.LineCurve3(yardTrunk.getPoint(0.67), new THREE.Vector3(x, y, z));
     batch.add(new THREE.TubeGeometry(branch, 3, 0.014, 5, false), 'woodDark');
     batch.add(foliageClump(0.2, index * 1.71, true), 'foliageLight', [x, y, z]);
     batch.add(foliageClump(0.095, index * 2.13), 'foliage', [x - 0.1, y - 0.07, z + 0.08]);
   }
-  batch.add(menuBox(0.2, 0.39, 0.2, 0.007), 'wood', [1.33, 0.1475, -0.92]);
-  batch.add(menuBox(0.24, 0.2, 0.18, 0.005), 'woodDark', [1.22, 0.0525, -1.19]);
-  // Storage is an actual wall recess; interrupted partitions and parcels reveal its backs.
-  for (const x of [-0.88, -0.045])
-    batch.add(verticalWood(menuBox(0.047, 1.91, 0.09, 0.009)), 'wood', [x, 0.97, 0.15]);
+  batch.add(menuBox(0.2, 0.39, 0.2, 0.007), 'wood', [1.95, 0.1475, -0.92]);
+  batch.add(menuBox(0.24, 0.2, 0.18, 0.005), 'woodDark', [1.84, 0.0525, -1.19]);
+  // Shelves, upright partitions and recessed backs form connected cells, rather than face blocks.
+  for (const x of [-0.93, -0.005])
+    batch.add(verticalWood(menuBox(0.065, 1.91, 0.75)), 'wood', [x, 0.97, -0.055]);
+  batch.add(menuBox(0.99, 0.07, 0.75), 'wood', [-0.4675, 2.025, -0.055]);
   const shelves = [
     [
       0.25,
@@ -508,13 +577,17 @@ function buildInterior(root: THREE.Group, kit: MenuModelKit) {
   ] as const;
   for (const [row, [y, depth, dividerX, backZ, parcels]] of shelves.entries()) {
     const top = row < shelves.length - 1 ? shelves[row + 1][0] : 2.025;
-    const front = 0.13 + depth / 2;
+    const front = 0.31 + (depth - 0.3) / 4;
     const cellHeight = top - y;
-    batch.add(menuBox(0.87, 0.065, depth, 0.008), 'wood', [-0.465, y, 0.13]);
+    batch.add(menuBox(0.93, 0.065, front - backZ + 0.025, 0.008), 'wood', [
+      -0.465,
+      y,
+      (front + backZ - 0.025) / 2,
+    ]);
     batch.add(menuBox(0.88, 0.027, 0.03), 'woodDark', [-0.465, y - 0.03, front]);
-    batch.add(menuBox(0.87, cellHeight, 0.045), 'woodDark', [-0.465, y + cellHeight / 2, backZ]);
+    batch.add(menuBox(0.93, cellHeight, 0.045), 'woodDark', [-0.465, y + cellHeight / 2, backZ]);
     for (const x of [-0.9, dividerX, -0.03])
-      batch.add(verticalWood(menuBox(0.034, cellHeight, front - backZ)), 'wood', [
+      batch.add(verticalWood(menuBox(0.042, cellHeight, front - backZ)), 'wood', [
         x,
         y + cellHeight / 2,
         (front + backZ) / 2,
