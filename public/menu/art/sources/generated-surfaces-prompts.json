@@ -1,0 +1,151 @@
+{
+  "generator": "built-in image_gen",
+  "date": "2026-10-10",
+  "modelVersionSeed": "not reported by tool",
+  "assets": [
+    {
+      "name": "wood",
+      "prompt": "Use case: stylized-concept. Asset type: seamless repeating base-color texture for the wooden arch and counter of a warm European station ticket office in a polished stylized 3D board game. Generate a single flat square material swatch, edge-to-edge. Natural medium-dark warm walnut brown, approximate average sRGB #765039. Subtle irregular horizontal flowing wood grain with varied long fibers, occasional very faint broad growth curves; fine matte surface, quiet wear. Grain follows X. This must tile seamlessly on all four edges. Orthographic flat albedo under perfectly even neutral light. No highlights, no shadows, no perspective, no vignette, no boards/plank seams, no frames, no objects, no text, no straight periodic stripes or knots that will dominate repetition. Intended final tile512x512. Low contrast so repetition2x4 remains natural.",
+      "source": "wood-tile.png"
+    },
+    {
+      "name": "paint",
+      "prompt": "Use case: stylized-concept. Asset type: seamless repeating base-color texture of matte dark green painted wood/metal for a vintage railway menu notice board and its native action plates. Single flat square material swatch edge-to-edge. Warm muted forest green-gray, approximate average sRGB #263A30, tiny irregular paint pores and very subtle sparse age speckles, softly worn matte lacquer. Refined restrained patina, low contrast. Tile seamlessly on all four edges. Completely even neutral light, orthographic flat albedo. No directional illumination, shadows, highlights, vignette, cracks, scraped patches, grain stripes, seams, edges, fasteners, brass, objects, letters or text. Intended tile512x512, fine enough to sit behind readable dynamic cream type.",
+      "source": "board-paint.png"
+    },
+    {
+      "name": "paper",
+      "prompt": "Use case: stylized-concept. Asset type: seamless repeating base-color texture for a cream paper hanging settings plaque in a vintage station menu. Single flat square swatch edge-to-edge of warm uncoated cream paper, average sRGB #EBDABD. Tiny soft paper fibers, subtle random aged flecks, very low contrast and warm ivory variation, matte. Must tile seamlessly on every edge. Perfectly uniform neutral light, flat orthographic albedo. No paper edge, border, stains, tears, folds, dark spots, printed text, writing, fasteners, shadow, highlights, vignette or objects. Intended tile512x512; legible black dynamic text will be placed over this surface.",
+      "source": "sources/paper-tile.png"
+    },
+    {
+      "name": "leather",
+      "prompt": "Use case: stylized-concept. Asset type: seamless repeating base-color texture for worn vintage travel suitcase leather in a warm stylized 3D European railway station. Flat square material swatch edge-to-edge. Dark warm reddish chestnut brown leather, average sRGB #6B4330. Fine tiny irregular leather pores and soft subtle worn variation, matte, quiet antique patina, very low contrast. Tile seamlessly on all four sides. Uniform neutral flat orthographic albedo, no directional light, no specular highlights or shadows. No seams, stitches, straps, buckles, panels, wrinkles, creases, scars, large cracked spots, objects, lettering, logo, border, vignette or straight grain stripes. Intended final tile512x512.",
+      "source": "sources/leather-tile.png"
+    },
+    {
+      "name": "plaster",
+      "prompt": "Use case: stylized-concept. Asset type: seamless repeating base-color texture for warm cream plaster on a European railway ticket office wall in a polished stylized 3D board game. Single flat square swatch edge-to-edge. Warm muted sandy cream/beige, average sRGB #D3C1A1. Tiny irregular fine pores, subtle matte plaster grain and very faint softly uneven tone, low contrast. Must tile seamlessly on all four edges. Even neutral illumination, orthographic flat albedo. No directional shadows, highlights, vignette, cracks, peeling, streaks, dirt stains, masonry seams, drawn bricks, objects, paper fibers, border or lettering. Intended final tile512x512; texture should read as subtle plaster rather than noise.",
+      "source": "sources/plaster-tile.png"
+    },
+    {
+      "name": "stone",
+      "prompt": "Use case: stylized-concept. Asset type: seamless repeating base-color texture for warm gray sandstone station floor slabs and platform in a stylized 3D European station menu. Single flat square material swatch edge-to-edge. Muted warm gray-sand stone, average sRGB #AAA18D. Very fine irregular mineral grain and low-contrast uneven tone, matte gently worn, tiny subdued mineral specks. Tile seamlessly on all edges. Even neutral illumination, flat orthographic albedo; no shadows, highlights or vignette. No slab borders or grout lines, no tiles, cobbles, large flecks, cracks, footprint, perspective, objects or text. Geometry will provide floor seams. Intended final tile512x512.",
+      "source": "sources/stone-tile.png"
+    }
+  ],
+  "round5Edits": {
+    "date": "2026-10-11",
+    "generator": "built-in image_gen",
+    "modelVersionSeed": "not reported by tool",
+    "encoding": "sources/refine-surfaces-round5.cjs; Sharp0.35.5, PNG512 RGB, WebP quality86 effort6; no pixel grading",
+    "assets": [
+      {
+        "name": "wood-tile",
+        "mode": "built-in image_gen edit",
+        "referenceRole": "edit target",
+        "referenceFile": "wood-tile.png",
+        "referenceCommit": "9e6a6b250135fef2f59cc3a5ba95bfb6a7419ce2",
+        "referenceSHA256": "c597688d96f69b1e6db28a6b91dc18ddc6dc5eddb2292498cbdf43ff64382dd7",
+        "prompt": "Use case: style-transfer. Asset type: seamless repeating base-color material map for an existing stylized 3D European railway ticket-office menu. Input Image 1 is the edit target, an existing project-generated square flat material swatch. Keep a single square swatch covering the full image, same type of material, matte and seamless on all four edges. Completely even neutral illumination, orthographic flat albedo. No lighting gradient, fixed shadows, highlights, vignette, perspective, objects, labels, frames, fasteners, panels or seams. The final map is downsampled to512x512; keep surface detail small and avoid conspicuous repeated motifs. Primary request: refine the wood to a calmer, finer grain with less red/orange overall color. Use muted walnut-taupe brown, approximate average sRGB #75624B. Preserve the X/horizontal flow of long wood fibers. Make the growth curves less broad and the small fibers irregular, quiet, and slightly worn. No plank borders, knots, straight repetitive stripes or deep creases. Change only surface grain and base-color character; it remains an unlit wood texture.",
+        "selectedMaster": "generated-masters/wood-tile.png",
+        "selectedMasterSHA256": "a0745d7c122f8d3d3533a92e1d01dfab763b219255c92ac10df64080370808e7",
+        "selectedMasterDimensions": [
+          1254,
+          1254
+        ],
+        "source512": "wood-tile.png",
+        "source512SHA256": "27784e949d9eee5913dda8e42aad9361f97a40804641ee947c4ea543746a8146",
+        "runtimeWebP": "wood-tile.webp",
+        "runtimeSHA256": "c482d522f21e744b2a5915a56d0db82a6fb523a3fb8a4cfff33519669cf894dd"
+      },
+      {
+        "name": "stone-tile",
+        "mode": "built-in image_gen edit",
+        "referenceRole": "edit target",
+        "referenceFile": "sources/stone-tile.png",
+        "referenceCommit": "9e6a6b250135fef2f59cc3a5ba95bfb6a7419ce2",
+        "referenceSHA256": "1bd0473ec0801a164b6f8b9b6c0a3bdfc4a77561969067846f7d2981792d51a8",
+        "prompt": "Use case: style-transfer. Asset type: seamless repeating base-color material map for an existing stylized 3D European railway ticket-office menu. Input Image 1 is the edit target, an existing project-generated square flat material swatch. Keep a single square swatch covering the full image, same type of material, matte and seamless on all four edges. Completely even neutral illumination, orthographic flat albedo. No lighting gradient, fixed shadows, highlights, vignette, perspective, objects, labels, frames, fasteners, panels or seams. The final map is downsampled to512x512; keep surface detail small and avoid conspicuous repeated motifs. Primary request: refine the stone to a more neutral pale warm gray, approximate average sRGB #ABA99F, reducing the sandy yellow cast. Fine mineral pores and small subdued flecks with very gentle patchy abrasion and naturally uneven wear at two small scales. Keep mineral detail restrained and matte, no big dark pebbles or cracks. No drawn slab joints, paving grid, grout, cobbles, footprints or directional marks; existing 3D geometry supplies the floor joints.",
+        "selectedMaster": "generated-masters/stone-tile.png",
+        "selectedMasterSHA256": "6e23fc30fce7aca4d428e33e51a6284f97007ae4ec7107ec9438fb5fdff4684e",
+        "selectedMasterDimensions": [
+          1254,
+          1254
+        ],
+        "source512": "sources/stone-tile.png",
+        "source512SHA256": "5917862b8f6be287d626e6318db740cea3824cbcc86c6022f54abe44dfdd8ca9",
+        "runtimeWebP": "stone-tile.webp",
+        "runtimeSHA256": "8df07877e285a79636299d028297b420a365f7ebc7eba7433abe2f0b922ecd18"
+      },
+      {
+        "name": "plaster-tile",
+        "mode": "built-in image_gen edit",
+        "referenceRole": "edit target",
+        "referenceFile": "sources/plaster-tile.png",
+        "referenceCommit": "9e6a6b250135fef2f59cc3a5ba95bfb6a7419ce2",
+        "referenceSHA256": "516fb93e1b858d324aee9121178941d7abce36d0dbc43b72fafe3082fef47b1e",
+        "prompt": "Use case: style-transfer. Asset type: seamless repeating base-color material map for an existing stylized 3D European railway ticket-office menu. Input Image 1 is the edit target, an existing project-generated square flat material swatch. Keep a single square swatch covering the full image, same type of material, matte and seamless on all four edges. Completely even neutral illumination, orthographic flat albedo. No lighting gradient, fixed shadows, highlights, vignette, perspective, objects, labels, frames, fasteners, panels or seams. The final map is downsampled to512x512; keep surface detail small and avoid conspicuous repeated motifs. Primary request: refine the plaster to neutral warm ivory-gray, approximate average sRGB #CEC8B9, less sandy yellow. Finer irregular pores, subtle trowelled chalk texture and sparse softly worn fine flecks; gently uneven surface tone with restrained natural aging. Maintain quiet low contrast. No large stains, chips, peeling paint, streaks, masonry lines or hard cracks.",
+        "selectedMaster": "generated-masters/plaster-tile.png",
+        "selectedMasterSHA256": "dcf7fc0210279f6c921583f8474167c43b518cbcad3fbf34742431696fb7858f",
+        "selectedMasterDimensions": [
+          1254,
+          1254
+        ],
+        "source512": "sources/plaster-tile.png",
+        "source512SHA256": "18c916a21859309e916037a9589f351365b1c82a13afd24fafb6f44681c8c7ec",
+        "runtimeWebP": "plaster-tile.webp",
+        "runtimeSHA256": "bdd7a22209d5f4b78da3a8b7d6e2e6155585835aaa114313f7bd9a63a00b3773"
+      },
+      {
+        "name": "leather-tile",
+        "mode": "built-in image_gen edit",
+        "referenceRole": "edit target",
+        "referenceFile": "sources/leather-tile.png",
+        "referenceCommit": "9e6a6b250135fef2f59cc3a5ba95bfb6a7419ce2",
+        "referenceSHA256": "4752c88001104bba5cd45c731d8d791c9958f1c9e76a73873fac162112ce271a",
+        "prompt": "Use case: style-transfer. Asset type: seamless repeating base-color material map for an existing stylized 3D European railway ticket-office menu. Input Image 1 is the edit target, an existing project-generated square flat material swatch. Keep a single square swatch covering the full image, same type of material, matte and seamless on all four edges. Completely even neutral illumination, orthographic flat albedo. No lighting gradient, fixed shadows, highlights, vignette, perspective, objects, labels, frames, fasteners, panels or seams. The final map is downsampled to512x512; keep surface detail small and avoid conspicuous repeated motifs. Primary request: make the vintage leather less evenly colored and less red-orange. Muted antique chestnut-taupe brown, approximate average sRGB #6C5141. Fine irregular leather pores of varied sizes, shallow tiny worn lines, soft irregular rubbed patches at small and medium scales, darker pores and lighter worn micrograin. Natural restrained tonal variation rather than a uniform repeating pore field. No straps, stitch lines, wrinkles with shadows, buckles, straight creases, panel borders or embossed symbols; the same texture is used on existing suitcase and strap geometry.",
+        "selectedMaster": "generated-masters/leather-tile.png",
+        "selectedMasterSHA256": "99d26d2a32eb3abffdad8bc2b53adbeb5e869de580f78bd0e4ea11743c37e4d6",
+        "selectedMasterDimensions": [
+          1254,
+          1254
+        ],
+        "source512": "sources/leather-tile.png",
+        "source512SHA256": "b58ddb3df2e1b0a64f66e2d32251f3f6bc9e7e0d2005a4e6774acdec778a3c58",
+        "runtimeWebP": "leather-tile.webp",
+        "runtimeSHA256": "d9ae2b7086ce7367a2278745be49bbceedc517b7ff8ad239de33ae9f456f0b03"
+      },
+      {
+        "name": "paper-tile",
+        "mode": "built-in image_gen edit",
+        "referenceRole": "edit target",
+        "referenceFile": "generated-masters/iterations/paper-first-input512.png",
+        "referenceCommit": "round5 intermediate image_gen edit",
+        "referenceSHA256": "79ad006d39753a8ebb1c037e59fd95735e4b5d395db929b28f7e2c8687b28205",
+        "prompt": "Use case: style-transfer. Asset type: flat seamless repeating base-color map of neutral aged cream paper for readable native UI. Input Image 1 is the exact current project-generated paper swatch and is the edit target. Make only one targeted refinement: remove every conspicuously dark dot, dark fleck, dark speck, dark fiber fragment or dark patch from the paper. Replace these with the same surrounding softly varied bright paper fibers. Keep the existing neutral cream/ivory palette, subtle fine fibers, matte age, flat orthographic even neutral illumination and quiet small-scale variation. Aim average sRGB #E7E0CA, with all variation staying very pale, approximate darkest colors no darker than #CFC5AD. No tiny brown or black spots anywhere. Preserve the single square seamless edge-to-edge material; no paper edge, frame, border, fold, tear, object, text, shadow, highlight, vignette, gradient illumination or light direction. Existing geometry/print supplies the edges. The output is downsampled to512x512; dark isolated pixels would lower small native text contrast, so the pale lower bound is the important constraint. Change only the dark contamination; do not add decorative features.",
+        "selectedMaster": "generated-masters/paper-tile.png",
+        "selectedMasterSHA256": "99275b56b22d01437fa3a0356dbf8181870d9bf04c8e839d7a48e0623264500f",
+        "selectedMasterDimensions": [
+          1254,
+          1254
+        ],
+        "source512": "sources/paper-tile.png",
+        "source512SHA256": "15642d0315d51c0abd48e355ad89de32752446e8a316b1448859117b0f46780e",
+        "runtimeWebP": "paper-tile.webp",
+        "runtimeSHA256": "98ee88058cdddd4b6552a6b4e769583317c63cc140aeaf6320a0fe8f96bedc4e",
+        "firstPass": {
+          "prompt": "Use case: style-transfer. Asset type: seamless repeating base-color material map for an existing stylized 3D European railway ticket-office menu. Input Image 1 is the edit target, an existing project-generated square flat material swatch. Keep a single square swatch covering the full image, same type of material, matte and seamless on all four edges. Completely even neutral illumination, orthographic flat albedo. No lighting gradient, fixed shadows, highlights, vignette, perspective, objects, labels, frames, fasteners, panels or seams. The final map is downsampled to512x512; keep surface detail small and avoid conspicuous repeated motifs. Primary request: refine the paper to aged neutral cream/ivory, approximate average sRGB #E7E0CA, with no pink or orange cast. Slightly more visible tiny natural fibers, sparse softly scattered aged specks and gentle irregular rubbed variation. Keep center and edges equally continuous for tiling, quiet enough behind native black text. No torn outer edge, printed border, fold, crease, dark stain, writing or shadow; paper edges and print are supplied separately by existing geometry and vector art.",
+          "masterSHA256": "99e8dd419eb3a0f242d26f5c5e37a3d38f569eb122b60df829bebfe87b1b11b5",
+          "masterInPackage": "generated-masters/iterations/paper-first-full.png",
+          "input512InPackage": "generated-masters/iterations/paper-first-input512.png",
+          "input512SHA256": "79ad006d39753a8ebb1c037e59fd95735e4b5d395db929b28f7e2c8687b28205",
+          "reason": "one dark pixel lowered primary small-hint contrast below4.5; selected targeted second pass removes dark flecks",
+          "referenceCommit": "9e6a6b250135fef2f59cc3a5ba95bfb6a7419ce2",
+          "referenceFile": "sources/paper-tile.png",
+          "referenceSHA256": "39732de75219ef1de70d5f586884f7bcc3a05552f501a2cfe92afff951e19ec0"
+        }
+      }
+    ]
+  }
+}

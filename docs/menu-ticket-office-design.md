@@ -1,0 +1,194 @@
+# Меню «Билетная касса»: производственная спецификация
+
+Версия5.1 — targeted sky follow-up,11октября2026. Own accepted parent2f7f03e, current frozen comparison29cff5e (rootSOURCE+PACKAGEaccepted/artisticgateOPEN). Меняется только distant-sky.svg с ownmetadata/proof; другие acceptedround5 assets сохранены. Точный clean tip/paired1672/package находятся в handoff; это ещё не художественная приёмка/production.
+
+Документ задаёт native DOM и его совмещение с физической рамой. Геометрия, камера, свет и физические грани принадлежат владельцам 3D сцены; production UI подключает интегратор. Обязательная политика AGENTS.md: только обычный Git/GitHub, собственный код и публичные open-source инструменты с проверенными лицензиями; никакой Аркадии или внутренней инфраструктуры Яндекса, включая косвенное использование. Анимации остаются закрыты.
+
+Далее сохранены исторические спецификации4.2/4.3. Текущий статус и измерения находятся в разделе «Пятый раунд5.0»; adaptive не переутверждён.
+
+## Принятая палитра 4.2 и поверхности
+
+| Token | sRGB | Применение |
+| --- | --- | --- |
+| board | `#223A33` | Плотный цветовой слой над зелёной фактурой |
+| row | `#29443B` | Scroll track; общий ряд получает поверхность board |
+| paper | `#F4E8CF` | Текст на зелёном, циферблат |
+| ink | `#172B25` | Текст primary, форм и retry |
+| accent | `#EDBA64` | Доступное главное действие, плоские состояния |
+| hover | `#385A4C` | Обычное наведение |
+| pressed | `#CFA052` | Нажатое главное действие |
+| disabled | `#BCCDBD` | Недоступный текст без общей opacity |
+| focus | `#FFF2AD` | Внешний 3 px контур с 3 px отступом |
+| brass | `#AD7E41` | Сдержанный физический кант |
+
+Native board и обычный ряд: `linear-gradient(#223a33a6,#223a33a6),url(board-paint.webp)`, background-size 256px 256px. Primary: `linear-gradient(#e8b868b3,#e8b868b3),url(paper-tile.webp)`, blend normal,multiply, background-color `#ffcf7b`. Settings: `linear-gradient(#e3cfaa96,#e3cfaa96),url(paper-tile.webp)` и текст `#342C20`. Тонкая печатная линия `#84664355`, 1 px, inset5 px, pointer-events:none; физический край бумаги, рамка и крючки принадлежат 3D. Плотные цветовые слои приглушают редкие пиксели фактуры и изолируют текст от света WebGL. Hover/press и disabled используют плоские цвета; disabled — board. Все текстуры — 512² SRGB RGB, цвет без baked света, объектов, краёв, надписей и normal/bump.
+
+Минимальный расчёт контраста по всем декодированным пикселям этих CSS смесей: cream/paint и scroll note 6.59, disabled/paint 4.80, ink/settings 6.61, ink/primary 6.39. Самый тёмный front stop крупного EUROPE/paint 3.76; декоративные блик/глубина не заменяют лицевой текст. Это расчёт поверхности, без сглаживания текста, управления цветом браузера и WebGL освещения. Текущие данные — `outputs/print-refinement/contrast.json`, расчёт — `work/finalize-print.py` в source pack; исходные v4 данные сохранены отдельно.
+
+## Исходные boardRect и settingsRect
+
+Координаты — CSS px от начала документа при scrollY=0, непреобразованные внешние border boxes DOM для `composition.layout(width,height,boardRect,settingsRect)`. После проекции рамка является четырёхугольником. Преобразованный getBoundingClientRect нельзя подавать обратно в layout.
+
+Физическая полоса доски занимает 12 px с каждой стороны в локальных координатах; native фон начинается с inset12. Desktop отступ контента от внешнего левого/правого края — 48/32 px на 1280 и 1672, 52/36 px на 1920. Вертикальный inset — 24/24/28 px. Settings имеет рамку6 px и inset12. DOM в физическом desktop режиме не рисует второй кант, заклёпки, толщину или подвесы.
+
+| Viewport | Preset | boardRect x,y,w,h | settingsRect x,y,w,h | Header / row / gap / header gap | Label / continued tutorial / icon / icon column / mark |
+| --- | --- | --- | --- | --- | --- |
+| 1280×720 | desktop | 46,38,420,482 | 96,534,340,76 | 96 / 76 / 6 / 16 | 32 / 24 / 36 / 80 / 300 |
+| **1672×941** | desktop | **60,50,510,596** | **125,655,390,98** | **136 / 94 / 8 / 12** | **40 / 28 / 44 / 104 / 370** |
+| 1920×1080 | desktop | 69,57,580,680 | 144,753,448,112 | 164 / 103 / 10 / 18 | 44 / 32 / 48 / 116 / 414 |
+| 2560×1080 | ultrawide | 389,57,580,680 | 464,753,448,112 | как1920 | как1920 |
+| 3440×1440 | ultrawide | 829,236.71,580,680 | 904,932.71,448,112 | как1920 | как1920 |
+
+Desktop label: «Times New Roman», Georgia, serif, weight400, line-height1.2. Это системные шрифты, в пакет не копируются. «Продолжить обучение» получает отдельные 24/28/32 px, чтобы оба сохранения помещались в обычные строки. Settings label26/32/36 px. Hints остаются IBM Plex Sans24 px/1.2 и отдельным динамическим текстом. На дальнем крае доски1672 вертикальное сжатие около0.866 сохраняет hint около20.8 px. Читаемость перепроверяют при изменении камеры или шрифта.
+
+Header содержит собственный SVG600×120 и доступный h1 «Ticket to Ride: Europe», без subtitle/нижних орнаментов. Mark прижат к низу header с padding-bottom28 px; относительно v3 он поднят на16 px. Ряд: padding0, gap0, border1px `#14271e`, radius4px. Печатный рельеф: inset top1px `#82978480`, left1px `#82978450`, bottom2px `#101e1770`, внешний низ1px `#101e1750`. Колонка иконки растянута по высоте, divider1px того же тёмного цвета с тонким внутренним бликом. Primary: border `#93642d`, divider `#99652d`, блик `#FFE1A49E`, низ `#A36A2F80`; disabled border/divider `#536554`, блик с alpha40. Focus имеет приоритет над декоративными shadows. Иконка центрируется, copy имеет padding6px16px, flex-column gap2px и min-width0. Иконки заполненные с небольшими вырезами/контуром, currentColor, aria-hidden; названия остаются DOM.
+
+### Интерполяция desktop
+
+Desktop: width≥1100 и height≥680. e=min(width,1920); если e×941/1672>height+1, e=height×1672/941. q=clamp(e,1280,1920), cx=max(0,(width−q)/2), cy=max(0,(height−q×941/1672)/2). Значения таблицы линейно интерполируются на1280→1672→1920. Допуск1 px сохраняет опорные размеры без сдвига из-за округления aspect.
+
+Внутренний вертикальный padding внутри12px border:12/12/16. Horizontal padding: слева padding+24, справа padding+8. Внешняя высота доски =24+2×padding+header+headerGap+4×row+3×gap. Settings x=board.x+50/65/75, y=board.y+фиксированная высота+14/9/16. Переносы/ошибки этих величин не меняют. Width>1920 оставляет центральную рабочую область1920; дополнительное место принадлежит окружению.
+
+### Прокрутка и узкие окна
+
+Header остаётся над отдельным native actions-scroll. Внешний actions-frame сохраняет высоту4×row+3×gap+16:338/416/458 px. На1672 четыре базовые строки94px дают416px без overflow. Если естественное содержимое больше внешней высоты, отдельный footer24px занимает низ frame, nav получает314/392/434px. Внешние boardRect/settingsRect сохраняются. Без overflow nav получает полную высоту, footer скрыт. Длинные hints, сообщения обоих слотов и retry растут в потоке внутри viewport без ограничения числа строк. Внешние board/settings и физические подвесы остаются фиксированными.
+
+Actions-frame: margin(headerGap−8px) −8px −8px; nav внутри margin0, padding8px, не добавляет headerGap повторно. Overflow-y:auto, overflow-x:hidden, overscroll-behavior-y:contain. Scrollbar8 px, track=row, thumb=paper с border2px board. Это оставляет место внешнему focus. У строк/retry scroll-margin-block16px, у viewport scroll-padding-block8px. Native Tab и focusin показывают активную кнопку через scrollIntoView(nearest); после resize/изменения сообщения проверка повторяется. Каждая retry через aria-describedby связана со своим сообщением. Footer — одна неинтерактивная native подсказка, 18px/20px Plex, цвет paper, aria-describedby у nav: «Ещё действия ↓» вверху, «↕ Прокрутите меню» в середине, «↑ Действия выше» внизу. Она занимает собственные24px, не перекрывает строку или focus и не добавляет Tab stop. Естественную высоту считать до резервирования footer, чтобы не вызывать скачок scrollTop. Окончательный единый cue подключает compositor в общий native harness, production UI — функциональный владелец.
+
+Narrow:760≤width<1100, height≥760, aspect<1.25; board x32, y=clamp(height×.272,220,360), w=min(400,width−64). Остальные width≥760 — compact с x24/y40; width<760 — column с x16/y24 и w=min(360,width−32). Padding12, header80, gap6, headerGap12, icon32/column60. Label/hint Plex23/24/27 px, обычные rows72/76/84, tutorial minimum100/106/116. Высота в потоке, строки растут при переносе. Settings w=board.w−32, x=board.x+16, gap24/20/20, minimum height64/64/72; retry60/64/72. Ширина640 — ранее проверенный минимум; полная адаптивная приёмка в v4 не повторялась.
+
+Overflow-wrap:anywhere сохраняет доступ к длинным кодам. Документ получает min-height=max(viewportHeight,нижняя проецированная точка UI+32). В desktop физические рамы всегда видимы, canvas position:absolute. В узких окнах при переполнении документа сохраняется прежний доступный режим: физические board/settings/hangers скрыты, CSS-рамы прокручиваются с DOM, canvas fixed. Browser zoom меняет CSS viewport; реальный zoom200% этой проверкой не подтверждён.
+
+## Физическая рамка и поверхность моделей
+
+Текущий малый consumer использует принятый общий candidate `e9c95c287cdb25f5e1521b977c3e9b30a404f4aa`, полученный read-only git archive. Harness взят из неизменяемого menu-composition-preview.zip, SHA256 `f0bb4fd3d113d3f01ef6b69d111ed6bc4ce63e134d33c9b7a6a4982bc50a533f`; пять source files совпали с Git. Mutable work compositor не используется. Исторический v4 consumer использовал316f83085e4f1989779c57954f1014213b7fec0b. Контроль «до» и candidate «после» используют одинаковые scene modules, camera/light и JS bundle; меняются только собственные SVG/native print/footer. Camera(0.04,0.52,6.4), FOV34°, `models.parts.stationRoot.rotation.y=27°`; environment root identity. Cashier под anchor: position0, quaternion identity, scale1. Новая геометрия и свет не подменяются локальными 2D трансформами.
+
+`projectCorners(width,height)` возвращает quad TL,TR,BR,BL с лицевой физической геометрии. Сначала снять старые CSS transforms, измерить исходные border boxes, вызвать layout, получить quad, применить menuQuadCssMatrix отдельно ко всей доске и settings с transform-origin0 0. Native labels/hints/icons/retry преобразуются вместе. Canvas aria-hidden и pointer-events:none; dialogs находятся вне преобразованных родителей. Content change, fonts-ready и resize повторяют измерение. Consumer пропускает временный скрытый viewport1×1 и ставит ready после успешного кадра.
+
+На1672: board TL(60,50),TR(570,106.490),BR(570,622.423),BL(60,646); settings TL(125,655),TR(515,635.716),BR(515,723.473),BL(125,753). Board AABB(60,50,510,596), settings AABB(125,635.716,390,117.284). Допуск DOM/physical ≤2 CSS px; измеренный максимум v4 на1672 —0.000018 px, при resize1280→1920→1672 —0.000019 px. Совпадение углов само по себе не подтверждает клики.
+
+Точный новый surface API окружения — `c4746fbe35c445cf1d1c9ac9f941e7f31c349c4e`, parent7bfee581. `buildMenuModels({surfaces,materialOverrides})` принимает optional карты: cream→plaster, green/boardPaint→board-paint, wood/woodDark→wood, leather→leather, stone→stone, paper→paper. Отдельных top-level leather/paper API нет. Пути и рекомендации — `sources/surface-slots.json`. WoodDark использует те же bytes с material color multiplier, не отдельный файл.
+
+Surface карта имеет приоритет перед legacy wood. Входная Texture принадлежит caller; builder клонирует transform/repeat, задаёт SRGB/RepeatWrapping, mapped color по умолчанию white. Без карты действует palette. Legacy wood сохраняет muted varnish tint. Override color умножает карту. `models.surfaces` содержит реальные shared materials; geometry/material/map clones освобождает только idempotent models.dispose, входные textures — caller. Prints clock/stickers имеют отдельные clones. Не добавлять второй lifecycle owner.
+
+Box/RoundedBox UV0..1 на грани; Extrude UV задаются локальными XY/edge координатами. Vertical wood UV=(1−v,u). Repeat выбирается по реальным UV/масштабу, а не по пикселям. Исторический frozen316 использовал legacy wood repeat2×4; новые physical surfaces в нём ещё не были wired. В текущем frozen e9c95c2 MenuCompositionArt передаёт согласованные surfaces в buildMenuModels, включая boardPaint/paper и материалы окружения. Этот раунд сохраняет его геометрию, свет и rendering passes; новые текстуры не генерирует. Полную финальную приёмку общего материала выполняют владельцы сцены. Не выдавать pack за завершённую приёмку 3D сцены.
+
+| Рисунок | Ориентация |
+| --- | --- |
+| clock-face512² | Квадратная UV,12 сверху+Y, лицевая+Z,16px прозрачные поля; стрелки отдельные |
+| ticket-print512×256 | Сохранять2:1. Для portrait повернуть Mesh бумаги90° либо UV90°, выбрать один способ |
+| luggage-stickers512² | Crop224² квадратный, ширина30–40% стороны, отступ до шва≥5%; верх+Y |
+| wood-tile512² | Волокна поX, repeat; для вертикальной детали UV поворачивает builder |
+
+Stickers crops с верхним левым origin: circle(16,16,224,224), diamond(272,16,224,224), shield(144,272,224,224). Нижний левый UV: circle u.03125–.46875/v.53125–.96875; diamond u.53125–.96875/v.53125–.96875; shield u.28125–.71875/v.03125–.46875. Не дублировать manual flip и texture flip. В v4 цвета эмблем спокойнее, circle содержит печатный локомотив; crops не менялись.
+
+## Safe zones общей сцены
+
+Ориентиры выбранного PNG1672×941: лицо(700,292,185,170), кассовое окно/кассирша(590,78,540,744), поезд(1200,400,472,330), лампа над доской(262,0,162,92), руки/прилавок y580–630, основание/пол y790–825. Это экранные цели, не world anchors.
+
+Доска/лицо разделены≥48px. Руки, билет, опоры и багаж не пересекают UI quad с запасом8px под focus. Под шириной settings багаж начинается ниже её фактического нижнего края+16; проверять полигоны. Общий дизайнер владеет светом/камерой, окружение — физическими краями/подвесами и массами, кассир — лицом/контактами. После новых bundles повторить сравнение с выбранным референсом. Старый дефект лампы из045 здесь не считается текущим.
+
+## Действия, форма и правила
+
+Четыре базовые строки: «Продолжить», «Начать партию», «Обучение» либо «Продолжить обучение», «Правила»; отдельно «Настройки партии». No-save: обычное продолжение disabled + «Нет сохранённой партии», primary новая партия. Current: primary продолжение + «Обычная партия». Tutorial: обычное disabled, учебное доступно. Both: оба сохранения независимы. Finished current: «Продолжить» + «Открыть итоги». Loading каждого слота: disabled + «Проверяем сохранение…». Preparing: «Готовим стол…», команды старта disabled, при долгой загрузке отдельный возврат. Error каждого слота: «Не удалось проверить сохранение» и отдельная native retry; неизвестный слот не подписывать пустым.
+
+### Необязательный вход в совместную игру
+
+Shared контракт `4320c96a95302ef17421e24567e3901099a25fa4` добавляет optional `onOpenNetwork?: () => void`. Функциональный commit `2b06644f6b47ab9dc712b928b2a774b55ea9525c` закрепляет label «Играть с друзьями», без hint, enabled=true. Только при наличии callback между «Начать партию» и обучением появляется пятая native строка. Нажатие вызывает callback входа в сетевой экран. Без callback прежние четыре действия и их состояния сохраняются.
+
+Иконка `icons/friends.svg`: две фигуры, авторские заполненные формы, viewBox32/currentColor/aria-hidden/focusable=false; размеры, колонка, divider, цвет и focus как у остальных рядов v4. Label остаётся native текстом, hint не добавлять. Строка наследует минимальную высоту обычного ряда и растёт при переносе; не уменьшать все прежние подписи ради неё.
+
+Desktop/ultrawide сохраняет внешние boardRect/settingsRect и внешнюю высоту actions-frame по четырём базовым строкам:338/416/458px. При overflow footer24px сокращает только nav до314/392/434px. Дополнительная строка и gap находятся внутри native scroll. При callback=true даже обычное меню может прокручиваться; header, физические рамы/подвесы и settings остаются на прежних местах. Tab/Shift+Tab показывает весь focus; settings — отдельная достижимая кнопка за viewport действий. В narrow/compact/column дополнительная строка увеличивает высоту доски в потоке по прежнему контракту. Малый art preview демонстрирует присутствие callback флагом network=1; это не production сетевой экран.
+
+Историческая проверка принятого friends-entry6a48 на1672, state=both: с callback пять строк, friends110px из-за переноса label, содержимое534px при viewport416; без callback четыре строки и416px без прокрутки. Board/settings и физические рамы сохраняются, document1672×941/scrollY0, горизонтальный overflow0. Tab показывает friends/обучение/правила/settings; форма Enter/Escape возвращает focus settings. Старые материалы не пересоздавались, широкая QA не повторялась. Данные и кадры — outputs/friends-entry/.
+
+Error размещается под своей строкой. Desktop retry minimum64 px, label24 px, на текущем ракурсе effective height>52 px. Сообщение не заменяет label. Disabled без opacity; focus — двойной ink2px + focus3px с offset3px. Hover/focus могут сосуществовать. Переходы цвета в текущем consumer мгновенные; новый анимационный этап не начинается.
+
+Новая партия/settings открывают один native dialog «Параметры новой партии», width=min(640,viewport−32), max-height=viewport−32, overflow-y:auto. Paper/ink, белые поля, overlay#172B25/.66, heading28 (compact24), labels20, touch≥52, padding24 (compact16), footer в потоке. Поля: всего мест2–5 с1–4 ботами; сложность Лёгкие/Обычные; имя maxlength24/default«Вы»; optional code maxlength64. Default3 места, сложность сессии; пустое имя→«Вы», seed trim. «Назад» закрывает; «Сесть за стол» запускает. При current предупреждение о замене обычного сохранения с сохранением обучения; unknown предупреждает возможную замену. Focus trap, Escape и возврат focus обеспечивает функциональщик.
+
+«Правила» открывают существующий reader, width=min(680,viewport−32), max-height=viewport−32, внутренний scroll. Назад/следующий лист/возврат в меню достижимы, черновик формы сохраняется. Gallery использует прежний текст и иллюстрации для проверки размещения; IndexedDB не читает и игру не запускает. Retry только сокращает демонстрационное сообщение.
+
+## Арт, происхождение и проверка
+
+П1: шесть SVG icons (включая optional friends.svg); EUROPE mark; clock-face; ticket-print; luggage-stickers; шесть WebP512² (board-paint,wood,paper,leather,plaster,stone). Lossless RGB masters512² и verbatim prompts сохранены в public/menu/art. Полные результаты встроенного image_gen — в output pack `revision-v4/generated-masters/`. Генерация — новые material swatches, без reference edit; модель/seed инструмент не сообщил. Sharp только изменил размер/формат. `sources/encode-surfaces.cjs --check` воспроизводит все шесть WebP побайтово из512 PNG. Исторический generate-textures.py воспроизводит прежние procedural tiles, не v4 карты.
+
+A10 distant-sky.svg обновлён как optional предложение: светлый голубой градиент, две собственные diffuse cream cloud формы и абстрактная дальняя атмосфера. Нет станции, предметов, деревьев или цельной PNG. В текущую сцену e9c95c2 не подключён; compositor выбирает SVG либо собственный background gradient. A11 steam-mask-p2.png неактивен. A12 оба прежних fallback-draft остаются историческими drafts; финальный fallback снимают с принятой общей 3D сцены. SVG — собственные paths, системные serif fonts не распространяются; Plex OFL1.1 сохранён с лицензией. Public Three.js0.180.0 MIT, Vite7.3.7 MIT, Sharp0.35.5 Apache-2.0 подтверждены package metadata/поставляемыми LICENSE; полные копии в output source pack. Provenance и inventory содержат источники, размеры, SHA256 и бюджет.
+
+Принятая версия4.2: inventory32 файла, XML12 SVG включая source-only shape. Runtime SVG+растр363391 B, растр348682 B с двумя draft fallback. Каждый fallback<400KB. RGBA8+full mips по всем уникальным П1 изображениям, включая optional sky:14 MiB; с обоими fallback и П2:22.286458 MiB. Frozen316 четыре загруженные карты:4.666667 MiB. Это арифметика размеров, без повторных GPU upload clones, DOM raster textures, shadows/targets/PMREM; actual renderer.info тогда не измерялся. Повторение материалов2×2 визуально ровное; точное совпадение противоположных edge pixels не заявлено, edge statistics сохранены.
+
+V4 проверен на собственном WebGL/native consumer с frozen316: no-save, both, error-current, error, both-long, error-long на1672. Board/settings фиксированы, physicalFramesVisible=true, scroll-frame=false, scrollY0, horizontal row overflow0. Actions content416/416/580/743/630/1317 при viewport416. Tab показывает обе retry, новую партию, правила, settings; Enter/Escape открывает форму и возвращает focus, retry collapse сохраняет focus. Resize1280→1920→1672 с длинными ошибками сохраняет видимые рамы и focus. Console errors0. Арт XML/hash/dimension/encoding и diff scope проверяются перед commit. Полные8 адаптивных размеров, production storage/game, FPS/lifecycle и независимая приёмка этого candidate не заявлены.
+
+## Малое уточнение печати и source для объёмного EUROPE
+
+`europe-mark.svg` сохраняет шесть прежних d paths и fill-rule, viewBox600×120. Лицевой слой — gradient `#FFE1A4`→`#EDC17E`→`#D9AA64`; тонкий блик `#FFF0C2` со сдвигом(−0.3,−1.1), глубина `#624522` со сдвигом(1.5,3) в единицах SVG. Это три use одной исходной группы, без нового font. Header position/размеры и доступный h1 сохраняются.
+
+Root согласовал optional объёмный hook с environment/compositor через существующий публичный Three SVGLoader MIT. `sources/europe-shape-source.svg` содержит только шесть исходных paths один раз, чёрный fill. Browser getBBox: x62,y20,width475,height73; viewBox0 0 600 120, SVG+Y вниз. SHA256 `39b05d8b8863db9f61a6a9c31646f0fa5f9a5429e567f7c4e2d93cbae6340aed`. Его использовать для geometry; декоративный europe-mark.svg целиком не превращать в три комплекта букв. Environment владеет geometry/depth/material; compositor — загрузкой, placement/light и hide/restore видимой native копии. После успешного hook видимый SVG скрывается, semantic h1 сохраняется; при ошибке SVG возвращается. В кадре ровно один видимый EUROPE. Frozen e9c95c2 hook не содержит, поэтому текущий кадр показывает только SVG fallback.
+
+Все print/scroll tokens — `sources/print-tokens.json`. Никаких CSS дублей физических рам, крючков, болтов, неровного края бумаги или новой геометрии в art ветке. Строка друзей остаётся между новой партией и обучением, enabled, без hint. Fonts, icon slots, hints24px и continued tutorial28px на1672 сохранены. Анимационный этап закрыт.
+
+Текущая проверка на frozen e9c95c2,1672×941: no-save без callback —4 rows, навигация416/416, cue скрыт; both с callback —5 rows, friends110px, nav392/content534, footer24px; error+long+callback —nav392/content1377. Tab проходит обе retry/new/friends/rules/settings, disabled rows пропускает; focus виден целиком, cue меняется вниз/обе стороны/вверх. Retry сокращает message до content1233, сохраняет focus и фиксированные frames. Настройки Return/Escape возвращают focus; board(60,50,510,596), settings(125,655,390,98), physical board/settings/hangers=true, один SVG title, document1672×941/scrollY0, горизонтальный row overflow0, console errors0. Сравнение «до» снято на той же e9c95c2. SVG/source bounds,32 hashes,12 XML, неизменность28 прежних ассетов и кодирование шести WebP проверены. Кадры и данные — outputs/print-refinement/. Production storage/network/game, полная адаптивная QA, FPS/lifecycle и будущий physical hook здесь не проверялись.
+
+## Четвёртый раунд: измеренное предложение для 1672×941
+
+Контроль и candidate используют exact Git archive общей основы77 и harness из immutable ZIP SHA256 `a39b1a7446fc251918a9211d56400b3e2157adbdc83c00366871ee28dff3108a`, 32749186 B. Пять исходников архива совпадают с Git. Builder, камера, свет, title caller и passes сохранены; JS bundle контроля/candidate одинаковый. Только own asset delta и native CSS прототип различаются. Диагностический DOM output добавляет реальные rects и renderer.info; исходники и hashes входят в пакет round4.
+
+На PNG верхний левый угол primary примерно(111,212), погрешность2px. Actual native rect контроля начинается(114.65,225.58), candidate(109.03,211.39). Label border box перемещён с X245.68 на238.35 против ориентира PNG≈237. Raster bounds «Начать партию»: PNG(237,348)–(487,397), контроль(246,363)–(493,400), candidate(239,346)–(492,389). Высота видимых букв37→43px ближе к49px PNG; это приближение системного serif, не идентичный шрифт. Пороговая маска и ROI записаны в reference-measurements.json, метод чувствителен к JPEG/antialias. У «Правила» измерено33→38px против44px PNG.
+
+| Token до quad transform | Принято77 | Предложение1672 |
+| --- | --- | --- |
+| Header height / bottom padding | 136 / 28 | 122 / 14 |
+| Board left / right padding, без border12 | 36 / 20 | 31 / 20 |
+| Row min-height / gap / header-gap | 94 / 8 / 12 | 94 / 6 / 12 |
+| Label / continued tutorial | 40 / 28 | 46 / 32 |
+| Label line-height / горизонтальный масштаб | 1.2 / 1 | 1.05 / .89 |
+| Icon size / column | 44 / 104 | 56 / 98 |
+| Copy padding top/right/bottom/left | 6 / 16 / 6 / 16 | 6 / 16 / 6 / 20 |
+| Fixed actions-frame / overflow nav / footer | 416 / 392 / 24 | 430 / 406 / 24 |
+| Mark layout width / display scale X,Y | 370 / 1,1 | 370 / .90,1.10 |
+| Settings icon / label / scale X | 44 / 32 / 1 | 48 / 30 / .92 |
+
+Row height остаётся94px; текст не уменьшается ради пяти строк. ScaleX=.89 и width=100%/.89 применяются ко всем label до quad transform, сохраняя полную ширину layout и естественные переносы. Continued tutorial32px занимает обычный ряд94px, friends46px переносится на две строки и растёт до111px. Hints24px/1.2, динамические сохранения и обе ошибки/retry сохранены. Copy overflow:clip ограничивает возможный glyph overhang внутри колонки; проверенные label не имеют горизонтального overflow. Header уменьшен14px вместе с его bottom padding; actions поднялись примерно14px. Освободившиеся14px добавлены к fixed frame: четыре натуральных ряда требуют410px, ещё20px оставлены снизу. При overflow footer24px сокращает только nav. Board(60,50,510,596), settings(125,655,390,98) и физические frames/hangers не двигаются.
+
+Новые desktop tokens — sources/desktop-fit-round4.json; точный CSS проверочного consumer — sources/desktop-print-round4.css. Это только knot1672. Его безусловные desktop overrides нельзя переносить на всю интерполяцию: принятые1280/1920/ultrawide/compact параметры сохраняются до отдельного решения и проверки compositor. Адаптив отложен владельцем.
+
+Print palette использует прежние maps: обычный ряд overlay#242922A6 и foreground#ECD5B2; primary overlay#E49845B3 поверх прежнего multiply#FFCF7B, ink#342B1E; settings overlay#D69F7C96, ink#342C20. Тонкая линия settings1px inset7/alpha25. Малые inset края/иконные тени дают печатный рельеф, физические рамки не дублируются. В одной фиксированной ROI row median RGB: PNG(45,51,44), контроль(45,61,51), candidate(43,50,42). Primary: PNG(228,158,74), контроль(222,182,110), candidate(219,161,88); settings: PNG(218,179,145), контроль(225,209,175.5), candidate(214,181,150). Все ROI/std включены; оттенки приблизились, полного совпадения и световой приёмки нет. Минимальный расчёт native CSS смесей: row6.45, primary4.91, settings5.07, disabled solid7.32; hover/pressed≥5.83. Расчёт не описывает физические WebGL поверхности и сглаженные glyph edges.
+
+Изменены только четыре прежних SVG: continue — округлый фасад поезда с двумя окнами, лампами и тонкими рельсами; rules — четыре печатные линии и две маленькие вырезанные ромбовые метки; ticket-print — более тонкие2.5/1.5px канты и лёгкая контурная печать локомотивной эмблемы; luggage-stickers — тише ochre кольцо, темнее ink и несколько собственных штрихов износа. ViewBox32/currentColor/aria-hidden/focusable=false и размеры/crops билета/atlas сохраняются. Старые28 ассетов, все generated tiles/masters/prompts, friends и оба EUROPE файла побайтово равны82. Нового imagegen, шрифта, icon pack или зависимости нет.
+
+Canonical EUROPE сохраняет полный600×120, transform translate(62,22), исходные шесть paths, SHA256 `39b05d8b8863db9f61a6a9c31646f0fa5f9a5429e567f7c4e2d93cbae6340aed`. Общая основа77 уже содержит рабочий single geometry hook. Новый display scale меняет измеренный titleRect с(78,58,370,74) на(94,54.30,333,81.40); unchanged caller применяет его к тому же extrusion, не создаёт дополнительные буквы. Actual native SVG скрыт при titleVisible=true; semantic h1 сохранён. Flat-title proof отключает hook: titleVisible=false, SVG visible, один доступный h1. Декоративные три use runtime mark не являются geometry input.
+
+sources/settings-paper-proposal.json предлагает optional surfaces.settingsPaper/materialOverrides.settingsPaper в существующем buildMenuModels API. Без новых полей маршрутизация остаётся прежней. При наличии поля отдельная роль наследует paper map/options и меняет только settings paper frame/inner plane; tickets/clock/hangers остаются на прежних материалах. Caller владеет входной Texture, model kit — своими clones и idempotent dispose. Повторно используется paper-tile.webp; новый файл не нужен. Color#F2D5BD — начальное значение для будущей физической пробы, не снятый кадр. Отдельный clone может добавить GPU upload/material draw даже без новых bytes; API пока не реализован и стоимость не включена в candidate.
+
+Affected QA: четыре actions94px, nav430/430/cue hidden; пять94/94/111/94/94px, nav406/content527/cue visible. Две длинные ошибки дают content1366px; retry сокращает сообщение до1194px. Все11 проверенных фокусов actions/retry имеют минимум7px локального зазора; screenshot подтверждает transformed rules focus. Tab/Shift+Tab, callback друзей (локальный counter1), settings Return/Escape, retry focus после сокращения проверены. Document1672×941/scrollY0, horizontal overflow0, физические board/settings/hangers=true, console errors0. Это harness callbacks, не production storage/network/game.
+
+Inventory35, XML12, runtime363750 B (+359 B SVG), raster348682 B без изменений; unique-image full-mip estimates14/22.286458MiB прежние. Фактический полный статичный WebGL render до/после:433calls,681587triangles,121geometries,23textures. Эти счётчики включают passes, не измеряют FPS, GPU timing, VRAM и native CSS paint. Flat-title без extrusion отдельно даёт430calls/671663triangles/120geometries/23textures. Source hashes/XML/dimensions/28 byte equality и canonical bounds проверены; повторная широкая QA старых tiles не нужна.
+
+Остаточные отличия: у PNG нет динамических hints, системный serif ниже/иначе по форме, title всё ещё отличается по наклону/толщине/свету, физическая settings кромка остаётся старого цвета, детали сцены/багажа вне art ownership. Новый раунд не означает художественной приёмки общей сцены. Результаты/измерения/paired frames/независимое read-only review и exact tip — outputs/round4/.
+
+## Пятый раунд5.0: материалы и печать в frozen1bab
+
+Общая основа принята как SOURCE/PACKAGE; immutable ZIP45962032B, SHA256 `082aa0f920d96753bdb5db517c1bc7739244c2eb664a7bdd92a2644f31e6cdfe`, кадр1672 SHA256 `4bb5515fc13a59a978ce1055df4c7673f11d0dc7559bd27a852cc8d9712853dc`. Scene modules и native harness взяты exact Git/ZIP. Own harness меняет import prefix и добавляет только DOM диагностику/CPU UV raycast. Control/candidate HTML и JS одинаковы, в candidate заменены только собственные art assets. Чужая mutable сцена не использовалась.
+
+Пять built-in image_gen edits заменяют прежние512² RGB карты в существующих slots: wood, stone, plaster, leather, paper. Board-paint сохранён. Древесина менее красная и контрастная; штукатурка и камень нейтральнее, с тонким износом; кожа имеет больше вариаций пор/тона. Бумага кремовая, с тонкими волокнами. В карты не добавлены объекты, fixed shadows, фон станции, края, ремни или швы. Геометрия предоставляет эти детали, grading принадлежит compositor. Для бумаги выполнена ещё одна точечная image_gen edit против тёмных вкраплений; intermediate master/input и обе prompts сохранены. Full1254² masters и verbatim prompts сохранены в пакете, model/seed tool не сообщил. `sources/refine-surfaces-round5.cjs` кодирует из masters PNG512 RGB, затем из этих PNG WebPquality86/effort6; Sharp0.35.5 Apache2.0. Никакого pixel grading после генерации. Целевые цвета в prompts — ориентир; фактические средние/variance/edge differences даны в material-measurements.json.
+
+SVG неба сохраняет1024×512/opaque и текущий slot: repeat1×.7, offset0×.4, frozen emissive material. Три first-hit ray samples видимого неба попадают в bitmap x592..721/y95..105. Среднее облако перемещено в эту область, справа остаётся голубой участок. Четвёртый ray sample за геометрией исключён из доказательства видимости. Фиксированные depth/postprocess всё ещё сильно смягчают облака. Деревья и станция не рисовались в SVG. Clock-face сохраняет512²/12hour+48minute и отдельные hands: тёплая лицевая бумага#E4D1AE, тёмные более толстые отметки и мелкая собственная патина. Continue icon — более компактный rounded train front/slimmer rails;32/currentColor/decorative semantics прежние. Пять остальных icons, runtimeEUROPE и canonical full600×120/6paths сохранены побайтово. Новый font/dependency не нужен.
+
+Settings всё ещё имеет розовый оттенок из frozen native overlay#D69F7C96 и физическогоsettingsPaper#F2D5BD. `round5-print-proposals.json` предлагает compositor trial#D6C9AB96/#F1E3CA приroughness.95 и, как дополнительный запас контраста, primary ink#2B2418. Это source-only значения, в candidate они не применены. Прозрачный `settings-edge-print.svg`512×128 — тонкая нерегулярная нарисованная линия и редкие светлые возрастные точки. При принятии она заменяет существующий native rectangular print border, не добавляется второй линией; text/icon остаются native. Физическая неровная кромка, толщина и подвесы принадлежат environment. Приложенный rect/UV контракт сохраняет390×98 и safe text area. Existing brass inner line/corner hardware переданы владельцу с target apparent stroke1.25px и safezone≥8px; новый physical/CSS frame не создавался.
+
+Affected QA: paired before/after1672 с4/5actions на одинаковом свете; native focus доRules, обе длинные ошибки/Retry bindings, прокрутка внутрификсированныхрам; actual material/skyUV/counters; просмотры затронутой печати/материалов1280×720 и1920×1080. HTML/callbacks/layout сохранены, новых партий/сохранений эта галерея не создаёт. Общая wide suite, правила игры, runtime production, zoom200%, narrow/adaptive и анимация заново не проверялись. Localbrowser errors0. Повтор2×2 всех пяти фактур осмотрен: явных стыков на этом масштабе нет, противоположные пиксели краёв не идентичны. Это визуальная проверка, не математическая гарантия бесшовности.
+
+Inventory39, XML13; 21 прежний asset побайтово сохранён. Runtime358581B (delta-5169), raster342812B (delta-5870). Dimensions/uniqueRGBA8 full-mip estimates14/22.286458MiB прежние; не учитывают clones, DOM/CSS, targets/shadows/PMREM и не являются измерениемVRAM. Actualstatic renderer.info до/после446calls/750627triangles/122geometries/23textures. Эти данные не доказывают FPS или ускорение. Source-only edge layer сейчас не выделяет GPU texture; native CSS integration имеет одну512×128 decode/неизмеренныйpaint. Physical integration требует отдельной проверкиclone/material/draw cost.
+
+Минимальный расчёт по decodedpixels и точным CSSсмесьям: normalrow6.45, primaryink5.79, Settingsink6.61. Расчёт исключает edge strips, antialiasing, browser color management и WebGL light. Proposed neutral Settings overlay даёт8.08, darker primaryink6.39; это расчёт source-onlytrial. Контраст физической бумаги/теней таким расчётом не подтверждается.
+
+Открытые отличия: directional light/contact shadows, фактический розовый Settings, профиль/глубина station/train/зелени, пропорции багажа и физические края/кант. Они требуют работы соответствующих владельцев. Этот раунд — готовый арт/источники для root, не утверждение художественного совпадения сцены. Правило никакой Аркадии/внутренней инфраструктуры действует без исключений.
+
+## Уточнение неба5.1 на frozen29, 11 октября2026
+
+Принятый own parent`2f7f03e47c8b56aac8747c32ebbe018bca0420d8`/round5 ZIP сохранён неизменным. Только `distant-sky.svg` и own inventory/provenance/spec/source proof. Общий frozen`29cff5e3edc69d06f620fdc6240766449c53e164` — rootSOURCE+PACKAGEaccepted, artisticgateOPEN, не productionrelease. ImmutableZIP50054237B/SHA2562421c06293c770db6c7376164492b510a75910098fa3089b9985b06aa8700c67 и кадрSHA256ce409e88569f666109e002aa34f211e4262a6e6f3252ec10b0f30533e7fac0c1. Source5/scene12/harness5 exactGit/ZIP. Own harness добавляет только importprefix и DOM/read-only42sky raycast diagnostics. NativeHTML/CSS/callbacks и before/afterJS одинаковы; linear material arrays не восстанавливались из HDRhex.
+
+Новый actual29 замер:15first-hit sky из42grid samples;27occluded rays исключены. Видимая bitmapполоса x506–721/y90–129, skyrepeat1×.7/offset0×.4/flipY/linearcolor[0,0,0]/emissive[1,1,1]/intensity1 прежние. Прежние три1bab rays не использованы как доказательство. Большое правое облако перемещено в видимую область; translateY12sourcepixel выводит crest ниже retained canopyedge и оставляет синий просвет сверху/слева. Градиент стал синее, diffuse cloudbody имеет собственный мягкий цветовой переход. В карту не добавлены деревья, станция, объекты или fixed3Dshadows; nativeSVG1024×512opaque, project-original, imagegen не запускался.
+
+Paired1672 и crop552×245 поscreen(1120,180) показывают отдельное крупное мягкое облако справа и голубое небо. Референс показан тем же crop, но его foregroundgeometry отличается; пиксельное совпадение не утверждается. Browserdecode обоихSVG natural/canvas1024×512/minAlpha255; sourcepixels и real-frame3×3means на15firsthit points сохранены. Browsererrors0. Camera/UV/material/light/DOF/loader/geometry не менялись; source safety толькоlocal#refs/no scripts/images/foreignObjects. Другие382f7assets/maps/labels/Settings/canonical/fonts побайтно прежние. Broadnative/game/adaptive/animation QA не повторялась.
+
+Runtime358629B, delta+48BтолькоSVG; raster342812Bпрежний. Uniqueimage skyRGBA8fullmip8/3MiB и общие14/22.286458MiB прежние; clones/DOM/targets/shadows/PMREM исключены. Actualstatic484calls/792095triangles/129geometries/23textures до/после, неFPS/VRAM/ускорение. Timing browserdecode/filter не измерялся. Currenttrees/station/canopy сохраняют перекрытия, farprocessing смягчает cloudcontour; карта теперь даёт blue/clouddifference без foreignchange. Художественная общая приёмка/rootintegration открыта. Только ordinaryGit/ownproject/verifiedpublicOSS; никакой Аркадии/внутренней инфраструктуры прямо или косвенно. AnimatorSTOP/mainSitesnetwork не затронуты.

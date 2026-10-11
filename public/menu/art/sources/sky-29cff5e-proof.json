@@ -1,0 +1,982 @@
+{
+  "ownParent": "2f7f03e47c8b56aac8747c32ebbe018bca0420d8",
+  "commonBaseline": "29cff5e3edc69d06f620fdc6240766449c53e164",
+  "baselineStatus": "Root SOURCE+PACKAGE accepted; independent common source/CPU review no newP1/P2. Frozen technical baseline, artistic gate OPEN, not production release.",
+  "skyFile": "distant-sky.svg",
+  "oldSHA256": "c9c4768c539e7f499086b1ce8ae252eb1ee581b796c96e116bc926065cbe4fbe",
+  "newSHA256": "6cf1bd3b9fd27d6368cc4bb85938db84efb60fbe7b67493a42f74b7e3cf5be7e",
+  "dimensions": [
+    1024,
+    512
+  ],
+  "opaque": true,
+  "runtimeDecode": {
+    "after": {
+      "canvas": [
+        1024,
+        512
+      ],
+      "minAlpha": 255,
+      "natural": [
+        1024,
+        512
+      ],
+      "pixels": [
+        {
+          "bitmap": [
+            592,
+            90
+          ],
+          "rgba": [
+            102,
+            164,
+            219,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            635,
+            90
+          ],
+          "rgba": [
+            103,
+            165,
+            219,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            678,
+            90
+          ],
+          "rgba": [
+            102,
+            164,
+            219,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            721,
+            90
+          ],
+          "rgba": [
+            248,
+            247,
+            241,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            592,
+            100
+          ],
+          "rgba": [
+            105,
+            166,
+            220,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            635,
+            100
+          ],
+          "rgba": [
+            106,
+            167,
+            221,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            678,
+            100
+          ],
+          "rgba": [
+            112,
+            171,
+            221,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            721,
+            100
+          ],
+          "rgba": [
+            246,
+            248,
+            240,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            549,
+            109
+          ],
+          "rgba": [
+            107,
+            168,
+            222,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            592,
+            109
+          ],
+          "rgba": [
+            108,
+            169,
+            222,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            635,
+            109
+          ],
+          "rgba": [
+            107,
+            169,
+            222,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            721,
+            109
+          ],
+          "rgba": [
+            246,
+            247,
+            239,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            506,
+            119
+          ],
+          "rgba": [
+            110,
+            171,
+            224,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            635,
+            119
+          ],
+          "rgba": [
+            110,
+            171,
+            224,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            506,
+            129
+          ],
+          "rgba": [
+            123,
+            180,
+            227,
+            255
+          ]
+        }
+      ]
+    },
+    "before": {
+      "canvas": [
+        1024,
+        512
+      ],
+      "minAlpha": 255,
+      "natural": [
+        1024,
+        512
+      ],
+      "pixels": [
+        {
+          "bitmap": [
+            592,
+            90
+          ],
+          "rgba": [
+            227,
+            235,
+            238,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            635,
+            90
+          ],
+          "rgba": [
+            228,
+            236,
+            238,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            678,
+            90
+          ],
+          "rgba": [
+            148,
+            184,
+            221,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            721,
+            90
+          ],
+          "rgba": [
+            136,
+            177,
+            218,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            592,
+            100
+          ],
+          "rgba": [
+            228,
+            236,
+            238,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            635,
+            100
+          ],
+          "rgba": [
+            229,
+            237,
+            238,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            678,
+            100
+          ],
+          "rgba": [
+            196,
+            215,
+            231,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            721,
+            100
+          ],
+          "rgba": [
+            138,
+            178,
+            219,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            549,
+            109
+          ],
+          "rgba": [
+            175,
+            202,
+            228,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            592,
+            109
+          ],
+          "rgba": [
+            229,
+            237,
+            238,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            635,
+            109
+          ],
+          "rgba": [
+            229,
+            237,
+            238,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            721,
+            109
+          ],
+          "rgba": [
+            140,
+            180,
+            220,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            506,
+            119
+          ],
+          "rgba": [
+            142,
+            182,
+            221,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            635,
+            119
+          ],
+          "rgba": [
+            229,
+            237,
+            239,
+            255
+          ]
+        },
+        {
+          "bitmap": [
+            506,
+            129
+          ],
+          "rgba": [
+            145,
+            183,
+            222,
+            255
+          ]
+        }
+      ]
+    }
+  },
+  "actualRayGrid": {
+    "total": 42,
+    "visibleFirstHit": 15,
+    "occluded": 27,
+    "gridScreenX": [
+      1140,
+      1220,
+      1300,
+      1380,
+      1460,
+      1540,
+      1620
+    ],
+    "gridScreenY": [
+      205,
+      235,
+      265,
+      295,
+      325,
+      355
+    ],
+    "visibleSamples": [
+      {
+        "bitmapPixel": [
+          592.2513321792445,
+          90.05507844655966
+        ],
+        "colorLinear": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "emissiveLinear": [
+          1,
+          1,
+          1
+        ],
+        "firstHitIsSky": true,
+        "firstObject": "distant-backdrop/sky",
+        "object": "distant-backdrop/sky",
+        "offset": [
+          0,
+          0.4
+        ],
+        "pixel": [
+          1380,
+          235
+        ],
+        "repeat": [
+          1,
+          0.7
+        ],
+        "uv": [
+          0.5783704415812935,
+          0.6058731070129474
+        ]
+      },
+      {
+        "bitmapPixel": [
+          635.1884866776304,
+          90.05507844655978
+        ],
+        "colorLinear": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "emissiveLinear": [
+          1,
+          1,
+          1
+        ],
+        "firstHitIsSky": true,
+        "firstObject": "distant-backdrop/sky",
+        "object": "distant-backdrop/sky",
+        "offset": [
+          0,
+          0.4
+        ],
+        "pixel": [
+          1460,
+          235
+        ],
+        "repeat": [
+          1,
+          0.7
+        ],
+        "uv": [
+          0.6203012565211234,
+          0.605873107012947
+        ]
+      },
+      {
+        "bitmapPixel": [
+          678.1256411760164,
+          90.05507844655978
+        ],
+        "colorLinear": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "emissiveLinear": [
+          1,
+          1,
+          1
+        ],
+        "firstHitIsSky": true,
+        "firstObject": "distant-backdrop/sky",
+        "object": "distant-backdrop/sky",
+        "offset": [
+          0,
+          0.4
+        ],
+        "pixel": [
+          1540,
+          235
+        ],
+        "repeat": [
+          1,
+          0.7
+        ],
+        "uv": [
+          0.6622320714609535,
+          0.605873107012947
+        ]
+      },
+      {
+        "bitmapPixel": [
+          721.0627956744019,
+          90.05507844655978
+        ],
+        "colorLinear": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "emissiveLinear": [
+          1,
+          1,
+          1
+        ],
+        "firstHitIsSky": true,
+        "firstObject": "distant-backdrop/sky",
+        "object": "distant-backdrop/sky",
+        "offset": [
+          0,
+          0.4
+        ],
+        "pixel": [
+          1620,
+          235
+        ],
+        "repeat": [
+          1,
+          0.7
+        ],
+        "uv": [
+          0.7041628864007831,
+          0.605873107012947
+        ]
+      },
+      {
+        "bitmapPixel": [
+          592.2513321792447,
+          99.71902590135473
+        ],
+        "colorLinear": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "emissiveLinear": [
+          1,
+          1,
+          1
+        ],
+        "firstHitIsSky": true,
+        "firstObject": "distant-backdrop/sky",
+        "object": "distant-backdrop/sky",
+        "offset": [
+          0,
+          0.4
+        ],
+        "pixel": [
+          1380,
+          265
+        ],
+        "repeat": [
+          1,
+          0.7
+        ],
+        "uv": [
+          0.5783704415812937,
+          0.5789089679091666
+        ]
+      },
+      {
+        "bitmapPixel": [
+          635.1884866776305,
+          99.71902590135473
+        ],
+        "colorLinear": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "emissiveLinear": [
+          1,
+          1,
+          1
+        ],
+        "firstHitIsSky": true,
+        "firstObject": "distant-backdrop/sky",
+        "object": "distant-backdrop/sky",
+        "offset": [
+          0,
+          0.4
+        ],
+        "pixel": [
+          1460,
+          265
+        ],
+        "repeat": [
+          1,
+          0.7
+        ],
+        "uv": [
+          0.6203012565211236,
+          0.5789089679091665
+        ]
+      },
+      {
+        "bitmapPixel": [
+          678.1256411760162,
+          99.71902590135484
+        ],
+        "colorLinear": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "emissiveLinear": [
+          1,
+          1,
+          1
+        ],
+        "firstHitIsSky": true,
+        "firstObject": "distant-backdrop/sky",
+        "object": "distant-backdrop/sky",
+        "offset": [
+          0,
+          0.4
+        ],
+        "pixel": [
+          1540,
+          265
+        ],
+        "repeat": [
+          1,
+          0.7
+        ],
+        "uv": [
+          0.6622320714609533,
+          0.5789089679091661
+        ]
+      },
+      {
+        "bitmapPixel": [
+          721.062795674402,
+          99.71902590135473
+        ],
+        "colorLinear": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "emissiveLinear": [
+          1,
+          1,
+          1
+        ],
+        "firstHitIsSky": true,
+        "firstObject": "distant-backdrop/sky",
+        "object": "distant-backdrop/sky",
+        "offset": [
+          0,
+          0.4
+        ],
+        "pixel": [
+          1620,
+          265
+        ],
+        "repeat": [
+          1,
+          0.7
+        ],
+        "uv": [
+          0.7041628864007832,
+          0.5789089679091665
+        ]
+      },
+      {
+        "bitmapPixel": [
+          549.3141776808588,
+          109.3829733561497
+        ],
+        "colorLinear": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "emissiveLinear": [
+          1,
+          1,
+          1
+        ],
+        "firstHitIsSky": true,
+        "firstObject": "distant-backdrop/sky",
+        "object": "distant-backdrop/sky",
+        "offset": [
+          0,
+          0.4
+        ],
+        "pixel": [
+          1300,
+          295
+        ],
+        "repeat": [
+          1,
+          0.7
+        ],
+        "uv": [
+          0.5364396266414637,
+          0.5519448288053859
+        ]
+      },
+      {
+        "bitmapPixel": [
+          592.2513321792447,
+          109.38297335614982
+        ],
+        "colorLinear": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "emissiveLinear": [
+          1,
+          1,
+          1
+        ],
+        "firstHitIsSky": true,
+        "firstObject": "distant-backdrop/sky",
+        "object": "distant-backdrop/sky",
+        "offset": [
+          0,
+          0.4
+        ],
+        "pixel": [
+          1380,
+          295
+        ],
+        "repeat": [
+          1,
+          0.7
+        ],
+        "uv": [
+          0.5783704415812937,
+          0.5519448288053856
+        ]
+      },
+      {
+        "bitmapPixel": [
+          635.1884866776304,
+          109.38297335614992
+        ],
+        "colorLinear": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "emissiveLinear": [
+          1,
+          1,
+          1
+        ],
+        "firstHitIsSky": true,
+        "firstObject": "distant-backdrop/sky",
+        "object": "distant-backdrop/sky",
+        "offset": [
+          0,
+          0.4
+        ],
+        "pixel": [
+          1460,
+          295
+        ],
+        "repeat": [
+          1,
+          0.7
+        ],
+        "uv": [
+          0.6203012565211234,
+          0.5519448288053853
+        ]
+      },
+      {
+        "bitmapPixel": [
+          721.062795674402,
+          109.38297335614992
+        ],
+        "colorLinear": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "emissiveLinear": [
+          1,
+          1,
+          1
+        ],
+        "firstHitIsSky": true,
+        "firstObject": "distant-backdrop/sky",
+        "object": "distant-backdrop/sky",
+        "offset": [
+          0,
+          0.4
+        ],
+        "pixel": [
+          1620,
+          295
+        ],
+        "repeat": [
+          1,
+          0.7
+        ],
+        "uv": [
+          0.7041628864007832,
+          0.5519448288053853
+        ]
+      },
+      {
+        "bitmapPixel": [
+          506.3770231824728,
+          119.04692081094488
+        ],
+        "colorLinear": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "emissiveLinear": [
+          1,
+          1,
+          1
+        ],
+        "firstHitIsSky": true,
+        "firstObject": "distant-backdrop/sky",
+        "object": "distant-backdrop/sky",
+        "offset": [
+          0,
+          0.4
+        ],
+        "pixel": [
+          1220,
+          325
+        ],
+        "repeat": [
+          1,
+          0.7
+        ],
+        "uv": [
+          0.4945088117016336,
+          0.5249806897016047
+        ]
+      },
+      {
+        "bitmapPixel": [
+          635.1884866776305,
+          119.04692081094488
+        ],
+        "colorLinear": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "emissiveLinear": [
+          1,
+          1,
+          1
+        ],
+        "firstHitIsSky": true,
+        "firstObject": "distant-backdrop/sky",
+        "object": "distant-backdrop/sky",
+        "offset": [
+          0,
+          0.4
+        ],
+        "pixel": [
+          1460,
+          325
+        ],
+        "repeat": [
+          1,
+          0.7
+        ],
+        "uv": [
+          0.6203012565211236,
+          0.5249806897016047
+        ]
+      },
+      {
+        "bitmapPixel": [
+          506.3770231824728,
+          128.71086826573986
+        ],
+        "colorLinear": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "emissiveLinear": [
+          1,
+          1,
+          1
+        ],
+        "firstHitIsSky": true,
+        "firstObject": "distant-backdrop/sky",
+        "object": "distant-backdrop/sky",
+        "offset": [
+          0,
+          0.4
+        ],
+        "pixel": [
+          1220,
+          355
+        ],
+        "repeat": [
+          1,
+          0.7
+        ],
+        "uv": [
+          0.4945088117016336,
+          0.498016550597824
+        ]
+      }
+    ],
+    "bitmapBoundsApprox": [
+      506,
+      90,
+      721,
+      129
+    ],
+    "method": "Actual frozen29 triangle raycasts and Texture.transformUv/flipY. Occluded samples explicitly excluded from cloud visibility proof. Previous1bab three rays not reused."
+  },
+  "mapChange": "Deeper blue gradient; move large soft cloud to right visible band, retain a blue gap above/left of cloud. Source cloud-window path has translate(0,12) to show crest below retained canopy edge. No station/trees/3D shadows/whole-background image.",
+  "ownershipPreserved": "Exact camera/material linear floats/UV/geometry/light/DOF/loader/nativeCSS/callbacks from frozen29, no reconstruction from HDR hex. Other2f7 art bytes preserved.",
+  "staticCounters": {
+    "calls": 484,
+    "geometries": 129,
+    "textures": 23,
+    "triangles": 792095
+  },
+  "cost": "Same1024x512 unique image and existing sky/emissiveMap slot, RGBA8 fullmip8/3MiB. No new texture slots/clones/materials; fullscene counters unchanged. Decode/paint/filter timing not measured; no FPS/VRAM claim.",
+  "limits": "Current trees/station/canopy still mask large parts of sky; far depth processing softens contours. Original reference has different foreground geometry, so crop is a visual target, not pixel alignment. Current map delivers visible cloud/blue distinction without foreign changes; no integration/artistic acceptance claim."
+}

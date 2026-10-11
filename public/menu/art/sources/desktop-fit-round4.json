@@ -1,0 +1,1149 @@
+{
+  "version": "4.3-proposal",
+  "status": "pending compositor integration and root visual acceptance",
+  "basis": {
+    "ownArtCommit": "82a61576330d3f279aadec45b964ffc4b31bde62",
+    "commonCommit": "77e709e9f35bd11605ecda0a10045de5756a86ec",
+    "targetViewport": [
+      1672,
+      941
+    ]
+  },
+  "scope": "One desktop knot only. CSS is a diagnostic prototype at 1672x941; do not copy its unconditional desktop overrides across other knots. Retain accepted 1280/1920/ultrawide/compact values until compositor derives and checks them.",
+  "units": "CSS px before physical quad transform; raster reference coordinates are screen pixels",
+  "before": {
+    "headerHeight": 136,
+    "headerPaddingBottom": 28,
+    "boardPaddingLeft": 36,
+    "boardPaddingRight": 20,
+    "rowMinHeight": 94,
+    "rowGap": 8,
+    "headerGap": 12,
+    "labelFontSize": 40,
+    "continuedTutorialFontSize": 28,
+    "labelLineHeight": 1.2,
+    "labelScaleX": 1,
+    "iconSize": 44,
+    "iconColumn": 104,
+    "copyPadding": [
+      6,
+      16
+    ],
+    "markLayoutWidth": 370,
+    "markDisplayScale": [
+      1,
+      1
+    ],
+    "actionsFrame": 416,
+    "overflowNav": 392,
+    "settingsIconSize": 44,
+    "settingsLabelSize": 32
+  },
+  "proposed": {
+    "headerHeight": 122,
+    "headerPaddingBottom": 14,
+    "boardPaddingLeft": 31,
+    "boardPaddingRight": 20,
+    "rowMinHeight": 94,
+    "rowGap": 6,
+    "headerGap": 12,
+    "labelFontSize": 46,
+    "continuedTutorialFontSize": 32,
+    "labelLineHeight": 1.05,
+    "labelScaleX": 0.89,
+    "labelLayoutWidth": "100% / 0.89",
+    "iconSize": 56,
+    "iconColumn": 98,
+    "copyPadding": [
+      6,
+      16,
+      6,
+      20
+    ],
+    "copyPaddingOrder": [
+      "top",
+      "right",
+      "bottom",
+      "left"
+    ],
+    "copyOverflow": "clip",
+    "markLayoutWidth": 370,
+    "markDisplayScale": [
+      0.9,
+      1.1
+    ],
+    "actionsHeightToken": 414,
+    "actionsFrame": 430,
+    "overflowNav": 406,
+    "footerHeight": 24,
+    "actionsPadding": 8,
+    "actionsPosition": "relative",
+    "settingsIconSize": 48,
+    "settingsLabelSize": 30,
+    "settingsLabelScaleX": 0.92,
+    "settingsLabelLineHeight": 1.1,
+    "settingsJustify": "flex-start",
+    "settingsPaddingLeft": 24,
+    "settingsGap": 14,
+    "settingsPrintInset": 7
+  },
+  "preserved": {
+    "boardRect": [
+      60,
+      50,
+      510,
+      596
+    ],
+    "settingsRect": [
+      125,
+      655,
+      390,
+      98
+    ],
+    "rowOrder": [
+      "continue",
+      "new",
+      "friends optional",
+      "tutorial",
+      "rules"
+    ],
+    "friends": {
+      "label": "Играть с друзьями",
+      "hint": null,
+      "enabled": true
+    },
+    "hints": {
+      "font": "IBM Plex Sans",
+      "fontSize": 24,
+      "lineHeight": 1.2,
+      "dynamic": true
+    },
+    "fontStack": [
+      "Times New Roman",
+      "Georgia",
+      "serif"
+    ],
+    "labelFontWeight": 400,
+    "focus": "existing double ink2px + focus3px, offset3px; original precedence retained",
+    "retryMinHeight": 64,
+    "errorSlots": [
+      "continue",
+      "tutorial"
+    ],
+    "titleSourceViewBox": [
+      0,
+      0,
+      600,
+      120
+    ],
+    "titleGeometryInput": "sources/europe-shape-source.svg"
+  },
+  "rationale": {
+    "header": "14px less header and matching padding change preserve pre-aspect title baseline while lifting the actions.",
+    "label": "46px raises measured glyph height; 0.89 horizontal scale approximates the narrower serif in the reference. It applies equally to four and five actions, independent of overflow. Native text and full copy layout width preserve wrapping.",
+    "frame": "The lifted start leaves 14px more fixed viewport inside the unchanged board. Four natural rows need 410px; 430px frame includes 20px bottom slack. Five actions and errors use a 406px nav plus 24px footer.",
+    "title": "Display transform only: canonical six letter paths/full viewBox and single extrusion remain unchanged. Existing compositor measures transformed native SVG box for title placement."
+  },
+  "nativeMeasured": {
+    "control4": {
+      "document": [
+        1672,
+        941,
+        0
+      ],
+      "frame": 416,
+      "h1": "Ticket to Ride: Europe",
+      "metrics": {
+        "fixtureCommit": "77e709e9f35bd11605ecda0a10045de5756a86ec",
+        "physical": {
+          "board": true,
+          "hangers": true,
+          "settings": true
+        },
+        "projected": {
+          "board": [
+            {
+              "x": 59.99999999999985,
+              "y": 49.99999999999964
+            },
+            {
+              "x": 569.9999999999999,
+              "y": 106.4900500806676
+            },
+            {
+              "x": 569.9999999999999,
+              "y": 622.4232965775097
+            },
+            {
+              "x": 59.99999999999985,
+              "y": 646.0000000000001
+            }
+          ],
+          "settings": [
+            {
+              "x": 124.99999999999966,
+              "y": 655.0000000000001
+            },
+            {
+              "x": 515,
+              "y": 635.7160030755374
+            },
+            {
+              "x": 515,
+              "y": 723.4730128392374
+            },
+            {
+              "x": 124.99999999999966,
+              "y": 753.0000000000001
+            }
+          ]
+        },
+        "renderInfo": {
+          "calls": 433,
+          "geometries": 121,
+          "textures": 23,
+          "triangles": 681587
+        },
+        "rows": [
+          {
+            "font": "40px / 48px \"Times New Roman\", Georgia, serif",
+            "glyph": {
+              "ascent": 26.484375,
+              "descent": 8.5546875,
+              "width": 212.28515625
+            },
+            "height": 94,
+            "iconBox": {
+              "bottom": 297.4505310058594,
+              "height": 45.23637390136719,
+              "left": 148.5666961669922,
+              "right": 196.4252166748047,
+              "top": 252.2141571044922,
+              "width": 47.8585205078125,
+              "x": 148.5666961669922,
+              "y": 252.2141571044922
+            },
+            "id": "continue",
+            "label": "Продолжить",
+            "labelBox": {
+              "bottom": 301.33209228515625,
+              "height": 59.948211669921875,
+              "left": 245.67828369140625,
+              "right": 527.0280151367188,
+              "top": 241.3838806152344,
+              "width": 281.3497314453125,
+              "x": 245.67828369140625,
+              "y": 241.3838806152344
+            },
+            "offsetTop": 160,
+            "rowBox": {
+              "bottom": 335.6186218261719,
+              "height": 110.04129028320312,
+              "left": 114.65081024169922,
+              "right": 542.0634078979492,
+              "top": 225.57733154296875,
+              "width": 427.41259765625,
+              "x": 114.65081024169922,
+              "y": 225.57733154296875
+            },
+            "width": 428
+          },
+          {
+            "font": "40px / 48px \"Times New Roman\", Georgia, serif",
+            "glyph": {
+              "ascent": 26.484375,
+              "descent": 8.5546875,
+              "width": 255
+            },
+            "height": 94,
+            "iconBox": {
+              "bottom": 395.7850341796875,
+              "height": 43.95050048828125,
+              "left": 148.5666961669922,
+              "right": 196.4252166748047,
+              "top": 351.83453369140625,
+              "width": 47.8585205078125,
+              "x": 148.5666961669922,
+              "y": 351.83453369140625
+            },
+            "id": "new",
+            "label": "Начать партию",
+            "labelBox": {
+              "bottom": 404.2880859375,
+              "height": 51.247711181640625,
+              "left": 245.67828369140625,
+              "right": 527.0280151367188,
+              "top": 353.0403747558594,
+              "width": 281.3497314453125,
+              "x": 245.67828369140625,
+              "y": 353.0403747558594
+            },
+            "offsetTop": 262,
+            "rowBox": {
+              "bottom": 424.6665344238281,
+              "height": 98.55755615234376,
+              "left": 114.65081024169922,
+              "right": 542.0634078979492,
+              "top": 326.1089782714844,
+              "width": 427.41259765625,
+              "x": 114.65081024169922,
+              "y": 326.1089782714844
+            },
+            "width": 428
+          },
+          {
+            "font": "40px / 48px \"Times New Roman\", Georgia, serif",
+            "glyph": {
+              "ascent": 27.7734375,
+              "descent": 8.6328125,
+              "width": 166.15234375
+            },
+            "height": 94,
+            "iconBox": {
+              "bottom": 494.4284362792969,
+              "height": 42.9735107421875,
+              "left": 148.5666961669922,
+              "right": 196.4252166748047,
+              "top": 451.4549255371094,
+              "width": 47.8585205078125,
+              "x": 148.5666961669922,
+              "y": 451.4549255371094
+            },
+            "id": "tutorial",
+            "label": "Обучение",
+            "labelBox": {
+              "bottom": 481.05859375,
+              "height": 45.65234375,
+              "left": 245.67828369140625,
+              "right": 527.0280151367188,
+              "top": 435.40625,
+              "width": 281.3497314453125,
+              "x": 245.67828369140625,
+              "y": 435.40625
+            },
+            "offsetTop": 364,
+            "rowBox": {
+              "bottom": 519.2874145507812,
+              "height": 92.64682006835938,
+              "left": 114.65081024169922,
+              "right": 542.0634078979492,
+              "top": 426.6405944824219,
+              "width": 427.41259765625,
+              "x": 114.65081024169922,
+              "y": 426.6405944824219
+            },
+            "width": 428
+          },
+          {
+            "font": "40px / 48px \"Times New Roman\", Georgia, serif",
+            "glyph": {
+              "ascent": 26.484375,
+              "descent": 8.5546875,
+              "width": 144.6484375
+            },
+            "height": 94,
+            "iconBox": {
+              "bottom": 594.048828125,
+              "height": 44.0135498046875,
+              "left": 148.5666961669922,
+              "right": 196.4252166748047,
+              "top": 550.0352783203125,
+              "width": 47.8585205078125,
+              "x": 148.5666961669922,
+              "y": 550.0352783203125
+            },
+            "id": "rules",
+            "label": "Правила",
+            "labelBox": {
+              "bottom": 592.715087890625,
+              "height": 51.6182861328125,
+              "left": 245.67828369140625,
+              "right": 527.0280151367188,
+              "top": 541.0968017578125,
+              "width": 281.3497314453125,
+              "x": 245.67828369140625,
+              "y": 541.0968017578125
+            },
+            "offsetTop": 466,
+            "rowBox": {
+              "bottom": 619.8190307617188,
+              "height": 99.1204833984375,
+              "left": 114.65081024169922,
+              "right": 542.0634078979492,
+              "top": 520.6985473632812,
+              "width": 427.41259765625,
+              "x": 114.65081024169922,
+              "y": 520.6985473632812
+            },
+            "width": 428
+          }
+        ],
+        "sourceRects": {
+          "board": {
+            "height": 596,
+            "width": 510,
+            "x": 60,
+            "y": 50
+          },
+          "settings": {
+            "height": 98,
+            "width": 390,
+            "x": 125,
+            "y": 655
+          }
+        },
+        "titleRect": {
+          "height": 74,
+          "width": 370,
+          "x": 78,
+          "y": 58
+        },
+        "titleVisible": true
+      },
+      "nativeTitleVisibility": "hidden",
+      "nav": [
+        416,
+        416,
+        0
+      ],
+      "note": {
+        "hidden": true,
+        "text": ""
+      },
+      "rows": [
+        {
+          "disabled": false,
+          "height": 94,
+          "hint": "Обычная партия",
+          "id": "continue",
+          "label": "Продолжить",
+          "overflow": false
+        },
+        {
+          "disabled": false,
+          "height": 94,
+          "hint": null,
+          "id": "new",
+          "label": "Начать партию",
+          "overflow": false
+        },
+        {
+          "disabled": false,
+          "height": 94,
+          "hint": "До первого маршрута",
+          "id": "tutorial",
+          "label": "Обучение",
+          "overflow": false
+        },
+        {
+          "disabled": false,
+          "height": 94,
+          "hint": null,
+          "id": "rules",
+          "label": "Правила",
+          "overflow": false
+        }
+      ],
+      "viewport": [
+        1672,
+        941
+      ]
+    },
+    "candidate4": {
+      "document": [
+        1672,
+        941,
+        0
+      ],
+      "frame": 430,
+      "h1": "Ticket to Ride: Europe",
+      "metrics": {
+        "fixtureCommit": "77e709e9f35bd11605ecda0a10045de5756a86ec",
+        "physical": {
+          "board": true,
+          "hangers": true,
+          "settings": true
+        },
+        "projected": {
+          "board": [
+            {
+              "x": 59.99999999999985,
+              "y": 49.99999999999964
+            },
+            {
+              "x": 569.9999999999999,
+              "y": 106.4900500806676
+            },
+            {
+              "x": 569.9999999999999,
+              "y": 622.4232965775097
+            },
+            {
+              "x": 59.99999999999985,
+              "y": 646.0000000000001
+            }
+          ],
+          "settings": [
+            {
+              "x": 124.99999999999966,
+              "y": 655.0000000000001
+            },
+            {
+              "x": 515,
+              "y": 635.7160030755374
+            },
+            {
+              "x": 515,
+              "y": 723.4730128392374
+            },
+            {
+              "x": 124.99999999999966,
+              "y": 753.0000000000001
+            }
+          ]
+        },
+        "renderInfo": {
+          "calls": 433,
+          "geometries": 121,
+          "textures": 23,
+          "triangles": 681587
+        },
+        "rows": [
+          {
+            "font": "46px / 48.3px \"Times New Roman\", Georgia, serif",
+            "glyph": {
+              "ascent": 30.45703125,
+              "descent": 9.837890625,
+              "width": 244.1279296875
+            },
+            "height": 94,
+            "iconBox": {
+              "bottom": 289.63189697265625,
+              "height": 57.94477844238281,
+              "left": 133.07540893554688,
+              "right": 194.2766571044922,
+              "top": 231.68711853027344,
+              "width": 61.20124816894531,
+              "x": 133.07540893554688,
+              "y": 231.68711853027344
+            },
+            "id": "continue",
+            "label": "Продолжить",
+            "labelBox": {
+              "bottom": 289.1844787597656,
+              "height": 61.74945068359375,
+              "left": 238.34877014160156,
+              "right": 527.0265045166016,
+              "top": 227.43502807617188,
+              "width": 288.677734375,
+              "x": 238.34877014160156,
+              "y": 227.43502807617188
+            },
+            "offsetTop": 8,
+            "rowBox": {
+              "bottom": 323.3963623046875,
+              "height": 112.00604248046876,
+              "left": 109.0315399169922,
+              "right": 542.0634002685547,
+              "top": 211.39031982421875,
+              "width": 433.0318603515625,
+              "x": 109.0315399169922,
+              "y": 211.39031982421875
+            },
+            "width": 433
+          },
+          {
+            "font": "46px / 48.3px \"Times New Roman\", Georgia, serif",
+            "glyph": {
+              "ascent": 30.45703125,
+              "descent": 9.837890625,
+              "width": 293.25
+            },
+            "height": 94,
+            "iconBox": {
+              "bottom": 386.0948791503906,
+              "height": 56.3326416015625,
+              "left": 133.07540893554688,
+              "right": 194.2766571044922,
+              "top": 329.7622375488281,
+              "width": 61.20124816894531,
+              "x": 133.07540893554688,
+              "y": 329.7622375488281
+            },
+            "id": "new",
+            "label": "Начать партию",
+            "labelBox": {
+              "bottom": 390.3865356445313,
+              "height": 52.974395751953125,
+              "left": 238.34877014160156,
+              "right": 527.0265045166016,
+              "top": 337.4121398925781,
+              "width": 288.677734375,
+              "x": 238.34877014160156,
+              "y": 337.4121398925781
+            },
+            "offsetTop": 108,
+            "rowBox": {
+              "bottom": 410.6982116699219,
+              "height": 100.59945678710938,
+              "left": 109.0315399169922,
+              "right": 542.0634002685547,
+              "top": 310.0987548828125,
+              "width": 433.0318603515625,
+              "x": 109.0315399169922,
+              "y": 310.0987548828125
+            },
+            "width": 433
+          },
+          {
+            "font": "46px / 48.3px \"Times New Roman\", Georgia, serif",
+            "glyph": {
+              "ascent": 31.939453125,
+              "descent": 9.927734375,
+              "width": 191.0751953125
+            },
+            "height": 94,
+            "iconBox": {
+              "bottom": 482.7593994140625,
+              "height": 54.92205810546875,
+              "left": 133.07540893554688,
+              "right": 194.2766571044922,
+              "top": 427.83734130859375,
+              "width": 61.20124816894531,
+              "x": 133.07540893554688,
+              "y": 427.83734130859375
+            },
+            "id": "tutorial",
+            "label": "Обучение",
+            "labelBox": {
+              "bottom": 464.5803833007813,
+              "height": 46.54119873046875,
+              "left": 238.34877014160156,
+              "right": 527.0265045166016,
+              "top": 418.0391845703125,
+              "width": 288.677734375,
+              "x": 238.34877014160156,
+              "y": 418.0391845703125
+            },
+            "offsetTop": 208,
+            "rowBox": {
+              "bottom": 501.5931701660156,
+              "height": 92.78594970703124,
+              "left": 109.0315399169922,
+              "right": 542.0634002685547,
+              "top": 408.8072204589844,
+              "width": 433.0318603515625,
+              "x": 109.0315399169922,
+              "y": 408.8072204589844
+            },
+            "width": 433
+          },
+          {
+            "font": "46px / 48.3px \"Times New Roman\", Georgia, serif",
+            "glyph": {
+              "ascent": 30.45703125,
+              "descent": 9.837890625,
+              "width": 166.345703125
+            },
+            "height": 94,
+            "iconBox": {
+              "bottom": 580.83447265625,
+              "height": 55.8328857421875,
+              "left": 133.07540893554688,
+              "right": 194.2766571044922,
+              "top": 525.0015869140625,
+              "width": 61.20124816894531,
+              "x": 133.07540893554688,
+              "y": 525.0015869140625
+            },
+            "id": "rules",
+            "label": "Правила",
+            "labelBox": {
+              "bottom": 574.044189453125,
+              "height": 50.61712646484375,
+              "left": 238.34877014160156,
+              "right": 527.0265045166016,
+              "top": 523.4270629882812,
+              "width": 288.677734375,
+              "x": 238.34877014160156,
+              "y": 523.4270629882812
+            },
+            "offsetTop": 308,
+            "rowBox": {
+              "bottom": 600.3016357421875,
+              "height": 97.06344604492188,
+              "left": 109.0315399169922,
+              "right": 542.0634002685547,
+              "top": 503.2381896972656,
+              "width": 433.0318603515625,
+              "x": 109.0315399169922,
+              "y": 503.2381896972656
+            },
+            "width": 433
+          }
+        ],
+        "sourceRects": {
+          "board": {
+            "height": 596,
+            "width": 510,
+            "x": 60,
+            "y": 50
+          },
+          "settings": {
+            "height": 98,
+            "width": 390,
+            "x": 125,
+            "y": 655
+          }
+        },
+        "titleRect": {
+          "height": 81.39999389648438,
+          "width": 333,
+          "x": 94,
+          "y": 54.29999923706055
+        },
+        "titleVisible": true
+      },
+      "nativeTitleVisibility": "hidden",
+      "nav": [
+        430,
+        430,
+        0
+      ],
+      "note": {
+        "hidden": true,
+        "text": ""
+      },
+      "rows": [
+        {
+          "disabled": false,
+          "height": 94,
+          "hint": "Обычная партия",
+          "id": "continue",
+          "label": "Продолжить",
+          "overflow": false
+        },
+        {
+          "disabled": false,
+          "height": 94,
+          "hint": null,
+          "id": "new",
+          "label": "Начать партию",
+          "overflow": false
+        },
+        {
+          "disabled": false,
+          "height": 94,
+          "hint": "До первого маршрута",
+          "id": "tutorial",
+          "label": "Обучение",
+          "overflow": false
+        },
+        {
+          "disabled": false,
+          "height": 94,
+          "hint": null,
+          "id": "rules",
+          "label": "Правила",
+          "overflow": false
+        }
+      ],
+      "viewport": [
+        1672,
+        941
+      ]
+    },
+    "candidate5": {
+      "document": [
+        1672,
+        941,
+        0
+      ],
+      "frame": 430,
+      "h1": "Ticket to Ride: Europe",
+      "metrics": {
+        "fixtureCommit": "77e709e9f35bd11605ecda0a10045de5756a86ec",
+        "physical": {
+          "board": true,
+          "hangers": true,
+          "settings": true
+        },
+        "projected": {
+          "board": [
+            {
+              "x": 59.99999999999985,
+              "y": 49.99999999999964
+            },
+            {
+              "x": 569.9999999999999,
+              "y": 106.4900500806676
+            },
+            {
+              "x": 569.9999999999999,
+              "y": 622.4232965775097
+            },
+            {
+              "x": 59.99999999999985,
+              "y": 646.0000000000001
+            }
+          ],
+          "settings": [
+            {
+              "x": 124.99999999999966,
+              "y": 655.0000000000001
+            },
+            {
+              "x": 515,
+              "y": 635.7160030755374
+            },
+            {
+              "x": 515,
+              "y": 723.4730128392374
+            },
+            {
+              "x": 124.99999999999966,
+              "y": 753.0000000000001
+            }
+          ]
+        },
+        "renderInfo": {
+          "calls": 433,
+          "geometries": 121,
+          "textures": 23,
+          "triangles": 681587
+        },
+        "rows": [
+          {
+            "font": "46px / 48.3px \"Times New Roman\", Georgia, serif",
+            "glyph": {
+              "ascent": 30.45703125,
+              "descent": 9.837890625,
+              "width": 244.1279296875
+            },
+            "height": 94,
+            "iconBox": {
+              "bottom": 289.63189697265625,
+              "height": 57.94477844238281,
+              "left": 133.07540893554688,
+              "right": 194.2766571044922,
+              "top": 231.68711853027344,
+              "width": 61.20124816894531,
+              "x": 133.07540893554688,
+              "y": 231.68711853027344
+            },
+            "id": "continue",
+            "label": "Продолжить",
+            "labelBox": {
+              "bottom": 289.1844787597656,
+              "height": 61.74945068359375,
+              "left": 238.34877014160156,
+              "right": 527.0265045166016,
+              "top": 227.43502807617188,
+              "width": 288.677734375,
+              "x": 238.34877014160156,
+              "y": 227.43502807617188
+            },
+            "offsetTop": 8,
+            "rowBox": {
+              "bottom": 323.3963623046875,
+              "height": 112.00604248046876,
+              "left": 109.0315399169922,
+              "right": 542.0634002685547,
+              "top": 211.39031982421875,
+              "width": 433.0318603515625,
+              "x": 109.0315399169922,
+              "y": 211.39031982421875
+            },
+            "width": 433
+          },
+          {
+            "font": "46px / 48.3px \"Times New Roman\", Georgia, serif",
+            "glyph": {
+              "ascent": 30.45703125,
+              "descent": 9.837890625,
+              "width": 293.25
+            },
+            "height": 94,
+            "iconBox": {
+              "bottom": 386.0948791503906,
+              "height": 56.3326416015625,
+              "left": 133.07540893554688,
+              "right": 194.2766571044922,
+              "top": 329.7622375488281,
+              "width": 61.20124816894531,
+              "x": 133.07540893554688,
+              "y": 329.7622375488281
+            },
+            "id": "new",
+            "label": "Начать партию",
+            "labelBox": {
+              "bottom": 390.3865356445313,
+              "height": 52.974395751953125,
+              "left": 238.34877014160156,
+              "right": 527.0265045166016,
+              "top": 337.4121398925781,
+              "width": 288.677734375,
+              "x": 238.34877014160156,
+              "y": 337.4121398925781
+            },
+            "offsetTop": 108,
+            "rowBox": {
+              "bottom": 410.6982116699219,
+              "height": 100.59945678710938,
+              "left": 109.0315399169922,
+              "right": 542.0634002685547,
+              "top": 310.0987548828125,
+              "width": 433.0318603515625,
+              "x": 109.0315399169922,
+              "y": 310.0987548828125
+            },
+            "width": 433
+          },
+          {
+            "font": "46px / 48.3px \"Times New Roman\", Georgia, serif",
+            "glyph": {
+              "ascent": 30.45703125,
+              "descent": 9.927734375,
+              "width": 361.6435546875
+            },
+            "height": 111,
+            "iconBox": {
+              "bottom": 490.89654541015625,
+              "height": 54.92205810546875,
+              "left": 133.07540893554688,
+              "right": 194.2766571044922,
+              "top": 435.9744873046875,
+              "width": 61.20124816894531,
+              "x": 133.07540893554688,
+              "y": 435.9744873046875
+            },
+            "id": "friends",
+            "label": "Играть с друзьями",
+            "labelBox": {
+              "bottom": 509.6632080078125,
+              "height": 92.05584716796876,
+              "left": 238.34877014160156,
+              "right": 527.0265045166016,
+              "top": 417.60736083984375,
+              "width": 288.677734375,
+              "x": 238.34877014160156,
+              "y": 417.60736083984375
+            },
+            "offsetTop": 208,
+            "rowBox": {
+              "bottom": 517.9725952148438,
+              "height": 109.16537475585938,
+              "left": 109.0315399169922,
+              "right": 542.0634002685547,
+              "top": 408.8072204589844,
+              "width": 433.0318603515625,
+              "x": 109.0315399169922,
+              "y": 408.8072204589844
+            },
+            "width": 433
+          },
+          {
+            "font": "32px / 33.6px \"Times New Roman\", Georgia, serif",
+            "glyph": {
+              "ascent": 22.21875,
+              "descent": 6.90625,
+              "width": 303.640625
+            },
+            "height": 94,
+            "iconBox": {
+              "bottom": 597.1088256835938,
+              "height": 56.10040283203125,
+              "left": 133.07540893554688,
+              "right": 194.2766571044922,
+              "top": 541.0084228515625,
+              "width": 61.20124816894531,
+              "x": 133.07540893554688,
+              "y": 541.0084228515625
+            },
+            "id": "tutorial",
+            "label": "Продолжить обучение",
+            "labelBox": {
+              "bottom": 568.1771850585938,
+              "height": 37.254638671875,
+              "left": 238.34877014160156,
+              "right": 527.0265045166016,
+              "top": 530.9225463867188,
+              "width": 288.677734375,
+              "x": 238.34877014160156,
+              "y": 530.9225463867188
+            },
+            "offsetTop": 325,
+            "rowBox": {
+              "bottom": 616.6810302734375,
+              "height": 98.9561767578125,
+              "left": 109.0315399169922,
+              "right": 542.0634002685547,
+              "top": 517.724853515625,
+              "width": 433.0318603515625,
+              "x": 109.0315399169922,
+              "y": 517.724853515625
+            },
+            "width": 433
+          },
+          {
+            "font": "46px / 48.3px \"Times New Roman\", Georgia, serif",
+            "glyph": {
+              "ascent": 30.45703125,
+              "descent": 9.837890625,
+              "width": 166.345703125
+            },
+            "height": 94,
+            "iconBox": {
+              "bottom": 695.1839599609375,
+              "height": 57.7125244140625,
+              "left": 133.07540893554688,
+              "right": 194.2766571044922,
+              "top": 637.471435546875,
+              "width": 61.20124816894531,
+              "x": 133.07540893554688,
+              "y": 637.471435546875
+            },
+            "id": "rules",
+            "label": "Правила",
+            "labelBox": {
+              "bottom": 685.1604614257812,
+              "height": 59.4830322265625,
+              "left": 238.34877014160156,
+              "right": 527.0265045166016,
+              "top": 625.6774291992188,
+              "width": 288.677734375,
+              "x": 238.34877014160156,
+              "y": 625.6774291992188
+            },
+            "offsetTop": 425,
+            "rowBox": {
+              "bottom": 715.3894653320312,
+              "height": 110.36273193359376,
+              "left": 109.0315399169922,
+              "right": 542.0634002685547,
+              "top": 605.0267333984375,
+              "width": 433.0318603515625,
+              "x": 109.0315399169922,
+              "y": 605.0267333984375
+            },
+            "width": 433
+          }
+        ],
+        "sourceRects": {
+          "board": {
+            "height": 596,
+            "width": 510,
+            "x": 60,
+            "y": 50
+          },
+          "settings": {
+            "height": 98,
+            "width": 390,
+            "x": 125,
+            "y": 655
+          }
+        },
+        "titleRect": {
+          "height": 81.39999389648438,
+          "width": 333,
+          "x": 94,
+          "y": 54.29999923706055
+        },
+        "titleVisible": true
+      },
+      "nativeTitleVisibility": "hidden",
+      "nav": [
+        406,
+        527,
+        0
+      ],
+      "note": {
+        "hidden": false,
+        "text": "Ещё действия ↓"
+      },
+      "rows": [
+        {
+          "disabled": false,
+          "height": 94,
+          "hint": "Обычная партия",
+          "id": "continue",
+          "label": "Продолжить",
+          "overflow": false
+        },
+        {
+          "disabled": false,
+          "height": 94,
+          "hint": null,
+          "id": "new",
+          "label": "Начать партию",
+          "overflow": false
+        },
+        {
+          "disabled": false,
+          "height": 111,
+          "hint": null,
+          "id": "friends",
+          "label": "Играть с друзьями",
+          "overflow": false
+        },
+        {
+          "disabled": false,
+          "height": 94,
+          "hint": "До первого маршрута",
+          "id": "tutorial",
+          "label": "Продолжить обучение",
+          "overflow": false
+        },
+        {
+          "disabled": false,
+          "height": 94,
+          "hint": null,
+          "id": "rules",
+          "label": "Правила",
+          "overflow": false
+        }
+      ],
+      "viewport": [
+        1672,
+        941
+      ]
+    }
+  },
+  "referenceApproximation": {
+    "primaryLeftTop": [
+      111,
+      212
+    ],
+    "tolerancePx": 2,
+    "dividerX": 217,
+    "labelLeftX": 237,
+    "source": "reference.png; human raster landmarks, not DOM"
+  },
+  "palette": {
+    "rowOverlay": "#242922A6",
+    "rowText": "#ECD5B2",
+    "primaryOverlay": "#E49845B3",
+    "primaryInk": "#342B1E",
+    "primaryMultiplyBase": "#FFCF7B",
+    "settingsOverlay": "#D69F7C96",
+    "settingsInk": "#342C20",
+    "disabled": "#BCCDBD",
+    "iconPrintShadow": [
+      "0 -.5px #17201880",
+      ".6px .7px #EED4A63D"
+    ],
+    "surfaceFiles": [
+      "board-paint.webp",
+      "paper-tile.webp"
+    ],
+    "newImageFiles": []
+  },
+  "proof": "outputs/round4/native-qa.json, reference-measurements.json and paired 1672 screenshots",
+  "remaining": [
+    "Reference has no dynamic hints; they remain part of the product contract.",
+    "System serif is an approximation; glyph heights/aspects still differ. No new font distributed.",
+    "Physical board relief, settings irregular paper edge, scene materials/light and foreground geometry belong to other owners.",
+    "Settings-paper API below is proposed, not implemented.",
+    "Desktop adaptive validation and artistic acceptance remain deferred."
+  ]
+}

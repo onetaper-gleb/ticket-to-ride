@@ -1,0 +1,8 @@
+{
+  "revision": "printed-menu-refinement",
+  "europe": {"mode":"native SVG fallback until optional shape hook succeeds", "letterGeometry":"sources/europe-shape-source.svg: six original paths once, front bounds x62..537/y20..93, viewBox600x120", "front":["#FFE1A4","#EDC17E","#D9AA64"], "highlight":"#FFF0C2", "depth":"#624522", "highlightOffsetSvg":[-0.3,-1.1], "depthOffsetSvg":[1.5,3], "futureShapeHook":"approved by root for environment/compositor; extract the six paths once; hide visible native SVG if physical letters are shown; keep semantic h1; restore SVG on failure"},
+  "row": {"border":"#14271e", "insetTopLeft":"#82978480", "insetBottom":"#101e1770", "dividerHighlight":"#82978450", "primaryBorder":"#93642d", "primaryHighlight":"#FFE1A49E", "primaryBottom":"#A36A2F80", "primaryDivider":"#99652d"},
+  "settings": {"colorOverlay":"#E3CFAA96", "ink":"#342C20", "innerPrintLine":"#84664355", "innerInsetCssPx":5},
+  "scrollAffordance": {"outerActionsHeight":"unchanged 338/416/458 desktop knots", "footerCssPx":24, "navHeightOnOverflow":"outer height minus 24", "fontCssPx":18, "color":"#F4E8CF", "below":"Ещё действия ↓", "above":"↑ Действия выше", "both":"↕ Прокрутите меню", "behavior":"noninteractive aria-describedby note, hidden without overflow, no overlay over text/focus"},
+  "ownership":"Only native print/row effects. Physical frame/hooks/bolts/irregular paper edge, scene light/shapes belong to 3D owners. Tile maps unchanged."
+}
