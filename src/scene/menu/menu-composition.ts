@@ -42,6 +42,7 @@ const menuDepthShader = {
     void main(){
       float depth=distanceAt(vUv);
       float radius=clamp(max(4.85-depth,0.0)*2.2+max(depth-7.45,0.0)*1.15,0.0,3.0);
+      if(radius<.001){gl_FragColor=texture2D(tDiffuse,vUv);return;}
       radius*=resolution.y/941.0;
       vec4 color=vec4(0.0); float total=0.0;
       for(int i=-4;i<=4;i++){
