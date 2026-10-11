@@ -380,8 +380,8 @@
     },
     {
       "file": "sources/round10-material-proof.json",
-      "bytes": 24376,
-      "sha256": "2dc32e678dc03e8e4868b15aa6a072b60f4586da48c18c0d250a54b5211cb434",
+      "bytes": 24940,
+      "sha256": "0e2d8034a50c83bf9ff05252faec8abc08c572ecb1f610cfd5c5e5feb1ce58b6",
       "role": "source",
       "stage": "round10 proof/proposal",
       "source": "project-owned round10 generator/provenance/actual contract; optional edge is source only",

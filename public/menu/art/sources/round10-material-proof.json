@@ -336,6 +336,8 @@
         "maximumChannelDelta": 12
       }
     ],
+    "captureFormat": "JPEG/JFIF browser captures saved as .jpg without re-encoding",
+    "compressionLimit": "Browser full frames and clips are JPEG/JFIF, independently compressed. Actual frame deltas include compression; individual clips need not equal a decoded full-frame crop. No lossless pixel attribution is claimed. Original reference/accepted baseline and generated/master inputs remain PNG.",
     "limits": "Read-only PIL/numpy decode and statistics, no pixel editing. Edge adjacency/row statistics are diagnostics, not a mathematical seamlessness or artistic acceptance proof. Static scene counts are not FPS/VRAM. Exact scene geometry source is separately hash-checked."
   },
   "acceptedInputProof": {
@@ -948,5 +950,5 @@
     },
     "boundary": "Same decoded image dimensions and slots. Estimates exclude clones/DOM/CSS/render targets/shadows/PMREM; not measured VRAM or FPS. No decode/filter timing measured."
   },
-  "limits": "Actual owner browser paired captures, no production integration or broad game/adaptive/animation suites. Same diagnostic SSAO seed10087 is declared. Artist acceptance stays open; source proposal does not alter Settings geometry. Subtle grain and foreground/depth filtering do not solve model shapes or lighting differences."
+  "limits": "Actual owner browser paired JPEG/JFIF captures; crop statistics include independent JPEG compression, not lossless attribution. Original reference/accepted baseline/generated/master files remain PNG. No production integration or broad game/adaptive/animation suites. Same diagnostic SSAO seed10087 is declared. Artist acceptance stays open; source proposal does not alter Settings geometry. Subtle grain and foreground/depth filtering do not solve model shapes or lighting differences."
 }
