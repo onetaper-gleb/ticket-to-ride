@@ -119,7 +119,7 @@ export async function createMenuComposition(
     models.parts.outerCanopySupport.position.set(1.7, 0, -0.2);
     models.parts.backdropRoot.position.x = 2;
     models.parts.luggage[0].position.set(-2.4, -0.9, 2.1);
-    models.parts.luggage.slice(0, 3).forEach((item) => {
+    models.parts.luggage.slice(1, 3).forEach((item) => {
       item.position.z -= 0.15;
     });
     models.parts.bench.rotation.y = -1.1;
