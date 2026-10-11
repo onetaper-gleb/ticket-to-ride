@@ -278,7 +278,11 @@ function seatHoldingSupport(hand: THREE.Group, contact: THREE.Vector3) {
 /** Keep the calm proposal local to the returned rig; the native module and cache are frozen. */
 function setCalmHoldingPose(hand: THREE.Group) {
   const rig = getHandRig(hand)!;
-  setHandPose(hand, { curl: [0.9, 1, 0.9, 0.9, 0.9], thumbOpposition: 0.9, wrist: [0, 0, 0] });
+  setHandPose(hand, {
+    curl: [0.9, 1, 0.9, 0.9, 0.9],
+    thumbOpposition: 0.9,
+    wrist: [0, 0, 0],
+  });
   setPalmFlex(hand, { index: 1.0175, middle: 1.1, ring: 1.1, little: 1.1 });
   const thumb = rig.fingers.thumb;
   thumb[0].position.y += 0.1;
@@ -532,7 +536,7 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
   addSleeve(
     root,
     [new THREE.Vector3(-0.345, 0.505, -0.27), new THREE.Vector3(-0.475, 0.24, -0.17), rightElbow],
-    [0.127, 0.14, 0.088],
+    calm ? [0.145, 0.156, 0.088] : [0.127, 0.14, 0.088],
     materials.cloth,
     'right static upper sleeve',
     rightContact.y,
@@ -597,12 +601,13 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
     ticketGrip.quaternion.fromArray(gripPose.quaternion).normalize();
     ticketGrip.scale.setScalar(HAND_SCALE / RESTING_HAND_SCALE);
   }
+  const ticketHeight = calm ? 2.55 : TICKET_HEIGHT;
   const ticketGeometry = new THREE.BoxGeometry(
-    calm ? TICKET_WIDTH / 2 : TICKET_WIDTH,
-    TICKET_HEIGHT,
+    calm ? 0.9 : TICKET_WIDTH,
+    ticketHeight,
     calm ? TICKET_THICKNESS / 2 : TICKET_THICKNESS,
   );
-  ticketGeometry.translate(0, TICKET_HEIGHT / 2, 0);
+  ticketGeometry.translate(calm ? 0.175 : 0, ticketHeight / 2 + (calm ? 0.05 : 0), 0);
   const ticket = new THREE.Mesh(ticketGeometry, materials.paper);
   ticket.name = 'neutral cashier ticket — replace print after art handoff';
   ticket.castShadow = true;
@@ -611,8 +616,8 @@ export function buildMenuCashier(options: MenuCashierOptions = {}): MenuCashier 
   if (calm) {
     const secondary = new THREE.Mesh(ticketGeometry, materials.paper);
     secondary.name = 'cashier secondary fan ticket';
-    secondary.position.set(0.4388892594240831, 0.08288595629697071, -0.0031);
-    secondary.rotation.z = 0.4;
+    secondary.position.set(0.2897741572172491, 0.032641957203823034, -0.0031);
+    secondary.rotation.z = 0.25;
     secondary.castShadow = true;
     secondary.receiveShadow = true;
     ticketGrip.add(secondary);

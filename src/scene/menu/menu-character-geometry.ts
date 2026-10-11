@@ -169,7 +169,7 @@ function softPatch(points: [number, number][], depth = 0.1, bevel = 0.065) {
 }
 
 /** Rounded closed cloth edge; the caller owns the resulting geometry. */
-function roundedCollar(points: [number, number][]) {
+function roundedCollar(points: [number, number][], calm = false) {
   const shape = new THREE.Shape();
   const corners = points.map((point, i) => {
     const center = new THREE.Vector2(...point);
@@ -189,10 +189,10 @@ function roundedCollar(points: [number, number][]) {
   }
   shape.closePath();
   return new THREE.ExtrudeGeometry(shape, {
-    depth: 0.06,
+    depth: calm ? 0.085 : 0.06,
     bevelEnabled: true,
-    bevelSize: 0.04,
-    bevelThickness: 0.04,
+    bevelSize: calm ? 0.05 : 0.04,
+    bevelThickness: calm ? 0.05 : 0.04,
     bevelSegments: 3,
     steps: 1,
     curveSegments: 8,
@@ -272,8 +272,8 @@ function sculptedFace(calm = false) {
   const profile = [
     [-1, 0, 0, 0],
     [-0.92, 0.36, 0.43, 0.34],
-    [-0.76, 0.7, 0.67, 0.54],
-    [-0.5, 0.91, 0.77, 0.74],
+    [-0.76, calm ? 0.715 : 0.7, 0.67, 0.54],
+    [-0.5, calm ? 0.935 : 0.91, 0.77, 0.74],
     [-0.18, 1, 0.81, 0.87],
     [0.18, 1, 0.79, 0.92],
     [0.52, 0.94, 0.74, 0.87],
@@ -309,10 +309,10 @@ function sculptedFace(calm = false) {
     Math.exp(-(((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2));
   const eyeX = w * 0.38;
   const eyeY = 0.065;
-  const eyeWidth = 0.205;
-  const eyeHeight = 0.205;
+  const eyeWidth = calm ? 0.181 : 0.205;
+  const eyeHeight = calm ? 0.172 : 0.205;
   const mouthY = (x: number) =>
-    calm ? -0.9 + 0.1 * (x / 0.42) ** 2 + 0.03 * (x / 0.42) : -0.92 + 0.12 * (x / 0.38) ** 2;
+    calm ? -0.865 + 0.145 * (x / 0.45) ** 2 + 0.024 * (x / 0.45) : -0.92 + 0.12 * (x / 0.38) ** 2;
   const noseWidth = style.nose[0] * 0.8256;
   const noseY = -0.28;
   const noseHeight = style.nose[1] * 0.6613;
@@ -321,7 +321,16 @@ function sculptedFace(calm = false) {
     let result = 0.06 * gaussian(x, y, 0, -0.99, w * 0.56, 0.29);
     result += 0.045 * gaussian(x, y, 0, -0.6, 0.58, 0.31);
     for (const side of [-1, 1]) {
-      result += 0.125 * gaussian(x, y, side * w * 0.56, -0.37, w * 0.363, 0.35);
+      result +=
+        (calm ? (side < 0 ? 0.16 : 0.145) : 0.125) *
+        gaussian(
+          x,
+          y,
+          side * w * 0.56,
+          calm ? -0.4 : -0.37,
+          w * (calm ? 0.4 : 0.363),
+          calm ? 0.4 : 0.35,
+        );
       result += 0.055 * gaussian(x, y, side * w * 0.64, -0.05, w * 0.36, 0.4);
       result -= 0.09 * gaussian(x, y, side * eyeX, eyeY, 0.31, 0.235);
       const ex = (x - side * eyeX) / (eyeWidth * 1.12);
@@ -349,9 +358,14 @@ function sculptedFace(calm = false) {
     }
     const lipY = mouthY(x);
     const lipMask = Math.exp(-((x / 0.39) ** 4));
-    result += lipMask * ((calm ? 0.025 : 0.035) * Math.exp(-(((y - lipY - 0.045) / 0.06) ** 2)));
-    result += lipMask * ((calm ? 0.025 : 0.038) * Math.exp(-(((y - lipY + 0.06) / 0.075) ** 2)));
-    result -= lipMask * ((calm ? 0.018 : 0.022) * Math.exp(-(((y - lipY) / 0.025) ** 2)));
+    result +=
+      lipMask *
+      ((calm ? 0.045 : 0.035) * Math.exp(-(((y - lipY - 0.045) / (calm ? 0.08 : 0.06)) ** 2)));
+    result +=
+      lipMask *
+      ((calm ? 0.05 : 0.038) * Math.exp(-(((y - lipY + 0.06) / (calm ? 0.095 : 0.075)) ** 2)));
+    result -=
+      lipMask * ((calm ? 0.008 : 0.022) * Math.exp(-(((y - lipY) / (calm ? 0.04 : 0.025)) ** 2)));
     return result;
   };
   const front = (x: number, y: number) => {
@@ -462,6 +476,7 @@ function faceRibbon(
   widths: number[],
   height: number,
   segments = 28,
+  offset = 0.007,
 ) {
   const curve = new THREE.CatmullRomCurve3(points.map(([x, y]) => new THREE.Vector3(x, y, 0)));
   const positions: number[] = [];
@@ -478,7 +493,7 @@ function faceRibbon(
       const u = (step / across) * 2 - 1;
       const x = center.x - tangent.y * width * u;
       const y = center.y + tangent.x * width * u;
-      positions.push(x, y, face.front(x, y) + 0.007 + height * (1 - u * u));
+      positions.push(x, y, face.front(x, y) + offset + height * (1 - u * u));
     }
   }
   for (let level = 0; level < segments; level++) {
@@ -519,13 +534,23 @@ function sweptFringe(face: FaceForm, calm = false): THREE.BufferGeometry {
     return geometry;
   }
   const shape = new THREE.Shape();
-  shape.moveTo(calm ? -1.11 : -1.08, calm ? 0.27 : 0.32);
-  shape.bezierCurveTo(-1.12, 0.72, -1.05, 1.36, -0.61, 1.58);
-  shape.bezierCurveTo(-0.27, 1.59, 0.53, 1.59, 0.92, 1.3);
-  shape.quadraticCurveTo(0.98, 1.04, 0.86, 0.98);
-  shape.bezierCurveTo(0.62, 0.93, 0.12, 0.95, -0.08, 0.88);
-  shape.bezierCurveTo(-0.36, calm ? 0.73 : 0.69, -0.55, calm ? 0.25 : 0.24, -0.83, 0.27);
-  shape.quadraticCurveTo(-0.96, 0.28, calm ? -1.11 : -1.08, calm ? 0.27 : 0.32);
+  if (calm) {
+    shape.moveTo(-1.11, 0.26);
+    shape.bezierCurveTo(-1.16, 0.77, -1.02, 1.38, -0.61, 1.58);
+    shape.bezierCurveTo(-0.24, 1.6, 0.55, 1.57, 0.92, 1.3);
+    shape.quadraticCurveTo(0.98, 1.07, 0.86, 1.03);
+    shape.bezierCurveTo(0.52, 1.01, 0.12, 0.82, -0.14, 0.65);
+    shape.bezierCurveTo(-0.43, 0.47, -0.56, 0.24, -0.83, 0.26);
+    shape.quadraticCurveTo(-0.97, 0.28, -1.11, 0.26);
+  } else {
+    shape.moveTo(-1.08, 0.32);
+    shape.bezierCurveTo(-1.12, 0.72, -1.05, 1.36, -0.61, 1.58);
+    shape.bezierCurveTo(-0.27, 1.59, 0.53, 1.59, 0.92, 1.3);
+    shape.quadraticCurveTo(0.98, 1.04, 0.86, 0.98);
+    shape.bezierCurveTo(0.62, 0.93, 0.12, 0.95, -0.08, 0.88);
+    shape.bezierCurveTo(-0.36, 0.69, -0.55, 0.24, -0.83, 0.27);
+    shape.quadraticCurveTo(-0.96, 0.28, -1.08, 0.32);
+  }
   shape.closePath();
   const extrusion = new THREE.ExtrudeGeometry(shape, {
     depth: calm ? 0.12 : 0.095,
@@ -713,7 +738,7 @@ function buildCashierHead(person: THREE.Group, factory: Factory, calm = false) {
     );
     const pupilX = cx - side * 0.012;
     mesh(
-      facePatch(face, [pupilX, cy - 0.009], [0.132, 0.154], 0.026),
+      facePatch(face, [pupilX, cy - 0.009], [0.132, calm ? 0.14 : 0.154], 0.026),
       MENU_CASHIER_PALETTE.pupil,
       [0, 0, 0],
       head,
@@ -760,14 +785,16 @@ function buildCashierHead(person: THREE.Group, factory: Factory, calm = false) {
     );
   }
   const mouthPoints: [number, number][] = (
-    calm ? [-0.42, -0.21, 0, 0.21, 0.42] : [-0.38, -0.2, 0, 0.2, 0.38]
+    calm ? [-0.45, -0.225, 0, 0.225, 0.45] : [-0.38, -0.2, 0, 0.2, 0.38]
   ).map((x) => [x, face.mouthY(x)]);
   mesh(
     faceRibbon(
       face,
       mouthPoints,
-      calm ? [0.004, 0.018, 0.02, 0.018, 0.004] : [0.005, 0.019, 0.023, 0.019, 0.005],
-      0.005,
+      calm ? [0.003, 0.013, 0.016, 0.013, 0.003] : [0.005, 0.019, 0.023, 0.019, 0.005],
+      calm ? 0.002 : 0.005,
+      28,
+      calm ? 0.012 : 0.007,
     ),
     MENU_CASHIER_PALETTE.smile,
     [0, 0, 0],
@@ -797,7 +824,7 @@ function buildCashierHead(person: THREE.Group, factory: Factory, calm = false) {
     -0.25;
 }
 
-function buildCashierClothes(person: THREE.Group, factory: Factory) {
+function buildCashierClothes(person: THREE.Group, factory: Factory, calm = false) {
   const { mesh, round, oval, patch } = factory;
   const style = CASHIER_STYLE;
   const w = style.width;
@@ -807,9 +834,26 @@ function buildCashierClothes(person: THREE.Group, factory: Factory) {
         { y: -0.51, width: w * 0.46, front: 0.53, back: 0.55, z: -0.12 },
         { y: -0.24, width: w * 0.72, front: 0.76, back: 0.66, z: -0.13 },
         { y: 0.57, width: w * 0.9, front: 0.86, back: 0.7, z: -0.12 },
-        { y: 1.47, width: w, front: 0.88, back: 0.74, z: -0.1 },
-        { y: 2.42, width: w * 0.99, front: 0.81, back: 0.69, z: -0.06 },
-        { y: 3.125, width: w * 0.97, front: 0.64, back: 0.53 },
+        {
+          y: 1.47,
+          width: w * (calm ? 1.02 : 1),
+          front: calm ? 0.94 : 0.88,
+          back: 0.74,
+          z: -0.1,
+        },
+        {
+          y: 2.42,
+          width: w * (calm ? 1.075 : 0.99),
+          front: calm ? 0.88 : 0.81,
+          back: 0.69,
+          z: -0.06,
+        },
+        {
+          y: 3.125,
+          width: w * (calm ? 1.06 : 0.97),
+          front: calm ? 0.69 : 0.64,
+          back: 0.53,
+        },
         { y: 3.2, width: w * 0.67, front: 0.4, back: 0.37, z: 0.02 },
         { y: 3.25, width: 0.49, front: 0.34, back: 0.33, z: 0.03 },
       ],
@@ -820,8 +864,8 @@ function buildCashierClothes(person: THREE.Group, factory: Factory) {
   oval([0.48, 0.5, 0.43], style.skin, [0, 2.98, 0.02]);
   patch(
     [
-      [-0.34, 2.88],
-      [0.34, 2.88],
+      [calm ? -0.4 : -0.34, 2.88],
+      [calm ? 0.4 : 0.34, 2.88],
       [0.14, 0.8],
       [-0.14, 0.8],
     ],
@@ -850,14 +894,24 @@ function buildCashierClothes(person: THREE.Group, factory: Factory) {
     if (side < 0) reflectGeometryX(lapel.geometry);
     lapel.rotation.y = side * 0.09;
     const collar = mesh(
-      roundedCollar([
-        [-0.13, 0.22],
-        [0.35, 0.33],
-        [0.9, -0.05],
-        [0.15, -0.35],
-      ]),
+      roundedCollar(
+        calm
+          ? [
+              [-0.17, 0.23],
+              [0.39, 0.37],
+              [1.05, -0.05],
+              [0.1, -0.47],
+            ]
+          : [
+              [-0.13, 0.22],
+              [0.35, 0.33],
+              [0.9, -0.05],
+              [0.15, -0.35],
+            ],
+        calm,
+      ),
       style.shirt,
-      [side * 0.29, 2.97, 0.87],
+      [side * (calm ? 0.33 : 0.29), 2.97, 0.87],
       person,
     );
     if (side < 0) reflectGeometryX(collar.geometry);
@@ -865,10 +919,17 @@ function buildCashierClothes(person: THREE.Group, factory: Factory) {
   for (const y of [1.14, 0.57])
     oval([0.055, 0.055, 0.04], MENU_CASHIER_PALETTE.gold, [0.13, y, 0.83]);
   round([0.66, 0.29, 0.08], style.trim, [-w * 0.58, 1.24, 0.81]).rotation.z = -0.08;
-  oval([0.225, 0.19, 0.13], MENU_CASHIER_PALETTE.gold, [0, 2.79, 1.01]);
+  oval(
+    [calm ? 0.25 : 0.225, calm ? 0.23 : 0.19, calm ? 0.16 : 0.13],
+    MENU_CASHIER_PALETTE.gold,
+    [0, 2.79, 1.01],
+  );
   for (const side of [-1, 1])
-    oval([0.36, 0.19, 0.14], MENU_CASHIER_PALETTE.gold, [side * 0.26, 2.74, 0.96]).rotation.z =
-      side * 0.17;
+    oval([calm ? 0.43 : 0.36, calm ? 0.23 : 0.19, calm ? 0.18 : 0.14], MENU_CASHIER_PALETTE.gold, [
+      side * (calm ? 0.3 : 0.26),
+      2.74,
+      0.96,
+    ]).rotation.z = side * 0.17;
 }
 
 /** Reflection is baked into geometry and triangle order; object scale stays positive. */
@@ -962,7 +1023,7 @@ export function buildCashierUpperBody(calm = false): THREE.Group {
   const person = new THREE.Group();
   person.name = 'Статичный верх кассирши меню';
   const factory = characterFactory(person, calm);
-  buildCashierClothes(person, factory);
+  buildCashierClothes(person, factory, calm);
   buildCashierHead(person, factory, calm);
   consolidateUpperBody(person);
   return person;
